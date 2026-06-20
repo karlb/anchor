@@ -1,0 +1,7 @@
+[
+{"type":"lexeme","id":"L100","language":"Q188","lexicalCategory":"Q1084","lemmas":{"de":{"language":"de","value":"Bank"}},"senses":[]},
+{"type":"lexeme","id":"L200","language":"Q1860","lexicalCategory":"Q1084","lemmas":{"en":{"language":"en","value":"bench"}},"senses":[{"id":"L200-S1","glosses":{"en":{"language":"en","value":"IGNORED GLOSS TEXT"}},"claims":{"P5137":[{"mainsnak":{"snaktype":"value","property":"P5137","datavalue":{"value":{"entity-type":"item","id":"Q123"},"type":"wikibase-entityid"}}}]}}]},
+{"type":"lexeme","id":"L300","language":"Q9027","lexicalCategory":"Q1084","lemmas":{"sv":{"language":"sv","value":"bänk"}},"senses":[]},
+{"type":"lexeme","id":"L400","language":"Q1860","lexicalCategory":"Q1084","lemmas":{"en":{"language":"en","value":"bank"}},"senses":[{"id":"L400-S1","glosses":{"en":{"language":"en","value":"IGNORED"}},"claims":{"P5137":[{"mainsnak":{"snaktype":"value","property":"P5137","datavalue":{"value":{"entity-type":"item","id":"Q456"},"type":"wikibase-entityid"}}}]}}]},
+{"type":"lexeme","id":"L500","language":"Q9027","lexicalCategory":"Q1084","lemmas":{"sv":{"language":"sv","value":"bank"}},"senses":[{"id":"L500-S1","glosses":{"sv":{"language":"sv","value":"IGNORED"}},"claims":{"P5137":[{"mainsnak":{"snaktype":"value","property":"P5137","datavalue":{"value":{"entity-type":"item","id":"Q456"},"type":"wikibase-entityid"}}}]}}]}
+]
