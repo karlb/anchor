@@ -118,6 +118,23 @@ drink" — a wrong anchor the structural method alone would have written. Other 
 **The verifier raises precision 63% → 82% while discarding only ~4% of genuine matches, and
 its rejections are right 93% of the time.** (Small-n caveat: ±~8% at n=120.)
 
+### ≥95% "High" tier (measure_lift.py --gate ABD, sonnet, n=120)
+The plan's High tier = the cleanest structural tier (**A** ≥2 anchors ∩ **B** monosemous ∩
+**D** concrete/P31) + a *good*-model verifier-"yes". Measured on the 10,323-candidate A&B&D pool:
+
+| | Precision | |
+|---|---|---|
+| Write everything (A&B&D baseline) | 85.8% | 103/120 |
+| **Write only verifier-"yes" (sonnet)** | **96.9%** | 95/98 |
+| True hits kept (recall) | 92.2% | 95/103 |
+| Verifier-"no" hit-rate | 21.4% | 3/14 → 79% of rejects correct |
+
+**The High tier clears ≥95%** (96.9%). Caveats: (1) small-n — Wilson 95% CI ≈ [91%, 99%], so
+the point estimate clears 95% but the lower bound doesn't; a confirmation run at n≈300–400 is
+needed to *state* ≥95%. (2) Recall falls to 92.2% (vs 96.1% on the general pool): on an
+already-clean base the verifier prunes a larger fraction of genuine matches (8/103 lost). The
+~79%-correct "no" bucket still earns its keep.
+
 ## Conclusion
 
 The method works: a structurally-clean candidate stream at ~62% precision, lifted to ~82% by a
@@ -130,8 +147,8 @@ verification) are all validated on real data.
 - **Provenance not yet separated.** The held-out "truth" includes P5137s that may share the
   method's own label-matching origin, which can inflate the baseline. De-biasing needs P887
   reference extraction in `load_lexemes.py` (not done).
-- **Single-vote, haiku.** The plan's ≥95% "High" tier (verifier-"yes" ∩ ≥2 anchors ∩
-  same-label, stronger model, 2-of-3 voting) has not been measured yet.
+- **High-tier n is small.** The 96.9% High-tier number is n=120 (98 "yes"); CI lower bound
+  ~91%. Confirm at n≈300–400 (and optionally with 2-of-3 voting) before the BRFA claim.
 
 ## Reproduce
 
@@ -143,11 +160,12 @@ uv run precision.py          # structural precision (+ P279 tolerance once items
 uv run fetch_items.py        # CC0 labels/descriptions + P31/P279 (needs www.wikidata.org)
 uv run verify.py --senseless-only
 uv run measure_lift.py --sample 120
+uv run measure_lift.py --gate ABD --sample 120 --model sonnet   # ≥95% High tier
 ```
 
 ## Next
 
-1. Measure the ≥95% "High" tier (verifier-yes ∩ ≥2 anchors, stronger model, voting).
+1. Confirm the High tier at n≈300–400 (A&B&D + sonnet verifier-yes) to firm up the ≥95% claim.
 2. Review queue + `wbeditentity` writer with the P887 reference → ~10 pre-BRFA edits.
 3. P887 provenance extraction to de-bias the precision baseline.
 4. Talk-page post (this doc + the plan's license rationale).

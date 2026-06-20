@@ -44,13 +44,32 @@ def item_rows(conn):
     return out
 
 
+def typed_qids(conn):
+    """qids with at least one P31 — the concrete-anchor gate (D)."""
+    return {r[0] for r in conn.execute("SELECT DISTINCT qid FROM it.item_type WHERE prop='P31'")}
+
+
+def passes_gate(gate, predicted, n_senses, n_other, typed):
+    """Structural gate filter. gate is a string of letters: A (>=2 anchors),
+    B (monosemous target), D (concrete anchor with P31)."""
+    if "A" in gate and not (n_other >= 2):
+        return False
+    if "B" in gate and not (n_senses == 1):
+        return False
+    if "D" in gate and predicted not in typed:
+        return False
+    return True
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--sample", type=int, default=120)
     ap.add_argument("--batch", type=int, default=8)
     ap.add_argument("--model", default="haiku")
     ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--gate", default="", help="structural gate filter, e.g. ABD")
     args = ap.parse_args()
+    gate = args.gate.upper()
 
     conn = sqlite3.connect(":memory:")
     conn.execute("ATTACH DATABASE ? AS cn", [config.CANDIDATES])
@@ -61,11 +80,14 @@ def main():
     decided = [r for r in precision.evaluate(clusters) if r[3] in ("hit", "miss")]
     lemma = lemmas_by_lid(conn)
     items = item_rows(conn)
+    typed = typed_qids(conn) if "D" in gate else set()
 
     # build verifiable cases: (lid, lang, lemma, predicted_qid, label/desc...) + truth
     cases = []
-    for lid, q_true, predicted, outcome, lang, _n_senses, _n_other in decided:
+    for lid, q_true, predicted, outcome, lang, n_senses, n_other in decided:
         if predicted not in items or lid not in lemma:
+            continue
+        if not passes_gate(gate, predicted, n_senses, n_other, typed):
             continue
         row = (lid, lang, lemma[lid], predicted, 0) + items[predicted]
         if verify.has_evidence(row):
@@ -73,8 +95,8 @@ def main():
 
     rng = random.Random(args.seed)
     sample = rng.sample(cases, min(args.sample, len(cases)))
-    print(f"verifiable decided cases: {len(cases):,}; sampling {len(sample)} "
-          f"(batch={args.batch}, model={args.model})")
+    print(f"gate={gate or '(none)'}; verifiable decided cases: {len(cases):,}; "
+          f"sampling {len(sample)} (batch={args.batch}, model={args.model})")
     base_hits = sum(1 for _, o in sample if o == "hit")
     print(f"baseline structural hit-rate in sample: {precision.pct(base_hits, len(sample))} "
           f"({base_hits}/{len(sample)})")
