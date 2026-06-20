@@ -7,9 +7,17 @@ label/description. No DBnary gloss text is ever read or written. See the full me
 license rationale in `notes/p5137_anchor_propagation.md` and the plan in
 `~/.claude/plans/i-want-to-improve-twinkling-puppy.md`.
 
-Input data (the ready-built wikdict-gen `dictionaries/*.sqlite3`) is read-only and referenced
-via `config.py` (override its location with `$WIKDICT_GEN`); all generated output lands in
-`data/` (git-ignored, regenerable).
+All data lives in `data/` (git-ignored). That includes **local copies** of the wikdict-gen
+inputs — `infer.sqlite3` and `de/en/sv.sqlite3` — kept here so other jobs rebuilding the
+wikdict-gen dictionaries can't interfere mid-run. To refresh them from source:
+
+```bash
+src=$WIKDICT_GEN/dictionaries   # default: /home/karl/code/github/wikdict-gen/dictionaries
+for f in infer processed/de processed/en processed/sv; do
+  cp "$src/$f.sqlite3" "data/$(basename $f).sqlite3.part" && \
+  mv "data/$(basename $f).sqlite3.part" "data/$(basename $f).sqlite3"  # atomic
+done
+```
 
 ## Pipeline
 
