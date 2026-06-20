@@ -34,12 +34,16 @@ SELECT cm.lexentry, cm.sense_num, cm.lang, cm.lemma, cm.role, lx.lid
 FROM cl.cluster_member cm
 JOIN wd.lexeme lx   ON lx.lang = cm.lang AND lx.lexcat = '%(noun)s'
 JOIN wd.lemma  lm   ON lm.lid = lx.lid AND lm.lemma = cm.lemma;
+CREATE INDEX mm_pivot ON matched_member(lexentry, sense_num);
+CREATE INDEX mm_key   ON matched_member(lexentry, sense_num, lang, lemma);
+CREATE INDEX mm_lid   ON matched_member(lid);
 
 -- homograph flag: a member lemma matching >1 lexeme in its language
 DROP TABLE IF EXISTS member_homograph;
 CREATE TABLE member_homograph AS
 SELECT lexentry, sense_num, lang, lemma, count(DISTINCT lid) AS n_lid
 FROM matched_member GROUP BY lexentry, sense_num, lang, lemma;
+CREATE INDEX mh_key ON member_homograph(lexentry, sense_num, lang, lemma);
 
 -- 2. each matched lexeme's distinct P5137 targets within this cluster
 DROP TABLE IF EXISTS member_qid;
@@ -47,6 +51,7 @@ CREATE TABLE member_qid AS
 SELECT DISTINCT mm.lexentry, mm.sense_num, mm.lid, si.qid
 FROM matched_member mm
 JOIN wd.sense_item si ON si.lid = mm.lid;
+CREATE INDEX mq_key ON member_qid(lid, lexentry, sense_num);
 
 -- lexemes whose P5137 senses agree on exactly one Q = clean anchors
 DROP TABLE IF EXISTS clean_anchor;
@@ -63,6 +68,7 @@ SELECT lexentry, sense_num, min(qid) AS anchor_qid
 FROM clean_anchor
 GROUP BY lexentry, sense_num
 HAVING count(DISTINCT qid) = 1;
+CREATE INDEX ca_pivot ON cluster_anchor(lexentry, sense_num);
 
 -- 3a. per-cluster candidate rows: matched lexemes not yet grounded to the anchor Q
 DROP TABLE IF EXISTS candidate_raw;
