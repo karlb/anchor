@@ -74,6 +74,30 @@ cluster members, check recovery. 55,495 decisions (75.2% coverage; the rest abst
 66.2% → +sibling 70.9%, leaving **16,136 (29%) genuine misses**. So even generous structural
 tolerance leaves a large real-error rate — the LLM verifier is load-bearing, not optional.
 
+### Structural gates (ablation.py — held-out, what we can win before the LLM)
+Gates: **A** ≥2 agreeing anchors · **B** monosemous target · **C** same-label/cognate ·
+**D** concrete anchor (predicted Q has a P31 type).
+
+| Gate | Precision (full truth) | Precision (non-cognate, unbiased) |
+|---|---|---|
+| baseline | 61.8% | 54.3% |
+| A | 81.9% | 77.1% |
+| D | 66.4% | 59.7% |
+| A & D | 84.2% | 80.1% |
+| A & B & D | — | **80.9%** |
+| C | 92.4% | (degenerate) |
+| A & C | 95.9% | (degenerate) |
+
+**De-bias:** provenance is absent (only 48/65,184 P5137 carry any reference, none P887), so
+label-matched edits can't be filtered out. **82.7%** of all held-out truth is *cognate*
+(lemma == true Q's label), so gate C's 92–96% is circular and the honest test bed is the 16%
+**non-cognate** subset. There, structure honestly caps at **~81%** (A&B&D). A separate test of
+the **reciprocity / `backlink_score`** lever found *no* signal beyond gate A (A=77.1% vs
+A&backlink≥0.3=77.9% at half the volume) — the ≥2-anchor gate already captures cluster
+robustness. **Conclusion: all five structural levers exhausted; structure alone caps ~81%, so
+a trustworthy ≥95% requires the LLM verifier**, which independently checks cognate correctness
+from the description (catching false friends the same-label gate waves through).
+
 ### Verifier (verify.py — CC0 label/description, single-vote, `claude -p` haiku)
 On a 48-candidate senseless-target sample: **36 yes / 9 no / 3 uncertain** (~25% pruned). The
 rejections were correct, including the two *highest-support* candidates `Schützin@de` /
