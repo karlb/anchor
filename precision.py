@@ -33,6 +33,7 @@ Run after match.py:
 """
 
 import collections
+import os
 import sqlite3
 
 import config
@@ -84,6 +85,44 @@ def pct(num, den):
     return f"{100.0 * num / den:.1f}%" if den else "n/a"
 
 
+def load_types():
+    """{qid: set(parent qids via P31/P279)} from the items cache, or None."""
+    if not os.path.exists(config.ITEMS):
+        return None
+    conn = sqlite3.connect(config.ITEMS)
+    types = collections.defaultdict(set)
+    for qid, _prop, value in conn.execute("SELECT qid, prop, value FROM item_type"):
+        types[qid].add(value)
+    conn.close()
+    return types if types else None
+
+
+def tolerant_precision(records):
+    """Reclassify strict misses by how close predicted is to q_true in the P31/P279
+    graph: a parent/child hop, or a shared direct parent (siblings)."""
+    types = load_types()
+    if types is None:
+        print("\n(P279-tolerant precision skipped — run fetch_items.py first.)")
+        return
+    decided = [r for r in records if r[3] in ("hit", "miss")]
+    exact = sum(1 for r in decided if r[3] == "hit")
+    parent_child = sibling = 0
+    for _lid, q_true, pred, outcome, *_ in decided:
+        if outcome == "hit":
+            continue
+        tp, tt = types.get(pred, set()), types.get(q_true, set())
+        if q_true in tp or pred in tt:
+            parent_child += 1
+        elif tp & tt:
+            sibling += 1
+    n = len(decided)
+    print("\nP279-TOLERANT PRECISION (how many 'misses' are really neighbouring Q-items):")
+    print(f"  exact match                : {pct(exact, n)}  ({exact:,}/{n:,})")
+    print(f"  + parent/child (1 hop)     : {pct(exact + parent_child, n)}  (+{parent_child:,})")
+    print(f"  + sibling (shared parent)  : {pct(exact + parent_child + sibling, n)}  (+{sibling:,})")
+    print(f"  remaining genuine misses   : {n - exact - parent_child - sibling:,}")
+
+
 def report(records):
     records = list(records)
     n_total = len(records)
@@ -123,6 +162,8 @@ def report(records):
         correct = sum(1 for v in write_units.values() if v)
         print(f"\nWRITE-UNIT PRECISION (deduped (lid,Q) proposals): {pct(correct, len(write_units))}  "
               f"({correct:,}/{len(write_units):,})")
+
+    tolerant_precision(records)
 
     print("\nProvenance: not stratified — needs the P887 reference on each P5137 "
           "statement, which load_lexemes.py does not extract yet. Treat the numbers "
