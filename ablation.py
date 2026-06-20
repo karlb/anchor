@@ -47,17 +47,23 @@ def item_labels(conn):
 def build_records(conn):
     """Decided leave-one-out records + structural feature flags.
 
-    Each record: (outcome, A_ge2_anchors, B_monosemous, C_same_label).
+    Each record: (outcome, A_ge2_anchors, B_monosemous, C_same_label, truth_cognate).
+    truth_cognate = the held-out lexeme's *own* lemma equals its true Q's label in
+    its language → that P5137 could have been produced by label-matching, so it is
+    a *biased* ground-truth row for gate C. The complement (non-cognate truth) is
+    an unbiased test bed for the gates that don't depend on the cognate relation.
     """
     clusters = precision.load_clusters(conn)
     lemmas = lemma_sets(conn)
     labels = item_labels(conn)
     recs = []
-    for lid, _q_true, predicted, outcome, lang, n_senses, n_other in precision.evaluate(clusters):
+    for lid, q_true, predicted, outcome, lang, n_senses, n_other in precision.evaluate(clusters):
         if outcome not in ("hit", "miss"):
             continue
-        same_label = labels.get(predicted, {}).get(lang) in lemmas.get(lid, set())
-        recs.append((outcome, n_other >= 2, n_senses == 1, same_label))
+        mine = lemmas.get(lid, set())
+        same_label = labels.get(predicted, {}).get(lang) in mine
+        truth_cognate = labels.get(q_true, {}).get(lang) in mine
+        recs.append((outcome, n_other >= 2, n_senses == 1, same_label, truth_cognate))
     return recs
 
 
@@ -91,9 +97,25 @@ def main():
     measure(recs, "B & C", lambda r: B(r) and C(r))
     measure(recs, "A & B & C", lambda r: A(r) and B(r) and C(r))
 
-    print("\n⚠ Gate C (same-label) is circularly inflated against label-matched ground "
-          "truth; de-bias on the non-label-matched subset (needs P887 extraction) before "
-          "trusting it. Volume here is held-out coverage, a proxy for writable volume.")
+    # De-biased view: provenance isn't in the dump (only 48/65k P5137 carry any
+    # reference, none P887), so we can't exclude label-matched edits directly.
+    # Instead restrict to NON-cognate ground truth (lemma != true Q's label) — rows
+    # label-matching could not have produced. Gate C degenerates here (a correct
+    # prediction has label == true-label != lemma, so C can't fire), so we report
+    # only the gates that remain meaningful.
+    unbiased = [r for r in recs if not r[4]]
+    print(f"\nDE-BIASED — non-cognate ground truth only (n={len(unbiased):,}, "
+          f"{100.0*len(unbiased)/len(recs):.0f}% of decided):")
+    measure(unbiased, "baseline (none)", lambda r: True)
+    measure(unbiased, "A: >=2 agreeing anchors", A)
+    measure(unbiased, "B: monosemous target", B)
+    measure(unbiased, "A & B", lambda r: A(r) and B(r))
+    print("  (gate C omitted — degenerate on non-cognate truth)")
+
+    print("\nTakeaways: gate A (>=2 anchors) is non-circular and holds on hard non-cognate "
+          "cases. Gate C cannot be de-biased from data alone (no provenance + 82.7% of truth "
+          "is cognate); its real precision must be checked by the independent LLM verifier, "
+          "which judges from the description, not the label.")
     conn.close()
 
 

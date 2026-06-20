@@ -35,6 +35,7 @@ CREATE TABLE lexeme(lid TEXT PRIMARY KEY, lang TEXT, lexcat TEXT) WITHOUT ROWID;
 CREATE TABLE lemma(lid TEXT, tag TEXT, lemma TEXT);
 CREATE TABLE sense(lid TEXT, sid TEXT);
 CREATE TABLE sense_item(lid TEXT, sid TEXT, qid TEXT);  -- P5137 targets
+CREATE TABLE sense_ref(lid TEXT, sid TEXT, qid TEXT, prop TEXT, value TEXT);  -- P5137 ref snaks
 """
 
 INDEXES = """
@@ -43,6 +44,8 @@ CREATE INDEX lemma_lid ON lemma(lid);
 CREATE INDEX sense_lid ON sense(lid);
 CREATE INDEX sense_item_lid ON sense_item(lid);
 CREATE INDEX sense_item_qid ON sense_item(qid);
+CREATE INDEX sense_ref_key ON sense_ref(lid, qid);
+CREATE INDEX sense_ref_prop ON sense_ref(prop);
 """
 
 
@@ -60,15 +63,31 @@ def iter_entities(path):
             yield json.loads(line)
 
 
-def p5137_targets(sense):
+def p5137_claims(sense):
+    """Yield (target_qid, [(ref_prop, ref_value), ...]) per P5137 statement.
+
+    ref_value is the snak's entity id (Q…/P…) when entity-valued, else the raw
+    value as text, or None for novalue/somevalue. Captures provenance (e.g.
+    P887 "based on heuristic") so we can de-bias the precision measurement.
+    """
     for claim in sense.get("claims", {}).get("P5137", []):
         snak = claim.get("mainsnak", {})
         if snak.get("snaktype") != "value":
             continue  # skip novalue/somevalue
-        value = snak.get("datavalue", {}).get("value", {})
-        qid = value.get("id")
-        if qid:
-            yield qid
+        qid = snak.get("datavalue", {}).get("value", {}).get("id")
+        if not qid:
+            continue
+        refs = []
+        for ref in claim.get("references", []):
+            for prop, snaks in ref.get("snaks", {}).items():
+                for s in snaks:
+                    if s.get("snaktype") != "value":
+                        refs.append((prop, None))
+                        continue
+                    dv = s.get("datavalue", {}).get("value")
+                    val = dv.get("id") if isinstance(dv, dict) else dv
+                    refs.append((prop, str(val) if val is not None else None))
+        yield qid, refs
 
 
 def load(dump, out):
@@ -77,7 +96,7 @@ def load(dump, out):
     conn = sqlite3.connect(out)
     conn.executescript(SCHEMA)
 
-    lexemes, lemmas, senses, items = [], [], [], []
+    lexemes, lemmas, senses, items, refs = [], [], [], [], []
     n_kept = 0
 
     def flush():
@@ -85,7 +104,8 @@ def load(dump, out):
         conn.executemany("INSERT INTO lemma VALUES (?,?,?)", lemmas)
         conn.executemany("INSERT INTO sense VALUES (?,?)", senses)
         conn.executemany("INSERT INTO sense_item VALUES (?,?,?)", items)
-        lexemes.clear(); lemmas.clear(); senses.clear(); items.clear()
+        conn.executemany("INSERT INTO sense_ref VALUES (?,?,?,?,?)", refs)
+        lexemes.clear(); lemmas.clear(); senses.clear(); items.clear(); refs.clear()
 
     for ent in iter_entities(dump):
         if ent.get("type") != "lexeme":
@@ -100,8 +120,10 @@ def load(dump, out):
         for s in ent.get("senses", []):
             sid = s["id"]
             senses.append((lid, sid))
-            for qid in p5137_targets(s):  # glosses deliberately ignored
+            for qid, claim_refs in p5137_claims(s):  # glosses deliberately ignored
                 items.append((lid, sid, qid))
+                for prop, value in claim_refs:
+                    refs.append((lid, sid, qid, prop, value))
         n_kept += 1
         if len(lemmas) > 50000:
             flush()
@@ -117,6 +139,11 @@ def load(dump, out):
         anchored_noun_senses=conn.execute(
             "SELECT count(*) FROM sense_item si JOIN lexeme l USING(lid) WHERE l.lexcat=?", [NOUN_QID]
         ).fetchone()[0],
+        p5137_with_ref=conn.execute(
+            "SELECT count(DISTINCT lid||sid||qid) FROM sense_ref").fetchone()[0],
+        ref_props=conn.execute(
+            "SELECT prop, count(DISTINCT lid||sid||qid) FROM sense_ref GROUP BY prop ORDER BY 2 DESC LIMIT 8"
+        ).fetchall(),
     )
     conn.close()
     return stats
@@ -137,6 +164,9 @@ def main():
     print(f"nouns (Q1084): {stats['nouns']:,}")
     print(f"senses with P5137: {stats['p5137_senses']:,}")
     print(f"  on noun lexemes (anchor universe): {stats['anchored_noun_senses']:,}")
+    print(f"P5137 statements carrying any reference: {stats['p5137_with_ref']:,}")
+    for prop, n in stats["ref_props"]:
+        print(f"  ref {prop}: {n:,}")
 
 
 if __name__ == "__main__":
