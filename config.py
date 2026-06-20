@@ -20,3 +20,5 @@ WIKIDATA = os.path.join(DATA, "wikidata.sqlite3")
 CANDIDATES = os.path.join(DATA, "candidates.sqlite3")
 DUMP = os.path.join(DATA, "latest-lexemes.json.gz")
 PRECISION = os.path.join(DATA, "precision.sqlite3")
+ITEMS = os.path.join(DATA, "wd_items.sqlite3")  # cached CC0 labels/descriptions + P31/P279
+VERIFY = os.path.join(DATA, "verify.sqlite3")    # LLM yes/no verdicts
