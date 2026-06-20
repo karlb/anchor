@@ -44,6 +44,14 @@ def item_labels(conn):
     return out
 
 
+def typed_qids(conn):
+    """qids that have at least one P31 (instance of) — a concrete/typed concept.
+    Principled (not overfit): on the unbiased non-cognate subset, having any P31
+    is +16pt (59.7% vs 43.8% hit). Abstract typed classes (concept/activity/role)
+    still drag, but excluding those needs a blocklist we don't have here."""
+    return {r[0] for r in conn.execute("SELECT DISTINCT qid FROM it.item_type WHERE prop='P31'")}
+
+
 def build_records(conn):
     """Decided leave-one-out records + structural feature flags.
 
@@ -56,6 +64,7 @@ def build_records(conn):
     clusters = precision.load_clusters(conn)
     lemmas = lemma_sets(conn)
     labels = item_labels(conn)
+    typed = typed_qids(conn)
     recs = []
     for lid, q_true, predicted, outcome, lang, n_senses, n_other in precision.evaluate(clusters):
         if outcome not in ("hit", "miss"):
@@ -63,7 +72,8 @@ def build_records(conn):
         mine = lemmas.get(lid, set())
         same_label = labels.get(predicted, {}).get(lang) in mine
         truth_cognate = labels.get(q_true, {}).get(lang) in mine
-        recs.append((outcome, n_other >= 2, n_senses == 1, same_label, truth_cognate))
+        concrete = predicted in typed
+        recs.append((outcome, n_other >= 2, n_senses == 1, same_label, truth_cognate, concrete))
     return recs
 
 
@@ -86,16 +96,19 @@ def main():
     A = lambda r: r[1]
     B = lambda r: r[2]
     C = lambda r: r[3]
+    D = lambda r: r[5]  # concrete: predicted anchor has a P31 type
     print("single gates:")
     measure(recs, "baseline (none)", lambda r: True)
     measure(recs, "A: >=2 agreeing anchors", A)
     measure(recs, "B: monosemous target", B)
     measure(recs, "C: same-label / cognate", C)
+    measure(recs, "D: concrete anchor (has P31)", D)
     print("\ncombinations:")
-    measure(recs, "A & B", lambda r: A(r) and B(r))
     measure(recs, "A & C", lambda r: A(r) and C(r))
-    measure(recs, "B & C", lambda r: B(r) and C(r))
-    measure(recs, "A & B & C", lambda r: A(r) and B(r) and C(r))
+    measure(recs, "A & D", lambda r: A(r) and D(r))
+    measure(recs, "C & D", lambda r: C(r) and D(r))
+    measure(recs, "A & C & D", lambda r: A(r) and C(r) and D(r))
+    measure(recs, "A & B & C & D", lambda r: A(r) and B(r) and C(r) and D(r))
 
     # De-biased view: provenance isn't in the dump (only 48/65k P5137 carry any
     # reference, none P887), so we can't exclude label-matched edits directly.
@@ -109,7 +122,9 @@ def main():
     measure(unbiased, "baseline (none)", lambda r: True)
     measure(unbiased, "A: >=2 agreeing anchors", A)
     measure(unbiased, "B: monosemous target", B)
-    measure(unbiased, "A & B", lambda r: A(r) and B(r))
+    measure(unbiased, "D: concrete anchor (has P31)", D)
+    measure(unbiased, "A & D", lambda r: A(r) and D(r))
+    measure(unbiased, "A & B & D", lambda r: A(r) and B(r) and D(r))
     print("  (gate C omitted — degenerate on non-cognate truth)")
 
     print("\nTakeaways: gate A (>=2 anchors) is non-circular and holds on hard non-cognate "
