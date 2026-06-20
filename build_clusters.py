@@ -13,7 +13,7 @@ from ``infer.sqlite3``. The CC-BY-SA gloss text (``all_trans.sense``) is never
 copied or persisted — only the (lexentry, sense_num) sense *identity* is used.
 
 Output: ``data/clusters.sqlite3``. Run from this dir:
-    .venv/bin/python build_clusters.py
+    uv run build_clusters.py
 """
 
 import os

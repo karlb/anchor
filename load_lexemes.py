@@ -11,7 +11,7 @@ and are **never read or stored**. We keep only the sense *id* and its P5137
 Q-id, both bare facts.
 
 Run once you have the dump (default --dump is data/latest-lexemes.json.gz):
-    .venv/bin/python load_lexemes.py --dump path/to/latest-lexemes.json.gz
+    uv run load_lexemes.py --dump path/to/latest-lexemes.json.gz
 """
 
 import argparse

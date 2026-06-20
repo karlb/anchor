@@ -15,7 +15,7 @@ Pipeline (all CC0 / structural — no gloss text):
 
 Outputs data/candidates.sqlite3 (candidate + cluster_abstain tables).
 Run after build_clusters.py and load_lexemes.py:
-    .venv/bin/python match.py
+    uv run match.py
 """
 
 import argparse

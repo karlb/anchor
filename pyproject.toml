@@ -1,0 +1,6 @@
+[project]
+name = "anchor"
+version = "0.1.0"
+description = "P5137 anchor-propagation: WikDict clusters -> Wikidata lexeme sense links"
+requires-python = ">=3.11"
+dependencies = []

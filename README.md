@@ -32,28 +32,27 @@ latest-lexemes.json.gz ─load_lexemes.py──▶ wikidata.sqlite3 ─┘
 
 ## Run
 
+Managed with [uv](https://docs.astral.sh/uv/) — `uv run` provisions the interpreter on first
+use (the scripts are stdlib-only, no dependencies).
+
 ```bash
 # 1. clusters (local; ~2 min over the 49 GB infer.sqlite3)
-.venv/bin/python build_clusters.py
+uv run build_clusters.py
 
 # 2. Wikidata lexemes — download the weekly dump first:
 #    https://dumps.wikimedia.org/wikidatawiki/entities/latest-lexemes.json.gz  (~562 MiB)
-.venv/bin/python load_lexemes.py --dump path/to/latest-lexemes.json.gz
+uv run load_lexemes.py --dump path/to/latest-lexemes.json.gz
 
 # 3. candidates
-.venv/bin/python match.py
+uv run match.py
 ```
-
-Use a Python with stdlib `sqlite3` (the only dependency) — e.g.
-`$WIKDICT_GEN/.venv/bin/python` or the system `python3`. `uv run` can't write its cache in the
-sandbox.
 
 ## Logic test (no dump needed)
 
 ```bash
-.venv/bin/python load_lexemes.py --dump test/fixture_lexemes.jsonl \
+uv run load_lexemes.py --dump test/fixture_lexemes.jsonl \
     --out data/wikidata_fixture.sqlite3
-.venv/bin/python match.py --wikidata data/wikidata_fixture.sqlite3
+uv run match.py --wikidata data/wikidata_fixture.sqlite3
 ```
 
 The fixture models the *Bank* case: `bench@en` anchored to Q123 propagates to `Bank@de` and
