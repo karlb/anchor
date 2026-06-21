@@ -11,18 +11,32 @@ with a MANDATORY reference (never bare): based on heuristic (P887) + retrieved
     uv run write.py --write --limit 10        # submit 10 approved edits (needs credentials)
 
 Safety: --dry-run is the default. Live submit needs --write AND WIKI_USER/WIKI_PASS
-env vars (a bot password on your operator account) AND WikibaseIntegrator installed
-(imported lazily, so dry-run has no dependency). Pilot writes MONOSEMOUS targets only
-(add to the existing sense); senseless targets need a gloss policy (see --include-senseless).
+env vars (a Special:BotPasswords credential on your operator account). Submission goes
+through the MediaWiki Action API (wbeditentity) using only the standard library — no
+extra dependency, and it posts the exact JSON shown in --dry-run. Edits are NOT
+bot-flagged (assisted editing on the operator account). Pilot writes MONOSEMOUS targets
+only (add to the existing sense); senseless targets need a gloss policy (--include-senseless).
+
+Before each live edit the live lexeme is re-fetched: it must still have exactly one sense,
+and that sense must NOT already carry a P5137 (never override existing data) — else skip.
 """
 
 import argparse
 import datetime
+import http.cookiejar
 import json
 import os
 import sqlite3
+import urllib.parse
+import urllib.request
 
 import config
+
+API = "https://www.wikidata.org/w/api.php"
+USER_AGENT = ("anchor-p5137-pilot/0.1 (https://www.wikidata.org/; karl42@gmail.com) "
+             "python-urllib")
+SUMMARY = ("Add [[Property:P5137]] (item for this sense) inferred from translation, "
+           "ref [[Q140308675]] — LLM-verified, human-approved assisted edit")
 
 # P887 "based on heuristic" value: the purpose-made item "inferred from translation"
 # (created 2026-06 on the operator account; P31 -> heuristic Q201413, constraint-clean).
@@ -101,6 +115,94 @@ def load_rows(args):
     return rows
 
 
+# ---- Action API submission (stdlib only) -----------------------------------
+
+def _api(opener, params, post=False):
+    params = {**params, "format": "json", "formatversion": "2"}
+    if post:
+        req = urllib.request.Request(API, data=urllib.parse.urlencode(params).encode(),
+                                     headers={"User-Agent": USER_AGENT})
+    else:
+        req = urllib.request.Request(API + "?" + urllib.parse.urlencode(params),
+                                     headers={"User-Agent": USER_AGENT})
+    with opener.open(req, timeout=30) as r:
+        return json.loads(r.read().decode())
+
+
+def login(opener, user, pw):
+    """Log in with a bot password; return a CSRF edit token."""
+    tok = _api(opener, {"action": "query", "meta": "tokens", "type": "login"})
+    lt = tok["query"]["tokens"]["logintoken"]
+    res = _api(opener, {"action": "login", "lgname": user, "lgpassword": pw, "lgtoken": lt},
+               post=True)
+    if res.get("login", {}).get("result") != "Success":
+        raise SystemExit(f"login failed: {res.get('login', {})}")
+    ct = _api(opener, {"action": "query", "meta": "tokens", "type": "csrf"})
+    return ct["query"]["tokens"]["csrftoken"]
+
+
+def resolve_sense(opener, lid):
+    """Re-fetch the live lexeme. Return (sense_id, {existing P5137 qids}).
+    Raises if the lexeme no longer has exactly one sense."""
+    ent = _api(opener, {"action": "wbgetentities", "ids": lid})["entities"][lid]
+    senses = ent.get("senses", [])
+    if len(senses) != 1:
+        raise ValueError(f"{lid} now has {len(senses)} senses (expected 1)")
+    s = senses[0]
+    existing = set()
+    for c in s.get("claims", {}).get("P5137", []):
+        try:
+            existing.add(c["mainsnak"]["datavalue"]["value"]["id"])
+        except (KeyError, TypeError):
+            pass
+    return s["id"], existing
+
+
+def submit(opener, csrf, lid, data):
+    res = _api(opener, {"action": "wbeditentity", "id": lid, "data": json.dumps(data),
+                        "summary": SUMMARY, "token": csrf, "maxlag": "5", "bot": "0"},
+               post=True)
+    if "error" in res:
+        raise RuntimeError(res["error"].get("info", str(res["error"])))
+    return res.get("entity", {}).get("lastrevid")
+
+
+def write_edits(edits):
+    """Resolve each sense live, safety-check, submit, record the revid in the queue."""
+    user, pw = os.environ.get("WIKI_USER"), os.environ.get("WIKI_PASS")
+    if not (user and pw):
+        raise SystemExit("--write needs WIKI_USER / WIKI_PASS (Special:BotPasswords) env vars")
+    if HEURISTIC_ITEM.startswith("Q-TODO"):
+        raise SystemExit("refusing to write: pin HEURISTIC_ITEM to a real P887 value first")
+    opener = urllib.request.build_opener(
+        urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))
+    csrf = login(opener, user, pw)
+    q = sqlite3.connect(config.DATA + "/review.sqlite3")
+    written = 0
+    for lid, data in edits:
+        sense = data["senses"][0]
+        anchor = sense["claims"]["P5137"][0]["mainsnak"]["datavalue"]["value"]["id"]
+        try:
+            if "id" in sense:  # monosemous: resolve the live sense id + guard
+                sid, existing = resolve_sense(opener, lid)
+                if anchor in existing:
+                    print(f"  skip {lid}: already has P5137 → {anchor}"); continue
+                if existing:
+                    print(f"  skip {lid}: sense already has P5137 {existing} (never override)")
+                    continue
+                sense["id"] = sid
+            revid = submit(opener, csrf, lid, data)
+        except Exception as e:  # noqa: BLE001 — one bad edit shouldn't abort the batch
+            print(f"  FAIL {lid} → {anchor}: {e}"); continue
+        q.execute("UPDATE review SET status='written', revid=? "
+                  "WHERE target_lid=? AND anchor_qid=?", [str(revid), lid, anchor])
+        q.commit()
+        written += 1
+        print(f"  wrote {lid} → {anchor}  (rev {revid})")
+    q.close()
+    print(f"\n{written}/{len(edits)} submitted.")
+
+
 def main():
     ap = argparse.ArgumentParser()
     g = ap.add_mutually_exclusive_group()
@@ -137,14 +239,9 @@ def main():
             print("NOTE: P887 heuristic item is a placeholder — pin HEURISTIC_ITEM before writing.")
         return
 
-    # --- live submission (lazy import keeps dry-run dependency-free) ---
-    user, pw = os.environ.get("WIKI_USER"), os.environ.get("WIKI_PASS")
-    if not (user and pw):
-        raise SystemExit("--write needs WIKI_USER / WIKI_PASS (bot password) env vars")
-    if HEURISTIC_ITEM.startswith("Q-TODO"):
-        raise SystemExit("refusing to write: pin HEURISTIC_ITEM to a real P887 value first")
-    raise SystemExit("live submission via WikibaseIntegrator not wired yet — "
-                     "intentionally left to the human operator step")
+    if args.preview:
+        raise SystemExit("refusing to --write in --preview mode: write only human-approved rows")
+    write_edits(edits)
 
 
 if __name__ == "__main__":

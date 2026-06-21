@@ -85,6 +85,11 @@ uv run export_review.py                 # data/review.html
 uv run review_queue.py seed             # load verifier-'yes' rows
 uv run review_queue.py serve            # http://localhost:8731  approve/reject
 uv run write.py --dry-run               # print payloads for approved rows (submits nothing)
+
+# 7. go live (assisted edits on your account; no autoconfirmed needed for statement-adds)
+#    create a Special:BotPasswords credential, then:
+set -x WIKI_USER 'You@botname'; set -x WIKI_PASS '...'
+uv run write.py --write --limit 10      # submit approved rows via the Action API
 ```
 
 ## Logic test (no dump needed)
