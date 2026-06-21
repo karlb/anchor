@@ -139,6 +139,26 @@ credit, so 95.6% strict is a floor; (2) recall held at 94% at scale (verifier is
 over-pruning). To clear 95% comfortably: **2-of-3 voting** (precision↑, recall↓) or rely on
 the per-edit human review queue (the pre-BRFA edits are approved by hand anyway).
 
+### Writable volume (how many statements this generates)
+The held-out 689 is only the *monosemous* slice (the part with ground truth to measure). The
+real writable High tier is larger because most candidates ground **senseless** lexemes — which
+have no existing P5137, so they can't appear in the held-out measurement but are the
+highest-value writes (they create a lexeme's first meaning).
+
+| Tier (cumulative, all clean) | Candidates | of which senseless (new sense) | ~precision |
+|---|---|---|---|
+| All clean | 34,821 | 31,260 | ~62% |
+| + ≥2 anchors (A) | 12,259 | 11,089 | ~82% |
+| **+ concrete anchor (A&D)** | **7,400** | **6,679** | ~86% structural |
+| + has CC0 evidence | 7,400 | 6,679 | (all 7,400 have evidence) |
+
+**High tier ≈ 7,400 candidate statements** (~6,700 creating a new sense). After the verifier
+(~85% "yes" rate on the gate-ABD held-out set) → **~6,300 approved writes, ~6,000
+expected-correct** at 95.9%. Caveats: (1) the 95.9% precision is measured only on the 689
+monosemous targets; the 6,679 senseless writes *inherit* it as an assumption the ~10-edit
+pre-BRFA run spot-checks. (2) de/en/sv pilot only — the method is language-agnostic, so more
+languages (or relaxing to gate A alone: ~12,000 at ~82%) scales the pool further.
+
 ## Conclusion
 
 The method works: a structurally-clean candidate stream at ~62% precision, lifted to ~82% by a
