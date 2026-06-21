@@ -23,6 +23,7 @@ import urllib.parse
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 import config
+import gates
 
 QUEUE = config.DATA + "/review.sqlite3"
 EXPORT_CSV = "notes/runs/review_decisions.csv"
@@ -70,6 +71,7 @@ def seed(args):
         WHERE c.homograph_n_lid = 1 AND NOT c.cross_pivot_conflict
           AND c.support_clusters >= 2 AND c.target_n_senses = 1
           AND EXISTS(SELECT 1 FROM it.item_type t WHERE t.qid = c.anchor_qid AND t.prop='P31')
+          AND NOT """ + gates.exclusion_clause("c", "it") + """
           AND v.verdict = 'yes'
         """).fetchall()
     src.close()

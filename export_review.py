@@ -16,6 +16,7 @@ import html
 import sqlite3
 
 import config
+import gates
 
 
 def main():
@@ -32,7 +33,8 @@ def main():
 
     gate = "" if args.all_clean else (
         " AND c.support_clusters>=2 AND c.target_n_senses=1"
-        " AND EXISTS(SELECT 1 FROM it.item_type t WHERE t.qid=c.anchor_qid AND t.prop='P31')")
+        " AND EXISTS(SELECT 1 FROM it.item_type t WHERE t.qid=c.anchor_qid AND t.prop='P31')"
+        " AND NOT " + gates.exclusion_clause("c", "it"))
 
     rows = conn.execute(f"""
         SELECT c.target_lang, c.target_lemma, c.target_lid, c.anchor_qid, c.support_clusters,

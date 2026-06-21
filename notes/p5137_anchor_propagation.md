@@ -236,9 +236,7 @@ calls reviewers (and BRFA examiners) keep hitting:
   for the pilot. *plus* → Q24050179 "advantage" (P31 *general term*, P279 *relative quality*) is
   abstract and loosely denoted (a "general term" vs the colloquial "a plus") → reject. This is
   gate D's known limit: "anchor has *any* P31" admits abstract typed classes. The fix is the
-  abstract-class **P31/P279 blocklist** (reuse makesense's ~76+9-entry exclusion lists) — a
-  *principled* filter that enforces the pilot scope, unlike the demonym→language filter (which
-  measurement showed is harmful).
+  abstract-class **P31/P279 blocklist** — now built as `gates.py` (see below).
 - **Ignore plurality.** P5137 is on the sense, not a form. The lemma is conventionally singular;
   an item labeled with a plural (e.g. *Asiaten* / "Asian people") is just how collective concepts
   are labeled — not a mismatch. *Asiat* → Q4058325 ("Asian people") is fine.
@@ -262,6 +260,26 @@ calls reviewers (and BRFA examiners) keep hitting:
   **wrong-organism homonym**, not rank-vagueness: "Cactus" labels the plant family (Q14560 ✓), a
   former plant genus, *and* a crustacean genus — the verifier must confirm the right organism at
   the right rank. *Kaktus* → Q14560 (family Cactaceae) is correct.
+
+## Anchor-class scope filter (gates.py)
+
+A SCOPE filter (not a precision filter): excludes anchors whose P31/P279 is a class that can't be
+a concrete-common-noun concept. Two sources: **makesense** (Nudin/makesense `queries/en.sparql`)
+76-entry P31 + 9-entry P279 false-positive lists (humans, films, albums, bands, genes,
+disambiguation pages, creative works…) + an **abstract-quality extension** (general term Q12379553,
+relative quality Q100195948, quality Q1207505 — the *plus/pro* → "advantage" class).
+
+The key reason it's worth building (and *not* redundant with the verifier): **the verifier checks
+denotation, not scope.** It said "yes" to *plus* and *pro* → Q24050179 "advantage" because they
+genuinely denote it — abstractness/scope is an axis it doesn't judge. So the filter catches what
+the verifier structurally can't. Consequently held-out hit-rate is the *wrong* yardstick (a correct
+propagation to an out-of-scope concept should still be dropped); measured anyway, it removes a
+small, mildly-below-average slice: held-out A&B&D dropped set 71–75% (vs 85% kept), **~3% of
+High-tier volume** (20/689). Applied at `review_queue.py seed` and `export_review.py` so out-of-scope
+anchors never reach human review (removed 6 from the live queue, incl. *plus*/*pro*). Contrast the
+**demonym→language** filter, which measurement *rejected* (it dropped a 93%-precision legit set);
+the difference is that this filter drops on a scope axis the verifier ignores, not a precision claim
+the verifier already covers.
 
 ## P887 reference item (the heuristic)
 
