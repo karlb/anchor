@@ -6,7 +6,7 @@ I'd like feedback before filing a BRFA on a method for adding {{P|5137}} ("item 
 
 Many lexemes have forms but no ''meaning'' (no sense linked to a concept). P5137 is the established route to fix that. Instead of inventing a concept, I '''propagate an existing one''':
 
-# Take a translation cluster from WikDict/DBnary (a set of lemmas that translate one another, grouped by a shared sense key — not by gloss text).
+# Take a translation cluster from WikDict/DBnary (a set of lemmas that translate one another, grouped by which sense of each word the translation involves — not by gloss text).
 # Find a cluster member whose Wikidata lexeme is '''already''' grounded via P5137 → some Q-item. Call that Q the '''anchor'''.
 # Propose adding the ''same'' P5137 → Q to the other cluster members that lack it.
 # An LLM does a single constrained '''yes/no''' check: "does this lemma denote ''this concept''?", judged '''only against the anchor Q-item's own label + description''' (Wikidata→Wikidata).
@@ -24,13 +24,13 @@ WikDict is built on DBnary, which is CC-BY-SA. Wikidata is CC0. The boundary is 
 
 This is deliberately ''not'' a bulk import of a translation dictionary; it's per-statement grounding verified against CC0 data.
 
-=== Precision (measured, held-out) ===
+=== Precision (measured by hiding known links) ===
 
-I measured precision by hiding a known P5137→Q and checking recovery (leave-one-out), stratified to de-bias the cognate cases:
+I measured precision by hiding a lexeme's known P5137→Q and checking whether the method recovers it (leave-one-out). To avoid flattering results, I separated out the ''cognate'' cases — where the two lemmas are spelled alike and the match is trivially easy — and report the harder non-cognate cases:
 
-* '''Structure alone caps ~81%''' honestly (on the non-cognate subset, with ≥2 agreeing anchors ∩ monosemous ∩ concrete anchor). So a structural filter is not enough on its own.
-* '''The LLM verifier lifts this to 95.9%''' on the "High tier" (clean cluster ∩ ≥2 agreeing anchors ∩ concrete anchor with P31), pooled n=470, recall 94%, Wilson CI ≈ [93.5%, 97.5%].
-* Honesty check on ''fresh'' candidates (the actual writes, which lack ground truth to measure against): of 689 monosemous High-tier candidates the verifier accepted '''51%''', rejected 33%, was uncertain 16%. The rejections are correct catches — e.g. a feminine demonym wrongly clustered onto a ''language'' item rather than the ''people'' concept. The fresh stream is harder than held-out, and the verifier is load-bearing exactly there.
+* '''Structural signals alone cap at ~81%.''' Using only structure — the concept confirmed by at least two independent grounded translations, a single-sense (monosemous) target, and a concrete anchor item — precision tops out around 81% on the non-cognate cases. Not enough on its own.
+* '''The LLM verifier lifts this to 95.9%''' on the strictest slice of candidates, which I'll call the '''High tier''': an unambiguous lemma match, ''and'' the concept confirmed by at least two independent grounded translations, ''and'' a concrete anchor item (one carrying an {{P|31}} "instance of" statement). Pooled n=470; recall 94% (i.e. 94% of the genuinely-correct links are kept); 95% confidence interval ≈ [93.5%, 97.5%].
+* '''Honesty check on ''fresh'' candidates''' — the actual writes, which have no hidden answer to score against: of 689 single-sense High-tier candidates the verifier accepted '''51%''', rejected 33%, and was uncertain on 16%. The rejections are correct catches — e.g. a feminine demonym wrongly clustered onto a ''language'' item rather than the ''people'' concept. Fresh candidates are harder than the held-out test, and the verifier is doing real work exactly there.
 
 The High tier is ~7,400 candidate statements across de/en/sv; applying the measured 51% accept-rate, ~3,800 would be proposed for human review.
 
@@ -64,7 +64,7 @@ A first per-edit-approved batch is live, each hand-checked against the anchor's 
 
 # Is the CC0 licence boundary (verify against the anchor's own CC0 label/description; never the DBnary gloss; write only a bare referenced P5137) sound as described?
 # Is the P887 → [[Q140308675]] reference scheme the right way to disclose the heuristic, or is a different reference preferred?
-# Any objection to me filing a BRFA for a 50–250-edit trial on the High tier, monosemous targets first (adding to an existing sense; sense-''creation'' deferred pending a gloss-source decision)?
+# Any objection to me filing a BRFA for a 50–250-edit trial on the High tier, single-sense targets first (adding to an existing sense; sense-''creation'' deferred pending a gloss-source decision)?
 
 Thanks — happy to share the full method write-up, the precision harness, and per-case verdicts.
 
