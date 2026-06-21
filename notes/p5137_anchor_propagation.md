@@ -152,12 +152,36 @@ highest-value writes (they create a lexeme's first meaning).
 | **+ concrete anchor (A&D)** | **7,400** | **6,679** | ~86% structural |
 | + has CC0 evidence | 7,400 | 6,679 | (all 7,400 have evidence) |
 
-**High tier ≈ 7,400 candidate statements** (~6,700 creating a new sense). After the verifier
-(~85% "yes" rate on the gate-ABD held-out set) → **~6,300 approved writes, ~6,000
-expected-correct** at 95.9%. Caveats: (1) the 95.9% precision is measured only on the 689
-monosemous targets; the 6,679 senseless writes *inherit* it as an assumption the ~10-edit
-pre-BRFA run spot-checks. (2) de/en/sv pilot only — the method is language-agnostic, so more
-languages (or relaxing to gate A alone: ~12,000 at ~82%) scales the pool further.
+**High tier ≈ 7,400 candidate statements** (~6,700 creating a new sense). Caveats: (1) the
+95.9% precision is measured only on the 689 monosemous targets; the 6,679 senseless writes
+*inherit* it as an assumption the ~10-edit pre-BRFA run spot-checks. (2) de/en/sv pilot only —
+the method is language-agnostic, so more languages (or relaxing to gate A alone: ~12,000 at
+~82%) scales the pool further.
+
+### Full High-tier verification — fresh candidates are harder than held-out (689, sonnet)
+Verifying **all 689** monosemous High-tier *candidates* (lexemes that LACK the grounding — the
+actual writes, not held-out ground truth): **354 yes (51%) / 228 no (33%) / 107 uncertain (16%)**.
+That ~51% "yes" is far below the **85%** "yes" on the held-out gate-ABD set — and the gap is
+*real*, not a verifier fault:
+
+- **Held-out truth is enriched for easy cases.** Those lexemes already had a P5137 (often from
+  label-matching), so they skew cognate/correct. The fresh candidate stream is never-curated
+  and genuinely harder.
+- **The rejections are correct catches.** A 12-row sample of "no" was 12/12 right, including a
+  *systematic* error class: feminine demonyms whose cluster anchor is the **language** item
+  (`Albanerin/Armenierin/Bulgarin/Chinesin/Dänin/Estin/Finnin → Q<language>` = "X woman, not
+  the language") — ~26% of all "no" reasons mention person/female/language mismatch. Also
+  caught: fractions (`Achtzigstel`→one-eightieth), gendered animals (`Füchsin`→vixen), title
+  vs common noun (`Despot`→tyrant). Structure writes these confidently wrong; the verifier is
+  load-bearing exactly here.
+
+**Revised writable yield:** applying the *measured* 51% "yes" (not the optimistic 85%) to the
+7,400 pool → **~3,800 verifier-approved writes** — fewer, but with the bad ~half pruned, so
+cleaner. The verifier-"yes" precision on fresh candidates isn't directly measurable (no ground
+truth), but the rejections being right is strong indirect evidence it's high. Per-case verdicts:
+`notes/runs/high_tier_verdicts.csv`. A cheap structural win worth adding: a **demonym→language
+pre-filter** (drop anchors that are P31 "language" when the lemma is a feminine nationality
+noun) would remove the single biggest error class before the verifier even runs.
 
 ## Conclusion
 

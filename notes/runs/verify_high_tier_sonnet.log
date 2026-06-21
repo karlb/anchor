@@ -1,0 +1,77 @@
+candidates to verify: 689  (batch=10, model=sonnet)
+  10/689  {'yes': 6, 'no': 3, 'uncertain': 1}
+  20/689  {'yes': 14, 'no': 5, 'uncertain': 1}
+  30/689  {'yes': 19, 'no': 6, 'uncertain': 5}
+  40/689  {'yes': 26, 'no': 8, 'uncertain': 6}
+  50/689  {'yes': 34, 'no': 10, 'uncertain': 6}
+  60/689  {'yes': 39, 'no': 12, 'uncertain': 9}
+  70/689  {'yes': 46, 'no': 14, 'uncertain': 10}
+  80/689  {'yes': 52, 'no': 17, 'uncertain': 11}
+  90/689  {'yes': 58, 'no': 21, 'uncertain': 11}
+  100/689  {'yes': 64, 'no': 22, 'uncertain': 14}
+  110/689  {'yes': 71, 'no': 24, 'uncertain': 15}
+  120/689  {'yes': 80, 'no': 25, 'uncertain': 15}
+  130/689  {'yes': 83, 'no': 29, 'uncertain': 18}
+  140/689  {'yes': 86, 'no': 34, 'uncertain': 20}
+  150/689  {'yes': 93, 'no': 37, 'uncertain': 20}
+  160/689  {'yes': 101, 'no': 37, 'uncertain': 22}
+  170/689  {'yes': 108, 'no': 39, 'uncertain': 23}
+  180/689  {'yes': 113, 'no': 44, 'uncertain': 23}
+  190/689  {'yes': 119, 'no': 46, 'uncertain': 25}
+  200/689  {'yes': 124, 'no': 50, 'uncertain': 26}
+  210/689  {'yes': 131, 'no': 53, 'uncertain': 26}
+  220/689  {'yes': 135, 'no': 59, 'uncertain': 26}
+  230/689  {'yes': 138, 'no': 65, 'uncertain': 27}
+  240/689  {'yes': 142, 'no': 71, 'uncertain': 27}
+  250/689  {'yes': 146, 'no': 74, 'uncertain': 30}
+  260/689  {'yes': 152, 'no': 77, 'uncertain': 31}
+  270/689  {'yes': 158, 'no': 81, 'uncertain': 31}
+  280/689  {'yes': 162, 'no': 86, 'uncertain': 32}
+  290/689  {'yes': 168, 'no': 88, 'uncertain': 34}
+  300/689  {'yes': 174, 'no': 91, 'uncertain': 35}
+  310/689  {'yes': 181, 'no': 94, 'uncertain': 35}
+  320/689  {'yes': 187, 'no': 97, 'uncertain': 36}
+  330/689  {'yes': 190, 'no': 100, 'uncertain': 40}
+  340/689  {'yes': 194, 'no': 103, 'uncertain': 43}
+  350/689  {'yes': 201, 'no': 105, 'uncertain': 44}
+  360/689  {'yes': 204, 'no': 109, 'uncertain': 47}
+  370/689  {'yes': 207, 'no': 113, 'uncertain': 50}
+  380/689  {'yes': 209, 'no': 118, 'uncertain': 53}
+  390/689  {'yes': 212, 'no': 121, 'uncertain': 57}
+  400/689  {'yes': 218, 'no': 125, 'uncertain': 57}
+  410/689  {'yes': 225, 'no': 128, 'uncertain': 57}
+  420/689  {'yes': 230, 'no': 132, 'uncertain': 58}
+  430/689  {'yes': 234, 'no': 135, 'uncertain': 61}
+  440/689  {'yes': 237, 'no': 137, 'uncertain': 66}
+  450/689  {'yes': 243, 'no': 140, 'uncertain': 67}
+  460/689  {'yes': 246, 'no': 145, 'uncertain': 69}
+  470/689  {'yes': 248, 'no': 150, 'uncertain': 72}
+  480/689  {'yes': 253, 'no': 153, 'uncertain': 74}
+  490/689  {'yes': 259, 'no': 157, 'uncertain': 74}
+  500/689  {'yes': 264, 'no': 160, 'uncertain': 76}
+  510/689  {'yes': 267, 'no': 165, 'uncertain': 78}
+  520/689  {'yes': 274, 'no': 165, 'uncertain': 81}
+  530/689  {'yes': 280, 'no': 168, 'uncertain': 82}
+  540/689  {'yes': 282, 'no': 171, 'uncertain': 87}
+  550/689  {'yes': 287, 'no': 176, 'uncertain': 87}
+  560/689  {'yes': 291, 'no': 180, 'uncertain': 89}
+  570/689  {'yes': 293, 'no': 186, 'uncertain': 91}
+  580/689  {'yes': 298, 'no': 190, 'uncertain': 92}
+  590/689  {'yes': 302, 'no': 193, 'uncertain': 95}
+  600/689  {'yes': 308, 'no': 194, 'uncertain': 98}
+  610/689  {'yes': 314, 'no': 197, 'uncertain': 99}
+  620/689  {'yes': 318, 'no': 202, 'uncertain': 100}
+  630/689  {'yes': 321, 'no': 208, 'uncertain': 101}
+  640/689  {'yes': 326, 'no': 213, 'uncertain': 101}
+  650/689  {'yes': 332, 'no': 216, 'uncertain': 102}
+  660/689  {'yes': 336, 'no': 218, 'uncertain': 106}
+  670/689  {'yes': 342, 'no': 221, 'uncertain': 107}
+  680/689  {'yes': 348, 'no': 225, 'uncertain': 107}
+  689/689  {'yes': 354, 'no': 228, 'uncertain': 107}
+
+verdict distribution:
+  yes          390
+  no           237
+  uncertain    110
+
+wrote audit CSV -> notes/runs/high_tier_verdicts.csv

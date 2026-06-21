@@ -1,0 +1,738 @@
+target_lid,anchor_qid,target_lemma,target_lang,verdict,reason,model
+L1234846,Q2941309,Aalbeere,de,yes,Aalbeere is a regional German name for blackcurrant,sonnet
+L884776,Q2092297,Aar,de,yes,"Aar is archaic German for eagle, large raptor",sonnet
+L884787,Q172867,Aasfresser,de,yes,"Aasfresser means carrion-eating animal, exact match",sonnet
+L306888,Q429795,Abart,de,uncertain,"Abart means variety broadly, not specifically mineral variety",sonnet
+L907618,Q845739,Abfragesprache,de,yes,Abfragesprache is the direct German term for query language,sonnet
+L936326,Q169390,Abolitionismus,de,yes,Abolitionismus directly denotes abolitionism movement,sonnet
+L610533,Q28469790,Achtzigstel,de,no,"'Achtzigstel' means one-eightieth (fraction), not the ordinal 'eightieth'",sonnet
+L931323,Q23007394,Aggregation,de,yes,Aggregation clearly denotes the act of combining things,haiku
+L624720,Q8748,Albanerin,de,no,"Albanerin is a female Albanian person, not the Albanian language",sonnet
+L228299,Q718943,Anfänger,de,no,'Anfänger' stresses skill-based beginner; 'Neuling' stresses community newcomer,sonnet
+L493579,Q104605901,Angsthase,de,yes,Angsthase denotes a cowardly or fearful person,sonnet
+L892979,Q385586,Apostel,de,no,"Apostel means apostle, not generic disciple/Jünger",sonnet
+L499162,Q8785,Armenierin,de,no,"Armenierin means Armenian woman, not the language",sonnet
+L1149552,Q4058325,Asiat,de,yes,Asiat is the singular masculine form of Asian person,sonnet
+L1149553,Q4058325,Asiatin,de,yes,Asiatin is the feminine singular form denoting an Asian person,sonnet
+L837695,Q107411,Auster,de,yes,"Auster denotes oyster, a mollusk family member",haiku
+L493487,Q207761,Baltin,de,yes,"Baltin denotes a female Balt, matching the Balts concept",sonnet
+L801837,Q123102,Beutelwolf,de,yes,Beutelwolf is the standard German name for the Thylacine,sonnet
+L31428,Q183350,Blattlaus,de,yes,"Blattlaus is the standard German word for aphid, member of Blattläuse",sonnet
+L941741,Q99907279,Bosnier,de,yes,Bosnier is standard German demonym for Bosnia and Herzegovina,sonnet
+L613399,Q2576226,Brustkorb,de,yes,Brustkorb denotes vertebrate thoracic skeleton,haiku
+L498984,Q7918,Bulgarin,de,no,"Bulgarin means a female Bulgarian person, not the language",sonnet
+L408758,Q8799,Byte,de,yes,Byte is the 8-bit digital measurement unit,haiku
+L616610,Q7850,Chinesin,de,no,"Chinesin means a Chinese woman, not the Chinese language",sonnet
+L792107,Q1055701,Computerhersteller,de,uncertain,'Computerhersteller' makes computers; concept stresses parts/hardware,sonnet
+L363259,Q193607,Depp,de,yes,German 'Depp' is colloquial term for idiot/fool,haiku
+L812042,Q889870,Despot,de,no,"Despot as common noun means tyrant, not Byzantine noble title",sonnet
+L8054,Q13194939,Dorsch,de,yes,"Dorsch denotes cod, fish of genus Gadus",sonnet
+L296661,Q2920535,Durchbruch,de,no,"German Durchbruch denotes any breakthrough, not specifically military",haiku
+L493296,Q9035,Dänin,de,no,"Dänin means a Danish woman, not the Danish language",sonnet
+L798188,Q101444631,Englischlehrer,de,yes,"Englischlehrer directly means English teacher, exact match",sonnet
+L493300,Q9072,Estin,de,no,"Estin means a female Estonian person, not the language",sonnet
+L484247,Q468777,Existenz,de,yes,'Existenz' denotes existence in German,sonnet
+L642863,Q8355,Fiedel,de,uncertain,Fiedel can mean violin colloquially but also medieval fiddle,sonnet
+L295252,Q1412,Finnin,de,no,"Finnin means Finnish woman, not the Finnish language",sonnet
+L305211,Q121842,Französin,de,yes,Französin is the feminine form denoting a French citizen/inhabitant.,sonnet
+L306916,Q8331,Füchsin,de,no,"Füchsin denotes female fox (vixen), not fox in general",sonnet
+L626612,Q8108,Georgierin,de,no,"Georgierin means Georgian woman, not the Georgian language",sonnet
+L642744,Q9129,Griechin,de,no,"Griechin means Greek woman, not the Greek language",sonnet
+L823400,Q846664,Habicht,de,no,"Habicht denotes Accipiter gentilis (goshawk), not hawks broadly",sonnet
+L34188,Q1294787,Handwerkerin,de,yes,"""Handwerkerin"" is female artisan, same concept",sonnet
+L824489,Q2154210,Hausmann,de,yes,Hausmann perfectly matches househusband concept,sonnet
+L584909,Q47091889,Hemisphäre,de,yes,Hemisphäre denotes half of a sphere,haiku
+L72779,Q13235160,Hersteller,de,yes,"Hersteller means manufacturer, person/org that makes goods",sonnet
+L859109,Q1073,Hirn,de,yes,Hirn denotes brain organ,haiku
+L893650,Q69432456,Horror,de,no,"Horror as common noun means genre/feeling, not a rating descriptor",sonnet
+L621137,Q694579,Hufschmiedin,de,yes,Feminine form of Hufschmied; denotes exactly a farrier,sonnet
+L493687,Q9240,Indonesierin,de,no,"Indonesierin means Indonesian woman, not the language",sonnet
+L769000,Q245359,Injektion,de,yes,Injektion denotes medicine administration via needle,haiku
+L641129,Q397297,Iraner,de,yes,Iraner denotes people from or residents of Iran,sonnet
+L641134,Q397297,Iranerin,de,yes,"Iranerin denotes an Iranian woman, subset of Iranians",sonnet
+L641830,Q37571859,Israeli,de,no,"Israeli as common noun means Israeli person, not a surname",sonnet
+L345346,Q652,Italienerin,de,no,"Italienerin means Italian woman, not the Italian language",sonnet
+L809931,Q14560,Kaktus,de,yes,"Kaktus denotes cactus plants, members of Cactaceae family",sonnet
+L809398,Q13382566,Kanute,de,uncertain,"Kanute means canoeist broadly, not only competitive athletes",sonnet
+L641015,Q9252,Kasachin,de,no,"Kasachin means Kazakh woman, not the Kazakh language",sonnet
+L618232,Q484479,Kirgise,de,yes,Kirgise denotes a male member of the Kyrgyz ethnic group,sonnet
+L692724,Q36911546,Kosovare,de,no,Kosovare is a demonym; concept is a surname,sonnet
+L692725,Q36911546,Kosovarin,de,no,Kosovarin is a demonym; concept is a surname,sonnet
+L499607,Q6654,Kroatin,de,no,"Kroatin means a female Croatian person, not the language",sonnet
+L37560,Q12507,Kugel,de,uncertain,"Kugel also means bullet, not only sphere",sonnet
+L37560,Q174583,Kugel,de,uncertain,"Kugel primarily means ball/sphere, bullet is secondary sense",sonnet
+L36337,Q11042,Kultur,de,yes,German Kultur denotes culture in the broad sense,haiku
+L589420,Q397,Lateinisch,de,yes,Lateinisch used as noun denotes the Latin language,sonnet
+L493319,Q9078,Lettin,de,no,"Lettin means a female Latvian person, not the language",sonnet
+L626665,Q2606511,Libanese,de,yes,"Libanese denotes a Lebanese person, matches Lebanese people",sonnet
+L626664,Q2606511,Libanesin,de,yes,"Libanesin denotes a Lebanese woman, subset of Lebanese people",sonnet
+L594719,Q5194627,Lilie,de,yes,Lilie as common noun denotes the genus Lilium,sonnet
+L692711,Q9083,Litauerin,de,no,"Litauerin means Lithuanian woman, not the Lithuanian language",sonnet
+L493302,Q9166,Malteserin,de,no,"Malteserin means a Maltese woman, not the Maltese language",sonnet
+L808291,Q3699044,Mammut,de,no,"Mammut denotes mammoths in general, not specifically woolly mammoth",sonnet
+L295242,Q28553933,Mexikanerin,de,no,"Mexikanerin means Mexican woman, not a painting",sonnet
+L768575,Q1800545,Migration,de,yes,Migration denotes organism movement phenomenon,haiku
+L898730,Q178942,Misteldrossel,de,yes,Misteldrossel is the German name for Mistle Thrush,sonnet
+L931877,Q2039972,Monegassin,de,yes,"Monegassin is female citizen of Monaco, matches concept",sonnet
+L498992,Q9246,Mongolin,de,no,"Mongolin means female Mongolian person, not the language",sonnet
+L626479,Q8821,Montenegrinerin,de,no,"Montenegrinerin is a female Montenegrin person, not the language",sonnet
+L640803,Q9228,Myanmarin,de,no,"Myanmarin means person from Myanmar, not the Burmese language",sonnet
+L1459837,Q15098051,Nasenbeutler,de,yes,Nasenbeutler is the standard German term for bandicoot,sonnet
+L589358,Q4317274,Nepalesin,de,yes,Nepalesin is the feminine form of Nepali person/citizen,sonnet
+L493454,Q871904,Neuseeländer,de,yes,Neuseeländer denotes citizens or inhabitants of New Zealand,sonnet
+L493451,Q871904,Neuseeländerin,de,yes,"Neuseeländerin denotes a female New Zealander, same concept",sonnet
+L493409,Q7411,Niederländerin,de,no,"Niederländerin means a female Dutch person, not the language",sonnet
+L626473,Q16155102,Nigerianer,de,yes,Nigerianer denotes citizens or residents of Nigeria,sonnet
+L626472,Q16155102,Nigerianerin,de,yes,Feminine form of Nigerianer; female Nigerian citizen,sonnet
+L614705,Q695992,Nische,de,yes,German 'Nische' denotes wall recess/niche directly,haiku
+L590989,Q9043,Norwegerin,de,no,"Norwegerin means a Norwegian woman, not the language",sonnet
+L311945,Q7278,Partie,de,no,"Partie denotes a game or match, not political party",haiku
+L489178,Q97820270,Quacksalber,de,no,"Quacksalber means charlatan/quack, not faith healer",sonnet
+L829164,Q14189,Quellwolke,de,yes,Quellwolke is a standard German term for cumulus clouds,sonnet
+L1437703,Q102014,Querverweis,de,uncertain,"Querverweis means cross-reference generally, broader than hyperlink",sonnet
+L617055,Q7737,Russin,de,no,"Russin is a female Russian person, not the Russian language",sonnet
+L409010,Q1113939,Rückkehr,de,no,"Rückkehr is general return, not specifically a celebrity comeback",sonnet
+L1831,Q6674,Satan,de,yes,"Satan denotes the devil, personification of evil",sonnet
+L841035,Q193607,Scheißkerl,de,no,"Scheißkerl means despicable person, not specifically a stupid one",sonnet
+L591109,Q9027,Schwedin,de,no,"Schwedin means a Swedish woman, not the language",sonnet
+L935109,Q36855,Schweinegrippe,de,yes,Schweinegrippe denotes swine influenza as pig respiratory disease,sonnet
+L612659,Q124216,Schweizerin,de,yes,Feminine form of Schweizer; denotes female Swiss citizen,sonnet
+L1439625,Q2500638,Schöpfer,de,yes,Schöpfer directly means creator or originator of a work,haiku
+L1439645,Q1649489,Schützin,de,no,"Schützin denotes female shooter/marksman, not drink",haiku
+L888661,Q626510,Segen,de,yes,German 'Segen' denotes religious blessing ritual,haiku
+L616553,Q9058,Slowakin,de,no,"Slowakin is a female Slovak person, not the Slovak language",sonnet
+L692709,Q160894,Spanierin,de,uncertain,Spanierin is female-only; concept covers Spaniards of both sexes,sonnet
+L742111,Q8091,Sprachlehre,de,yes,'Sprachlehre' means grammar/language rules,sonnet
+L763398,Q334667,Storyboard,de,yes,'Storyboard' is a direct loanword denoting the exact concept,sonnet
+L226905,Q4544684,Suche,de,yes,"Suche means search, methods for finding people or things",sonnet
+L640801,Q2408569,Thailänderin,de,yes,Thailänderin (Thai woman) denotes inhabitant of Thailand,sonnet
+L864676,Q249697,Trauerrede,de,yes,"Trauerrede is a funeral/eulogy speech, exact match",sonnet
+L617255,Q9056,Tschechin,de,no,"Tschechin is a female Czech person, not the Czech language",sonnet
+L617259,Q100146275,Tschechoslowakin,de,yes,Feminine form of Tschechoslowake; female Czechoslovak citizen,sonnet
+L295254,Q256,Türkin,de,no,"Türkin means Turkish woman, not the Turkish language",sonnet
+L692723,Q8798,Ukrainerin,de,no,"Ukrainerin means Ukrainian woman, not the Ukrainian language",sonnet
+L774811,Q61285,Ukulele,de,yes,'Ukulele' is a direct loanword for the ukulele,sonnet
+L493402,Q9067,Ungarin,de,no,"Ungarin means Hungarian woman, not the Hungarian language",sonnet
+L679403,Q12758374,Verwandte,de,yes,"Verwandte means relative, a person with kinship",sonnet
+L589395,Q9199,Vietnamese,de,no,"Vietnamese (German) denotes a Vietnamese person, not the language",sonnet
+L589396,Q9199,Vietnamesin,de,no,"Vietnamesin means Vietnamese woman, not the language",sonnet
+L306934,Q659503,Vogelei,de,yes,Vogelei means bird egg exactly,sonnet
+L497355,Q24050179,Vorteil,de,yes,Vorteil directly denotes advantage or positive benefit,haiku
+L518726,Q15112254,Wagner,de,yes,Wagner is the German word for wainwright/wheelwright,sonnet
+L486753,Q3517772,Weihnachtszeit,de,yes,Weihnachtszeit denotes exactly the Christmas/holiday season period,sonnet
+L485518,Q164160,Zwielicht,de,yes,'Zwielicht' denotes the dim light between day and night,sonnet
+L884748,Q37083,Ölbaum,de,yes,Ölbaum is an established German term for the olive tree,sonnet
+L826310,Q26481809,Übungsleiter,de,no,"Übungsleiter is a trainer/coach, not a sports business executive",sonnet
+L826310,Q34757756,Übungsleiter,de,no,"Übungsleiter means exercise leader, not an auto-racing spotter",sonnet
+L1448291,Q26481809,Übungsleiterin,de,no,"Übungsleiterin is a grassroots coach/instructor, not a sports executive",sonnet
+L34500,Q170826,Irishman,en,no,"'Irishman' is a singular male individual, not the collective ethnic group",sonnet
+L1503392,Q102786,abbreviature,en,uncertain,"abbreviature also means abridgment or abstract, not only abbreviation",sonnet
+L3245,Q218005,amount,en,no,amount means quantity; sum is specifically mathematical addition,sonnet
+L14671,Q126553,ark,en,uncertain,ark can mean Noah's Ark but also any large vessel,sonnet
+L316497,Q193840,asphyxiation,en,uncertain,Asphyxiation stresses the process; asphyxia the resulting condition,sonnet
+L10992,Q43183,assurance,en,no,"assurance primarily means confidence/guarantee, not insurance",sonnet
+L316539,Q1936750,atrocity,en,no,Atrocity is a cruel act; cruelty is a disposition or trait.,sonnet
+L316756,Q127076,barf,en,yes,"Barf is informal English for vomiting, matches the concept exactly",sonnet
+L312433,Q2067413,beating,en,no,"beating means hitting or defeat, not computer thrashing",sonnet
+L1552775,Q1400881,belongings,en,no,belongings are personal possessions; property is broader including intangibles,sonnet
+L30119,Q40050,beverage,en,yes,Beverage denotes a liquid prepared for human consumption.,sonnet
+L20954,Q168983,blaze,en,uncertain,Blaze can mean large fire but also any fire or flame,sonnet
+L1500783,Q886518,blood count,en,uncertain,blood count is broader than complete blood count specifically,sonnet
+L21655,Q9103,bosom,en,yes,Bosom denotes the female breast or breast area,haiku
+L14862,Q115183977,bound,en,yes,bound as noun clearly means a leap or jump,sonnet
+L21742,Q20662590,bribe,en,yes,Bribe denotes money/gift given for corruption,haiku
+L317571,Q1369832,buy,en,uncertain,"Buy as noun usually means a bargain, not the act of purchasing.",sonnet
+L317764,Q13039303,carving,en,yes,carving denotes the act of shaping by scraping material,sonnet
+L677246,Q79803,cavy,en,yes,cavy is the standard zoological name for guinea pig,sonnet
+L318179,Q156351,cliché,en,yes,Cliché denotes exactly an overused idea or expression.,sonnet
+L318213,Q27765385,clotting,en,uncertain,Clotting is typically blood-specific; coagulation here is broader,sonnet
+L30751,Q155953,competitiveness,en,uncertain,competitiveness is broader than economic competitiveness specifically,sonnet
+L253643,Q166231,contagion,en,no,contagion is transmission/spread; infection is pathogen invasion of host,sonnet
+L6480,Q814910,contribution,en,no,contribution is giving/donating; grant is a specific award,sonnet
+L14740,Q144,cur,en,no,"cur means mongrel/inferior dog, not the species generally",sonnet
+L22832,Q1110794,daily,en,yes,'daily' used as noun clearly means a daily newspaper,sonnet
+L31295,Q278138,dairyman,en,no,"dairyman works in dairy production, not specifically delivering milk",sonnet
+L31517,Q12754227,delinquency,en,no,"Delinquency denotes minor/juvenile offenses, not general criminality",sonnet
+L1553739,Q133772,dental caries,en,yes,dental caries exactly matches tooth decay by bacterial acid,sonnet
+L319342,Q1747066,desperation,en,no,Desperation implies urgent recklessness; despair is passive hopelessness,sonnet
+L44078,Q220764,disconnect,en,no,Disconnect breaks connection; interrupt is signal,haiku
+L31927,Q193607,douchebag,en,no,"Douchebag denotes obnoxious behavior, not low intelligence",sonnet
+L13580,Q44619,dread,en,uncertain,"dread is intense anticipatory fear, more specific than general fear",sonnet
+L31965,Q110022,dual,en,uncertain,dual is primarily an adjective; noun use is specialised/linguistic,sonnet
+L319856,Q154547,dukedom,en,yes,Dukedom in its territorial sense equals duchy,sonnet
+L32939,Q12891156,earnest,en,uncertain,"earnest as noun can mean seriousness, but also pledge/deposit",sonnet
+L32555,Q47054,enigma,en,uncertain,enigma overlaps riddle but primarily means mysterious person/thing,sonnet
+L311852,Q133993,erection,en,uncertain,erection is polysemous; also means a built structure,sonnet
+L1368369,Q1192553,facial recognition,en,uncertain,"facial recognition can denote the process, not only a computer system",sonnet
+L1402975,Q29485,false,en,no,"false denotes untruth, not an action or mistake",sonnet
+L16800,Q151501,fuss,en,no,"Fuss means commotion or agitation, not nonsense",sonnet
+L34678,Q222046,genomics,en,yes,genomics is exactly that interdisciplinary biology field,sonnet
+L34204,Q37525,glucose,en,yes,glucose exactly denotes this monosaccharide,sonnet
+L321412,Q2728730,gratefulness,en,yes,gratefulness is a direct synonym for gratitude,sonnet
+L23470,Q55019500,guile,en,no,"Guile means cunning/deceit, not intention to injure",sonnet
+L16873,Q3571727,gunk,en,no,"Gunk means dirty sticky matter, not specifically a soil type",sonnet
+L35003,Q308678,habilitation,en,yes,habilitation is precisely that postdoctoral university examination,sonnet
+L23500,Q44782,haven,en,no,"haven means safe refuge, not a cargo-loading maritime facility",sonnet
+L321788,Q1554010,headstand,en,no,"Headstand balances on the head, not the hands.",sonnet
+L321955,Q843281,hobo,en,yes,hobo precisely denotes a migratory worker or homeless vagabond,sonnet
+L14911,Q15942027,hog,en,no,"hog means pig in general or castrated male, not female pig",sonnet
+L35966,Q1714828,huntsman,en,uncertain,"Huntsman is a specific type of hunter, typically with hounds",sonnet
+L14596,Q201650,hypocrite,en,no,hypocrite is a person; hypocrisy is the abstract concept,sonnet
+L1405710,Q40415,impressionism,en,yes,impressionism clearly denotes this 19th-century art movement,sonnet
+L322593,Q21168708,insistence,en,no,"insistence means firm demanding, not perseverance toward a goal",sonnet
+L4613,Q34379,instrument,en,no,"Instrument denotes many types of devices, not just musical",haiku
+L36814,Q1125062,insurgent,en,uncertain,Insurgent implies armed revolt; rebel is broader,sonnet
+L314906,Q124734,insurrection,en,yes,Insurrection denotes violent uprising against government.,sonnet
+L226958,Q706622,intent,en,yes,Intent denotes a mental state of commitment to act,sonnet
+L6970,Q21004260,investigation,en,uncertain,investigation and inquiry overlap but are not identical concepts,sonnet
+L296140,Q133244,jaundice,en,yes,Jaundice names exactly this human disease.,sonnet
+L312612,Q998,kiddo,en,no,"kiddo means child informally, not specifically infant",sonnet
+L36983,Q79915,kingfisher,en,no,"'kingfisher' denotes the whole family, not one species",sonnet
+L9597,Q179057,knock,en,no,"Knock denotes a blow or sound, not an explosion",sonnet
+L37080,Q182436,librarian,en,yes,'librarian' matches the concept precisely,sonnet
+L24037,Q670151,local,en,no,"English local denotes person or pub, not premises concept",haiku
+L323492,Q1758354,machination,en,no,"machination means scheming, not a narratological sequence of events",sonnet
+L13235,Q32859833,maiden,en,no,"maiden denotes young/unmarried woman, not specifically a virgin",sonnet
+L7184,Q3482281,manner,en,no,manner does not denote a Nordic song genre,sonnet
+L7184,Q9332,manner,en,no,"'manner' denotes style/mode, not the broad range of behavior",sonnet
+L313288,Q1363634,marginalization,en,yes,marginalization denotes exactly this social exclusion concept,sonnet
+L323783,Q80149,melancholy,en,no,"melancholy denotes an emotional state, not the four-temperaments category",sonnet
+L37376,Q189854,metropolitan,en,uncertain,"Metropolitan also denotes a city-dweller, not only ecclesiastical office",sonnet
+L1522489,Q105726,micturition,en,yes,"micturition is the medical term for urination, exact match",sonnet
+L1449308,Q2796622,miserable,en,no,miserable is an adjective; not a noun for arithmetic mean,sonnet
+L324212,Q130912,mow,en,no,"mow (noun) means haystack, not a scythe",sonnet
+L18048,Q1635189,nick,en,no,"'nick' means a cut or notch, not a pinch quantity",sonnet
+L4336,Q18574339,owner,en,no,owner implies legal title; possessor means control/possession,sonnet
+L325398,Q12362622,philanthropist,en,yes,exact label and concept match,sonnet
+L6519,Q24050179,plus,en,yes,'plus' commonly means advantage or positive point in English,sonnet
+L41206,Q35911,pomology,en,yes,exact match in label and description,sonnet
+L325770,Q3508687,posturing,en,no,posturing means affected stance; staging is theater production design,sonnet
+L41256,Q1076052,preschool,en,yes,exact match in label and description,sonnet
+L14725,Q24050179,pro,en,yes,pro denotes advantage as in pros and cons,sonnet
+L253306,Q247792,progression,en,no,"progression means a sequence/series, not historiographical progress",sonnet
+L12984,Q189053,prompt,en,no,"prompt is the input cue, not the CLI interface itself",sonnet
+L41355,Q1762621,provider,en,no,provider is broader; vendor specifically sells goods/services,sonnet
+L291058,Q19029,pudding rice,en,no,pudding rice is the ingredient; rice pudding is the dish,sonnet
+L5379,Q194433,raise,en,no,"raise as noun means salary increase, not aerodynamic lift",sonnet
+L5379,Q61509,raise,en,no,raise does not denote travel or geographic movement,sonnet
+L39635,Q476118,reassurance,en,no,"Reassurance means comfort/confidence, not reinsurance",sonnet
+L326739,Q1749879,retiree,en,yes,retiree and pensioner substantially overlap in meaning,sonnet
+L41973,Q1429491,riverbed,en,yes,"riverbed is channel bottom of a river, included in definition",sonnet
+L326986,Q13370881,ruling,en,no,ruling is any court decision; verdict is jury/judge's final finding,sonnet
+L307797,Q264609,scheme,en,no,"scheme means plan/plot, not a video game cheat exploit",sonnet
+L327238,Q48942,schoolgirl,en,no,schoolgirl is gender-specific; schoolchild is gender-neutral,sonnet
+L327270,Q290691,scoundrel,en,no,"scoundrel is a real-world rogue, not a fictional story character",sonnet
+L1464134,Q5001874,screwup,en,no,"screwup means blunder or bungler, not business failure",sonnet
+L30637,Q685433,seller,en,no,seller is any seller; salesperson implies it is one's profession,sonnet
+L7743,Q106575204,sheet,en,uncertain,sheet means paper generally; map-sheet sense is too specialized,sonnet
+L7743,Q149211,sheet,en,no,"'sheet' denotes a flat material piece, not social stratum",sonnet
+L7743,Q211367,sheet,en,no,'sheet' is generic flat piece; sheet metal is a compound,sonnet
+L7743,Q477494,sheet,en,yes,sheet as nautical rope/line is a standard English sense,sonnet
+L42154,Q2334804,shipment,en,no,"shipment denotes goods being transported, not the delivery process",sonnet
+L42155,Q500251,shipowner,en,yes,shipowner exactly matches ship-owner concept,sonnet
+L268134,Q12136,sickness,en,uncertain,sickness overlaps disease but is broader and more informal,sonnet
+L10834,Q1762621,supplier,en,uncertain,supplier and vendor overlap but are not identical business concepts,sonnet
+L328890,Q102186635,sway,en,no,sway and wobble are distinct movement concepts; description too sparse,sonnet
+L43673,Q81054,tempest,en,no,tempest is violent storm; concept covers all atmospheric disturbances,sonnet
+L1524564,Q50803918,tidal wave,en,uncertain,'tidal wave' usually means tsunami; 'flood wave' is more generic,sonnet
+L5423,Q16868672,total,en,uncertain,total as noun means a sum; whole means entirety—overlapping but distinct,sonnet
+L5423,Q218005,total,en,yes,total commonly denotes the sum of numbers,sonnet
+L44498,Q105196,transplantation,en,yes,transplantation exactly matches organ/tissue transfer concept,sonnet
+L329709,Q708245,tuning,en,no,tuning and summons are entirely unrelated concepts,sonnet
+L294945,Q124734,uprising,en,yes,uprising closely denotes violent resistance against authority,sonnet
+L9483,Q18560095,victor,en,yes,"Victor means one who wins, matches winner concept",sonnet
+L29089,Q127076,vomit,en,no,"'vomit' as noun denotes expelled matter, not the act",sonnet
+L45939,Q13105405,wanderer,en,no,wanderer roams freely; hiker walks trails for recreation,sonnet
+L330348,Q102186635,waver,en,no,waver means oscillate or hesitate; wobble is a distinct movement,sonnet
+L14406,Q23387,weekly,en,no,"weekly as noun denotes a periodical, not a time unit",sonnet
+L1406336,Q6301005,wise guy,en,uncertain,"wise guy also denotes a mobster, not only a know-it-all",sonnet
+L15389,Q1541554,yea,en,no,"yea means affirmative/vote, not a TV provider",sonnet
+L1508462,Q4054694,aberration,sv,no,"aberration denotes deviation/optical term, not entomological rank",sonnet
+L580314,Q205177,abrakadabra,sv,yes,abrakadabra is exactly this magical incantation,sonnet
+L295673,Q47072996,absolutist,sv,uncertain,absolutist also means political absolutist; description too sparse,sonnet
+L580330,Q49546,aceton,sv,yes,Direct match; Wikidata label is 'aceton',sonnet
+L35886,Q28008314,adressat,sv,yes,'adressat' precisely means addressee of a message,sonnet
+L38089,Q215536,affärskvinna,sv,no,"Affärskvinna means businesswoman, not specifically a goods merchant",sonnet
+L38089,Q43845,affärskvinna,sv,no,affärskvinna is specifically female; concept is gender-neutral,sonnet
+L33614,Q1075929,afrikan,sv,yes,"""afrikan"" clearly denotes a person of African origin",sonnet
+L1134623,Q49085,afroamerikan,sv,yes,afroamerikan is a direct calque of African American,sonnet
+L55159,Q407747,agg,sv,yes,"agg means grudge/resentment, a negative feeling",sonnet
+L240092,Q3882779,al,sv,no,"al denotes the alder tree, not a heraldic figure",sonnet
+L1096143,Q11072,amnesi,sv,yes,amnesi is the direct Swedish equivalent of amnesia,sonnet
+L1091419,Q6199,anarkism,sv,yes,anarkism is the Swedish word for anarchism,sonnet
+L60268,Q12359071,anarkist,sv,yes,anarkist exactly denotes a person practicing anarchism,sonnet
+L251549,Q3736439,and,sv,yes,"and = duck, matches common name for Anatidae ducks",sonnet
+L1415060,Q2146321,andorran,sv,yes,andorran denotes a citizen or resident of Andorra,sonnet
+L1399603,Q28837,anestesiläkare,sv,yes,anestesiläkare and narkosläkare are direct Swedish synonyms for anesthesiologist,sonnet
+L241919,Q1422583,angelägenhet,sv,uncertain,"angelägenhet primarily means matter/affair, not the abstract quality importance",sonnet
+L241919,Q4406616,angelägenhet,sv,no,angelägenhet has no sense of physical concrete object,sonnet
+L59029,Q329525,anklagelse,sv,no,anklagelse means accusation generally; åtal is the specific court charge,sonnet
+L1092686,Q17930,anomi,sv,yes,anomi is the Swedish term for anomie/normlessness,sonnet
+L479556,Q1357284,anseende,sv,no,"anseende means reputation/esteem, not popularity",sonnet
+L59773,Q1768566,anspråk,sv,no,"'anspråk' means general claim/demand, not specifically cause of action",sonnet
+L33660,Q581459,antipati,sv,yes,Swedish 'antipati' directly denotes antipathy/dislike,sonnet
+L295060,Q4773904,antropolog,sv,yes,antropolog directly denotes an anthropologist,sonnet
+L1558881,Q3355098,apelsinträd,sv,yes,"apelsinträd is the sweet orange tree, Citrus sinensis",sonnet
+L472909,Q3748888,arbetskraft,sv,no,"'arbetskraft' means workforce broadly, not specifically Marx's technical concept",sonnet
+L58629,Q2992308,arbetsvillkor,sv,yes,Arbetsvillkor denotes working conditions as a sociological concept,sonnet
+L1505829,Q10294,armod,sv,yes,armod directly denotes poverty/destitution,sonnet
+L479561,Q36993249,arrangemang,sv,uncertain,arrangemang = event/result; concept stresses the process,sonnet
+L35856,Q675316,arvtagare,sv,yes,"'arvtagare' means heir, person entitled to inheritance",sonnet
+L35857,Q21849766,arvtagerska,sv,yes,"'arvtagerska' is the female form of heir, matches heiress",sonnet
+L1494409,Q320433,aspiration,sv,uncertain,aspiration also means ambition; phonetic sense is one of several,sonnet
+L47706,Q334473,avdelningschef,sv,yes,"avdelningschef = division head, exact match",sonnet
+L1405801,Q2684232,avfallshantering,sv,uncertain,description too sparse; avfallshantering is broader than disposal,sonnet
+L1344685,Q18511800,avskiljning,sv,uncertain,avskiljning means separation but concept stresses splitting into multiple entities,sonnet
+L1413288,Q1643652,avståndsmätare,sv,yes,"avståndsmätare means distance-measurer, exactly a rangefinder",sonnet
+L1419898,Q356367,babbe,sv,yes,"babbe is a pejorative for non-Nordic-background person, same concept",sonnet
+L246621,Q4070300,balettdansös,sv,uncertain,"balettdansös = any female ballet dancer, not just principal dancer",sonnet
+L242073,Q3361827,barbar,sv,no,"barbar means barbarian in general, not a D&D class",sonnet
+L32862,Q62024649,behörighet,sv,uncertain,"behörighet covers authorization and competence, not only eligibility",sonnet
+L242795,Q28008277,bekantskap,sv,uncertain,"bekantskap means acquaintanceship/familiarity, not solely the person",sonnet
+L1413190,Q1367353,bekvämlighet,sv,yes,"bekvämlighet means comfort/ease, matching exactly",sonnet
+L588191,Q483569,belarusier,sv,yes,Direct match; Wikidata label is 'belarusier',sonnet
+L32648,Q1377716,belgare,sv,yes,belgare denotes citizens or residents of Belgium,sonnet
+L1001767,Q1377716,belgier,sv,no,"standard Swedish is belgare, not belgier",sonnet
+L59818,Q218005,belopp,sv,no,"'belopp' means monetary amount, not sum as result of addition",sonnet
+L55418,Q7075743,beläggning,sv,uncertain,beläggning primarily means coating; occupancy is secondary sense,sonnet
+L1410898,Q9149093,bergsbestigare,sv,yes,"bergsbestigare means mountaineer, person who climbs mountains",sonnet
+L476070,Q180095,best,sv,no,"'best' means beast/brute, not tyrant",sonnet
+L476070,Q729,best,sv,no,best means beast/brute; djur covers all animals generally,sonnet
+L60449,Q5184855,besättningsmedlem,sv,yes,'besättningsmedlem' is the direct Swedish equivalent of crew member,sonnet
+L294911,Q593132,besöksförbud,sv,yes,exact match; Wikidata label is besöksförbud itself,sonnet
+L708238,Q16831721,beteendeforskare,sv,uncertain,beteendeforskare is broader than ethologist specifically,sonnet
+L247805,Q866650,bett,sv,yes,Swedish 'bett' denotes animal bite directly,haiku
+L38106,Q193432,beundrare,sv,no,"beundrare means admirer broadly, not an enthusiastic fan/idol-worshipper",sonnet
+L489605,Q21422876,bilförsäljare,sv,yes,bilförsäljare exactly denotes a car dealer/seller,sonnet
+L34112,Q33112393,bilist,sv,uncertain,"description says road tripper, not general car driver",sonnet
+L247296,Q506002,biskopsstav,sv,yes,"biskopsstav = bishop's crook-staff, exact crosier match",sonnet
+L32398,Q8805,bit,sv,yes,bit is the standard Swedish computing unit bit,sonnet
+L1418476,Q356405,blodsutgjutelse,sv,no,"blodsutgjutelse means bloodshed/gore, not bloodletting therapy",sonnet
+L487440,Q16735601,blomsterhandlare,sv,yes,"blomsterhandlare denotes florist, a flower-selling profession",sonnet
+L1449683,Q11199149,blygsamhet,sv,uncertain,blygsamhet is broader than sexual modesty specifically,sonnet
+L55095,Q8094,blåst,sv,uncertain,"blåst implies strong/gusty wind, not wind in general",sonnet
+L1449865,Q1430961,boja,sv,no,"boja primarily means buoy, not a rigging shackle",sonnet
+L1560392,Q2380335,bombangrepp,sv,no,"bombangrepp is any bomb attack, not specifically an airstrike",sonnet
+L33534,Q486972,boplats,sv,yes,"""boplats"" is a place where people permanently settle",sonnet
+L586036,Q1595418,botemedel,sv,yes,'botemedel' denotes a substance or procedure curing a condition,sonnet
+L242407,Q290691,bov,sv,yes,"bov means villain/scoundrel, including narrative villains",sonnet
+L1207809,Q106978823,brandfackla,sv,no,"brandfackla denotes a physical torch, not a heraldic figure",sonnet
+L1417382,Q12107,bretagnare,sv,no,"bretagnare is a person from Brittany, not the Breton language",sonnet
+L246643,Q1277575,brevväxling,sv,yes,"brevväxling = correspondence, exact match",sonnet
+L239244,Q353673,brutta,sv,uncertain,brutta not a recognized standard Swedish word for bride,sonnet
+L245256,Q44497,brytning,sv,uncertain,"brytning is polysemous: mining, refraction, and foreign accent",sonnet
+L47375,Q133255,bulgar,sv,yes,"bulgar denotes a Bulgarian, member of that ethnic group",sonnet
+L32090,Q829020,bussförare,sv,yes,"Bussförare means bus driver, the exact occupation described.",sonnet
+L248201,Q685433,butiksbiträde,sv,no,"butiksbiträde = shop assistant, narrower than salesperson broadly",sonnet
+L58550,Q32880,byggnadsstil,sv,yes,Byggnadsstil denotes architectural style of a building,sonnet
+L1506007,Q230629,bäring,sv,no,"bäring means bearing or relevance, not connection",sonnet
+L366627,Q60297962,cancelkultur,sv,yes,Cancelkultur is the direct Swedish term for cancel culture,sonnet
+L70507,Q12078,cancersjukdom,sv,yes,cancersjukdom directly denotes cancer as a disease group,sonnet
+L1563509,Q1430956,charlatan,sv,yes,Charlatan denotes exactly an impostor pretending for personal gain,sonnet
+L1562326,Q32948073,chatt,sv,no,"chatt means online chat, not a bird",sonnet
+L1405150,Q206454,citronskal,sv,no,citronskal means whole peel; zest is only the outermost layer,sonnet
+L66836,Q485459,cyniker,sv,no,"cyniker means a cynical person, not the Cynic school",sonnet
+L245965,Q2396923,dagdrivare,sv,uncertain,"dagdrivare is an idler/loafer, not necessarily a burden on others",sonnet
+L36115,Q124378,daggmask,sv,yes,"'daggmask' denotes earthworm, the taxon described",sonnet
+L55012,Q11326182,dagning,sv,yes,dagning means the dawn period exactly,sonnet
+L32714,Q5716684,dansös,sv,yes,"dansös is female dancer, same concept",sonnet
+L583229,Q1773152,delaktighet,sv,uncertain,'delaktighet' (involvement/belonging) differs subtly from 'deltagande',sonnet
+L1420293,Q754926,diafragma,sv,no,"diafragma primarily denotes anatomical diaphragm muscle, not contraceptive",sonnet
+L55313,Q843958,digitalisering,sv,uncertain,"digitalisering covers broader digitalisation, not only document digitization",sonnet
+L473484,Q1279297,drift,sv,uncertain,Drift primary sense is general movement; glacial sediment is specialized,haiku
+L40271,Q23038546,drömmare,sv,uncertain,"Drömmare primarily means visionary dreamer, not only active dreamer",sonnet
+L1019582,Q12938972,dumskalle,sv,yes,dumskalle is a pejorative noun for a stupid person,sonnet
+L1019582,Q193607,dumskalle,sv,yes,"dumskalle denotes a stupid person, matching idiot with low intelligence",sonnet
+L58913,Q947048,dysfunktion,sv,no,"Q947048 is a disambiguation page, not the concept itself",sonnet
+L33278,Q4,död,sv,yes,"död/döden directly denotes death, permanent cessation of life",sonnet
+L1529522,Q10605056,edsvuren,sv,uncertain,edsvuren means oath-sworn person; nämndeman is a specific lay judge role,sonnet
+L242024,Q21004260,efterforskning,sv,yes,efterforskning denotes investigation/inquiry to resolve a question,sonnet
+L240031,Q4402708,efterfrågan,sv,yes,efterfrågan is the Swedish word for economic demand,sonnet
+L1521624,Q193432,eldsjäl,sv,no,"eldsjäl means passionate driving force, not a cultural fan",sonnet
+L35755,Q168983,eldsvåda,sv,yes,"eldsvåda means uncontrolled conflagration, matching exactly",sonnet
+L663898,Q1341477,energiförsörjning,sv,uncertain,description narrows concept to a specific economic classification category,sonnet
+L1097215,Q189829,enstöring,sv,no,"enstöring is a social loner, not a religious hermit",sonnet
+L466623,Q193432,entusiast,sv,no,entusiast means enthusiast broadly; fan implies idol worship specifically,sonnet
+L713701,Q2333152,envishet,sv,yes,"envishet directly means stubbornness, the described trait",sonnet
+L1380689,Q3683504,erövrare,sv,uncertain,erövrare is any conqueror; concept restricts to famous empire-extending leaders,sonnet
+L501654,Q1147273,est,sv,yes,est is Swedish informal term for an Estonian person,sonnet
+L33277,Q2920990,ettåring,sv,no,"ettåring means one-year-old generally, not horse-specific",sonnet
+L400252,Q394067,europé,sv,yes,'europé' denotes a person from Europe,sonnet
+L1529734,Q1359069,eventualitet,sv,no,"eventualitet means eventuality/possibility, not logical contingency",sonnet
+L1093097,Q685433,expedit,sv,no,"expedit is a shop assistant/clerk, not a general salesperson",sonnet
+L60275,Q104080200,extremist,sv,yes,extremist exactly matches the Swedish definition given,sonnet
+L238083,Q12812139,fackterm,sv,yes,fackterm means specialized/technical term exactly,sonnet
+L1494433,Q712138,fanskap,sv,no,"fanskap is an exclamation, not equivalent to son of a bitch",sonnet
+L58903,Q104837,fas,sv,yes,Fas denotes phase in the scientific chemistry sense,haiku
+L1420605,Q1401607,feghet,sv,yes,feghet is the direct Swedish word for cowardice,sonnet
+L35507,Q104605901,fegis,sv,yes,'fegis' is exactly Swedish for coward,sonnet
+L35507,Q15951126,fegis,sv,no,"fegis means coward, not someone lacking masculine traits",sonnet
+L588171,Q4172847,filippinska,sv,no,"filippinska means the Filipino language, not the people",sonnet
+L1133454,Q167612,fingerfärdighet,sv,yes,"fingerfärdighet means manual dexterity, exact match",sonnet
+L1418111,Q181391,flint,sv,uncertain,"flint means bald pate (object), concept stresses state of baldness",sonnet
+L246876,Q1429491,flodbädd,sv,yes,"flodbädd = river/stream bed, exact match including Swedish label",sonnet
+L245391,Q157165,fordringsägare,sv,yes,"fordringsägare = creditor, exact match",sonnet
+L242457,Q976981,formel,sv,yes,Formel is Swedish for mathematical formula,haiku
+L482449,Q2793701,fosterbarn,sv,yes,fosterbarn is the direct Swedish word for foster child,sonnet
+L32572,Q937857,fotbollsspelare,sv,yes,fotbollsspelare exactly denotes an association football player,sonnet
+L710841,Q846430,framtidsforskare,sv,yes,'framtidsforskare' (future researcher) matches futurist,sonnet
+L52376,Q121842,fransman,sv,yes,"fransman denotes a French person, member of that ethnic group",sonnet
+L33473,Q121842,fransyska,sv,no,"fransyska denotes a French woman, not the ethnic group",sonnet
+L584852,Q82580,friktion,sv,yes,Friktion denotes physics force opposing relative motion,haiku
+L32669,Q55187,frisörska,sv,yes,"frisörska is the female form of hairdresser, same concept",sonnet
+L33216,Q2747456,furste,sv,uncertain,"""furste"" means sovereign ruler; ""prins"" means king's son",sonnet
+L579254,Q334166,färdmedel,sv,no,"'färdmedel' means vehicle/means of transport, not abstract mode/system",sonnet
+L251553,Q2095,föda,sv,yes,föda as noun denotes food/nourishment,sonnet
+L1494890,Q83267,förbrytelse,sv,yes,"förbrytelse means crime, an act contrary to law",sonnet
+L1003470,Q25223,förbundspresident,sv,uncertain,"noun means any federal president, not only Germany's specific office",sonnet
+L51557,Q21255975,förbättring,sv,yes,"förbättring directly means improvement, process of higher quality",sonnet
+L241912,Q179742,fördom,sv,yes,"fördom means prejudice, matches description exactly",sonnet
+L32133,Q2328860,förespråkare,sv,no,"förespråkare means general advocate, not a theological preaching role",sonnet
+L33343,Q7958,förklaring,sv,yes,förklaring directly means explanation,sonnet
+L1092769,Q20861252,förlorare,sv,yes,"förlorare means loser, one who loses a competition",sonnet
+L290271,Q1056901,förlust,sv,no,"Förlust means loss generally, not specifically military casualty",haiku
+L1560823,Q537963,förlåtelse,sv,yes,förlåtelse directly means forgiveness,sonnet
+L32230,Q685433,försäljare,sv,yes,försäljare exactly denotes salesperson,sonnet
+L1404534,Q685433,försäljerska,sv,yes,försäljerska is the feminine form of försäljare/salesperson,sonnet
+L47731,Q813912,förutsättning,sv,no,"förutsättning = prerequisite, not state/condition",sonnet
+L244362,Q117797839,förvaring,sv,uncertain,description too sparse; förvaring means storage/keeping of objects,sonnet
+L1208527,Q104776274,förvåning,sv,uncertain,"förvåning covers ordinary surprise too, not exclusively astonishment",sonnet
+L52386,Q5515445,gabones,sv,uncertain,description 'grensida' is too sparse/unclear to confirm,sonnet
+L1414867,Q505619,galenskap,sv,yes,galenskap is a Swedish synonym for insanity/madness,sonnet
+L52375,Q99717065,gambier,sv,uncertain,gambier can mean Gambians but also a plant extract,sonnet
+L1087696,Q170084,generalisering,sv,yes,generalisering directly denotes the abstraction concept,sonnet
+L409206,Q2920535,genombrott,sv,uncertain,"genombrott covers figurative breakthroughs, not only military",sonnet
+L52374,Q18973,georgier,sv,yes,georgier directly denotes a Georgian person/ethnic group,sonnet
+L1418382,Q166153,germanistik,sv,yes,germanistik directly denotes German language and literature studies,sonnet
+L494552,Q1499127,girigbuk,sv,yes,"girigbuk directly denotes a miser, stingy hoarder",sonnet
+L1561003,Q855091,gitarrspelare,sv,yes,"gitarrspelare means guitar player, matching guitarist",sonnet
+L293184,Q43667189,givare,sv,uncertain,givare means donor but also sensor/transmitter in Swedish,sonnet
+L1561004,Q11303721,golfspelare,sv,yes,golfspelare directly denotes a person who plays golf,sonnet
+L246185,Q1537035,gondoljär,sv,yes,gondoljär clearly denotes a gondolier,sonnet
+L46303,Q1986893,grannfru,sv,no,"grannfru means neighbor's wife, more specific than neighbor",sonnet
+L244187,Q884301,gratispassagerare,sv,yes,gratispassagerare = free-rider; description matches concept exactly,sonnet
+L32306,Q23090513,grop,sv,yes,grop denotes a hole or cavity in the ground,sonnet
+L1331795,Q182661,grävare,sv,uncertain,grävare can mean digger-person or machine ambiguously,sonnet
+L1331797,Q182661,grävskopa,sv,no,"grävskopa is the bucket/scoop, not the whole excavator machine",sonnet
+L1417386,Q20826647,guatemalan,sv,yes,guatemalan denotes a citizen or resident of Guatemala,sonnet
+L33156,Q191089,gubbe,sv,no,"gubbe denotes an old man, not old age as abstract concept",sonnet
+L1417387,Q99635366,guinean,sv,yes,guinean denotes a citizen or resident of Guinea,sonnet
+L60254,Q15360275,gymnasist,sv,uncertain,Swedish gymnasium ≈ high school but institutions differ slightly,sonnet
+L46462,Q12713942,gäng,sv,uncertain,gäng primarily means gang/group; yarn-measure sense unclear,sonnet
+L1493376,Q815825,gästvänlighet,sv,uncertain,gästvänlighet differs from canonical gästfrihet for this concept,sonnet
+L579745,Q308678,habilitering,sv,no,"Swedish habilitering means disability rehabilitation, not academic qualification",sonnet
+L1422039,Q20820497,hack,sv,uncertain,hack means notch broadly; specific stress-concentration sense unclear,sonnet
+L32826,Q82714,haka,sv,yes,"haka means chin, a body part; exact match",sonnet
+L1550550,Q205961,handlingskraft,sv,no,"handlingskraft means drive/initiative, not learned skill",sonnet
+L35690,Q1400189,handläggare,sv,uncertain,handläggare means case officer; description absent,sonnet
+L1183032,Q1552579,hantlangare,sv,yes,hantlangare means person doing miscellaneous simple tasks,sonnet
+L1561008,Q9286830,hasardspelare,sv,yes,"'hasardspelare' directly means gambler, matching exactly",sonnet
+L585633,Q43115,helgon,sv,yes,"helgon is exactly saint, holy person venerated",sonnet
+L1143178,Q51621,helgonförklaring,sv,yes,"helgonförklaring literally means canonization, exact match",sonnet
+L32702,Q11330348,hjältinna,sv,yes,"hjältinna means female hero, exact match",sonnet
+L588188,Q200569,holländare,sv,yes,holländare clearly denotes a Dutch person/citizen,sonnet
+L313103,Q128007,hov,sv,yes,Swedish hov denotes hoof of odd-toed ungulates like horses.,sonnet
+L56718,Q2447386,hudläkare,sv,yes,hudläkare is the common Swedish word for dermatologist,sonnet
+L55075,Q37413,hundratal,sv,no,"hundratal means 'hundreds/about a hundred', not the numeral 100",sonnet
+L585889,Q99895,huvudkudde,sv,yes,"Huvudkudde literally means head cushion, i.e. pillow",sonnet
+L251580,Q39373172,hälft,sv,yes,"hälft = half, matches concept of one of two equal parts",sonnet
+L55280,Q625369,härskarinna,sv,no,"härskarinna means female ruler, not romantic mistress",sonnet
+L591327,Q532,håla,sv,no,"håla means hole or dump, not a village settlement",sonnet
+L490934,Q1622272,högskolelärare,sv,uncertain,högskola and universitet are distinct institution types in Sweden,sonnet
+L47966,Q193607,idiot,sv,yes,idiot means person of low intelligence in Swedish,sonnet
+L61324,Q2066131,idrottskvinna,sv,no,idrottskvinna is female-specific; athlete is gender-neutral,sonnet
+L1412404,Q21168708,ihärdighet,sv,yes,"ihärdighet means perseverance/tenacity, matching determination",sonnet
+L242796,Q121359,infrastruktur,sv,yes,infrastruktur directly denotes infrastructure,sonnet
+L1524836,Q41374,inkarnation,sv,yes,inkarnation directly denotes divine taking physical form,sonnet
+L1529990,Q781470,intermezzo,sv,no,"intermezzo broadly means episode/interlude, not specifically opera genre",sonnet
+L33681,Q305178,introduktion,sv,uncertain,'introduktion' is broader than just a written work's opening section,sonnet
+L36103,Q4290,investering,sv,yes,'investering' directly denotes investment/capital outlay,sonnet
+L588199,Q397297,iranier,sv,yes,Direct match; Wikidata label is 'iranier',sonnet
+L33832,Q170826,irländare,sv,yes,"""irländare"" denotes Irish people exactly",sonnet
+L1020941,Q131361,ironi,sv,yes,ironi directly denotes irony as rhetorical or literary device,sonnet
+L1551883,Q256401,irritationsmoment,sv,no,"'irritationsmoment' is a source of irritation, not the feeling itself",sonnet
+L1215707,Q843909,islamologi,sv,yes,"islamologi is the academic study of Islam, exact match",sonnet
+L488161,Q37571859,israel,sv,no,israel as common noun does not denote a surname,sonnet
+L1023280,Q17951,jargong,sv,yes,"jargong exactly denotes jargon, insider language opaque to outsiders",sonnet
+L1403674,Q106010,julaftonskväll,sv,no,"julaftonskväll is specifically the evening, not the full holiday",sonnet
+L1555213,Q1549531,kabin,sv,no,"kabin means cabin, not an office cubicle (bås)",sonnet
+L1083563,Q1062396,kakaopulver,sv,yes,kakaopulver directly denotes cocoa powder,sonnet
+L409192,Q3947,kammare,sv,no,"kammare means chamber/room, not house",sonnet
+L33609,Q3421342,kant,sv,no,"kant means edge/border, not a coloured stripe",sonnet
+L33612,Q335140,kappa,sv,no,"kappa in Swedish means coat, not a Japanese creature",sonnet
+L241683,Q519410,kapsel,sv,yes,Swedish kapsel denotes a medicine capsule,haiku
+L247007,Q3264451,kardiolog,sv,yes,"kardiolog = cardiologist, exact match",sonnet
+L32232,Q1735282,kassörska,sv,yes,kassörska (female cashier) denotes exactly this store-cashier role,sonnet
+L33044,Q2352616,katalog,sv,yes,katalog means catalogue; systematic item enumeration; exact match,sonnet
+L1404784,Q80040,kazak,sv,yes,"kazak denotes a Kazakh person, member of the Kazakh people",sonnet
+L51169,Q1435005,kedjerökare,sv,no,"kedjerökare means chain smoker (person), not the practice",sonnet
+L54862,Q273610,kioskvältare,sv,yes,kioskvältare is Swedish colloquial for bestseller,sonnet
+L464926,Q12713942,klase,sv,uncertain,klase means cluster/bunch but yarn-measure sense not confirmed,sonnet
+L46297,Q2976603,klassiker,sv,yes,klassiker denotes an outstanding classic work or example,sonnet
+L1143179,Q114732050,klasskompis,sv,yes,"klasskompis means fellow class member, exact match",sonnet
+L33621,Q113552121,knarkare,sv,yes,knarkare is a pejorative Swedish term for drug user/junkie,sonnet
+L33588,Q12713481,knegare,sv,uncertain,"""knegare"" covers all hard workers, not strictly unskilled",sonnet
+L33577,Q26913,knubbsäl,sv,yes,knubbsäl is the Swedish name for Phoca vitulina,sonnet
+L1508362,Q12938972,knäppgök,sv,uncertain,"description too vague; knäppgök means crazy, not specifically stupid",sonnet
+L1508362,Q3130829,knäppgök,sv,uncertain,semantically close but concept describes an adjective; knäppgök is a noun,sonnet
+L1157467,Q775570,kobjällra,sv,yes,kobjällra is precisely a cowbell hung on a cow,sonnet
+L496879,Q267628,kolumn,sv,yes,kolumn denotes a recurring article/column in a periodical,sonnet
+L473869,Q45227,kolv,sv,yes,Kolv denotes reciprocating piston,haiku
+L411891,Q1346149,komplikation,sv,no,"komplikation is any complication, not specifically medical",sonnet
+L1559108,Q63967171,konspiratör,sv,yes,konspiratör means exactly one who conspires,sonnet
+L473890,Q1284190,konstant,sv,yes,Konstant denotes unchangeable programming value,haiku
+L32092,Q483501,konstnär,sv,yes,"Konstnär is Swedish for artist, label confirms exact match",sonnet
+L1415134,Q484464,korean,sv,yes,"korean denotes a Korean person, resident of the Korean peninsula",sonnet
+L34435,Q1414531,korrigering,sv,yes,korrigering means correction/remediation of an error,sonnet
+L32358,Q125823113,kort,sv,no,"kort means card, not carding machine",sonnet
+L32358,Q192425,kort,sv,no,kort means card generally; postcard specifically is vykort,sonnet
+L1083844,Q36911546,kosovan,sv,no,"kosovan denotes a person from Kosovo, not a surname",sonnet
+L246894,Q11748378,kossa,sv,yes,kossa is informal Swedish for ko (cow),sonnet
+L33176,Q240673,kostnad,sv,uncertain,kostnad (cost) and utgift (expenditure) differ in Swedish accounting,sonnet
+L347197,Q11442,kretslopp,sv,no,"kretslopp means circular cycle/circuit, not a bicycle",sonnet
+L480352,Q43533,kristall,sv,yes,Kristall denotes ordered crystalline solid structure,haiku
+L588200,Q167420,kroat,sv,yes,"kroat denotes a Croat, the South-Slavic ethnic group",sonnet
+L1450481,Q56547015,krux,sv,no,"krux means crux/difficulty, not a Dresden school newspaper",sonnet
+L291777,Q161973,kurva,sv,yes,Kurva is Swedish for curve in geometry,haiku
+L1093998,Q8812109,kyrkomusik,sv,yes,kyrkomusik is a direct translation of church music,sonnet
+L32308,Q1126160,kännare,sv,yes,"kännare is the Swedish word for connoisseur, per the description",sonnet
+L451693,Q921083,kärl,sv,no,"kärl means vessel/container, not a unit of volume",sonnet
+L43328,Q3499072,köksmästare,sv,no,"köksmästare specifically means head chef, not any cook",sonnet
+L1567766,Q15615001,köttätande,sv,no,"Köttätande means meat-eating/carnivorous, not a Wikimedia list article",sonnet
+L59701,Q81875,köttätare,sv,yes,Swedish 'köttätare' is the standard word for carnivore,sonnet
+L230208,Q73792,laddning,sv,uncertain,"Laddning typically means electrical charge, not specialized physics generalization",haiku
+L496793,Q4175034,lagstiftare,sv,yes,'lagstiftare' means lawmaker/legislator exactly,sonnet
+L496793,Q8565306,lagstiftare,sv,no,"lagstiftare means legislator, not picture/building framer",sonnet
+L247856,Q11451,lantbruk,sv,uncertain,"lantbruk covers livestock too, broader than odling av jord",sonnet
+L248501,Q816425,lantmäteri,sv,yes,"lantmäteri = surveying, exact match including Swedish label",sonnet
+L1188184,Q49540,lett,sv,yes,"lett denotes a Latvian person, matching the concept",sonnet
+L32885,Q2334804,leverans,sv,yes,leverans means delivery of goods; exact match,sonnet
+L35402,Q1762621,leverantör,sv,yes,'leverantör' matches vendor/supplier concept exactly,sonnet
+L1403272,Q186649,levnadshistoria,sv,no,"levnadshistoria means life story/biography, not a professional CV",sonnet
+L46283,Q14972848,lexikograf,sv,yes,lexikograf directly denotes a dictionary compiler or editor,sonnet
+L1405176,Q3090865,lindanserska,sv,yes,feminine form of lindansare; same tightrope-walker concept,sonnet
+L60953,Q10562733,linjebuss,sv,no,"Wikidata entry is a disambiguation page, not a concept",sonnet
+L241565,Q1630557,list,sv,uncertain,"list means any trim/molding or cunning, broader than baseboard",sonnet
+L241565,Q29714270,list,sv,yes,list in Swedish means cunning/guile,sonnet
+L1188185,Q186192,litauer,sv,yes,litauer directly denotes a Lithuanian person,sonnet
+L1415069,Q1092641,luxemburgare,sv,yes,luxemburgare denotes a citizen or resident of Luxembourg,sonnet
+L1506590,Q1456974,lydnad,sv,yes,"lydnad directly translates as obedience, exact match",sonnet
+L32295,Q230629,länk,sv,uncertain,länk is a concrete link; concept describes abstract relationship,sonnet
+L32328,Q37226,lärarinna,sv,yes,"lärarinna is the feminine form of lärare, same concept",sonnet
+L1420088,Q167131,långfinger,sv,yes,långfinger is the Swedish term for the middle finger,sonnet
+L63677,Q703534,löntagare,sv,yes,löntagare (wage earner) closely matches employee concept,sonnet
+L33601,Q115707279,mal,sv,uncertain,"mal means wels catfish specifically, not catfish in general",sonnet
+L33601,Q1725788,mal,sv,no,"mal means clothes moth, not all Heterocera",sonnet
+L588193,Q19840401,malaysier,sv,yes,malaysier directly denotes citizens or people of Malaysia,sonnet
+L1414937,Q1286876,maltes,sv,yes,"maltes denotes a Maltese person, citizen of Malta",sonnet
+L1452917,Q1286876,maltesare,sv,yes,maltesare denotes a person from Malta,sonnet
+L1419857,Q241156,manna,sv,yes,Manna denotes biblical edible substance,haiku
+L32844,Q201097,mask,sv,yes,Mask denotes basket container,haiku
+L409188,Q12774177,medel,sv,yes,Swedish medel denotes means/method as described,haiku
+L38282,Q15735983,medförfattare,sv,yes,medförfattare exactly denotes coauthor of a work,sonnet
+L1504463,Q231043,medhåll,sv,no,"medhåll means agreement/assent, samtycke is the legal consent term",sonnet
+L409217,Q11190,medicin,sv,yes,medicin denotes the science and practice of medicine,sonnet
+L1525038,Q80149,melankoliker,sv,yes,'melankoliker' exactly denotes the melancholic temperament type,sonnet
+L32830,Q104605901,mes,sv,yes,mes informally means a cowardly/weak person in Swedish,sonnet
+L32830,Q15951126,mes,sv,yes,"mes is Swedish pejorative for unmasculine, fragile person",sonnet
+L32830,Q168473,mes,sv,no,"mes denotes individual tit birds, not the taxonomic family Paridae",sonnet
+L1551075,Q1415280,metrev,sv,yes,metrev is Swedish for angling/fishing line exactly,sonnet
+L58487,Q28553933,mexikan,sv,no,"Mexikan as common noun means a Mexican person, not a painting",sonnet
+L245983,Q127956,mikro,sv,yes,mikro is colloquial Swedish for mikrovågsugn (microwave oven),sonnet
+L59886,Q17024293,missförstånd,sv,yes,'missförstånd' exactly denotes a communication misunderstanding,sonnet
+L493094,Q637776,mjölkbutik,sv,no,mjölkbutik is a milk shop; mejeri is a milk-processing factory,sonnet
+L593235,Q496696,mjölkpulver,sv,yes,mjölkpulver exactly denotes dehydrated milk powder,sonnet
+L1018782,Q23065481,mobilitet,sv,yes,"mobilitet means mobility, ability to move",sonnet
+L47470,Q66741664,moderat,sv,no,"moderat as noun denotes a Moderate Party member, not difficulty level",sonnet
+L58488,Q100440056,moldavier,sv,yes,Moldavier denotes citizens or residents of Moldova,sonnet
+L241112,Q2039972,monegask,sv,yes,monegask denotes a citizen or resident of Monaco,sonnet
+L667068,Q43637,monopol,sv,yes,Monopol denotes single-producer market structure,haiku
+L1519592,Q45787133,motorcykelförare,sv,yes,"motorcykelförare means motorcycle rider, exact match",sonnet
+L1504468,Q19977811,motorstopp,sv,no,"motorstopp means engine failure specifically, not general breakdown",sonnet
+L1554247,Q363948,motsägelse,sv,yes,motsägelse directly means logical contradiction,sonnet
+L244313,Q639669,musikant,sv,yes,musikant clearly denotes a musician,sonnet
+L1097557,Q394,mätteknik,sv,yes,mätteknik directly denotes metrology/measurement science,sonnet
+L1404569,Q931260,mörderska,sv,yes,"mörderska is feminine form of murderer, same underlying concept",sonnet
+L35912,Q29479539,nackdel,sv,yes,"nackdel means disadvantage, matching the concept precisely",sonnet
+L58489,Q97696014,namibier,sv,yes,Namibier denotes citizens or residents of Namibia,sonnet
+L244374,Q200569,nederländare,sv,yes,nederländare directly denotes citizens of the Netherlands,sonnet
+L498525,Q1814990,nej,sv,yes,nej is exactly the Swedish negative particle 'no',sonnet
+L1157374,Q82794,nejd,sv,no,"nejd denotes a local district/tract, not a broad region concept",sonnet
+L242690,Q4317274,nepales,sv,yes,nepales denotes a person from Nepal,sonnet
+L239864,Q16155102,nigerian,sv,yes,nigerian in Swedish denotes a person from Nigeria,sonnet
+L48137,Q1046315,nivå,sv,uncertain,nivå means level broadly; game-level sense is plausible but narrow,sonnet
+L589821,Q659,nord,sv,yes,nord denotes north as cardinal direction in Swedish,sonnet
+L1554204,Q100272072,nordafrikan,sv,yes,nordafrikan denotes a person from North Africa,sonnet
+L242066,Q188779,norrman,sv,yes,norrman denotes a Norwegian person,sonnet
+L54454,Q4919820,nyckelord,sv,uncertain,nyckelord is general keyword; concept defines narrow statistical sense,sonnet
+L55344,Q19267375,närhet,sv,yes,närhet directly denotes the state of being near,sonnet
+L1093011,Q10301920,obeslutsamhet,sv,yes,"obeslutsamhet means indecision, exact match",sonnet
+L1551098,Q2396923,odugling,sv,yes,"odugling means a useless, burdensome good-for-nothing",sonnet
+L55895,Q815577,okunnighet,sv,yes,"okunnighet means ignorance, exact match",sonnet
+L1160760,Q170239,onomatopoesi,sv,yes,onomatopoesi is the standard Swedish term for onomatopoeia,sonnet
+L35932,Q770480,orättvisa,sv,yes,Wikidata labels orättvisa directly; concept matches exactly,sonnet
+L59175,Q13649246,osäkerhet,sv,yes,"osäkerhet directly translates as uncertainty, matching the concept",sonnet
+L1093484,Q13649246,otrygghet,sv,no,"otrygghet means insecurity/lack of safety, not epistemic uncertainty",sonnet
+L488278,Q65042243,palestinier,sv,no,"palestinier means person from Palestine, not a racehorse",sonnet
+L1380446,Q131935360,pamp,sv,yes,"pamp denotes a self-important influential person, matching bonze",sonnet
+L63704,Q59479373,paneldeltagare,sv,yes,paneldeltagare is exact match for panelist/panel participant,sonnet
+L240929,Q125576,papyrus,sv,yes,Swedish papyrus denotes the plant material,haiku
+L32657,Q6501349,parkering,sv,uncertain,parkering means both the act and the place; concept is place only,sonnet
+L55390,Q210932,passagerarflygplan,sv,yes,"passagerarflygplan is a commercial passenger aircraft, i.e. airliner",sonnet
+L1208513,Q210932,passagerarplan,sv,yes,"passagerarplan is a commercial passenger aircraft, exact match",sonnet
+L32743,Q217329,piggvar,sv,yes,"piggvar is turbot, a flatfish; exact match",sonnet
+L298358,Q220016,pik,sv,uncertain,pik chiefly means verbal jab in modern Swedish,sonnet
+L32757,Q2083967,plantering,sv,uncertain,plantering covers planting broadly; concept stresses seedling transplanting,sonnet
+L32738,Q11483430,plattfisk,sv,no,plattfisk denotes the fish; concept is a shogi opening,sonnet
+L484128,Q384593,poliskvinna,sv,no,"poliskvinna = female officer, concept is gender-neutral",sonnet
+L56812,Q2105114,portion,sv,uncertain,"Description 'unit of measurement' too sparse; portion is a serving, possibly a unit",sonnet
+L240025,Q49845,post,sv,yes,Post denotes postal system,haiku
+L1085199,Q164142,protektorat,sv,yes,Protektorat denotes protected territory under guardian power,haiku
+L35694,Q113552121,pundare,sv,yes,pundare is Swedish pejorative slang for drug addict/junkie,sonnet
+L294960,Q108636,påskhare,sv,yes,exact match; Wikidata label is Påskhare itself,sonnet
+L483676,Q21196,påskhelg,sv,uncertain,påskhelg = Easter weekend; concept is Easter the feast,sonnet
+L1521651,Q37105,raksträcka,sv,no,"raksträcka is a finite straight road section, not an infinite geometric line",sonnet
+L1561685,Q10649843,rastlöshet,sv,yes,rastlöshet directly means restlessness,sonnet
+L1505818,Q476118,reassurans,sv,yes,reassurans is the standard Swedish term for reinsurance,sonnet
+L579740,Q2795791,rehabilitering,sv,yes,Direct match; Wikidata label is 'rehabilitering',sonnet
+L1417217,Q1473099,reklamation,sv,yes,"reklamation means formal consumer complaint, exact match",sonnet
+L1482738,Q4692,renässans,sv,yes,renässans directly denotes the Renaissance historical epoch,sonnet
+L37817,Q1554231,resurs,sv,yes,resurs directly translates to resource/economic asset,sonnet
+L47100,Q55334191,ripa,sv,no,"ripa denotes the bird ptarmigan, not specifically the heraldic symbol",sonnet
+L1418886,Q1374447,runologi,sv,yes,"runologi directly denotes runology, science of runes",sonnet
+L1521495,Q738538,ryckning,sv,no,"'ryckning' is a general jerk/twitch, not specifically a repetitive neurological tic",sonnet
+L58886,Q133279,rygg,sv,yes,rygg directly denotes the back as body part,sonnet
+L245401,Q133279,ryggtavla,sv,uncertain,"ryggtavla denotes the flat of the back, more specific than back",sonnet
+L32650,Q49542,ryss,sv,yes,"ryss denotes a Russian, an East Slavic person",sonnet
+L1420602,Q15811980,rättskipning,sv,no,"rättskipning is Swedish for administration of justice, not a German term",sonnet
+L32682,Q18809854,rökare,sv,yes,rökare exactly means a person who smokes,sonnet
+L52290,Q877674,röra,sv,no,"Röra noun means mess/commotion, not physical touching",haiku
+L667079,Q23065481,rörlighet,sv,yes,rörlighet core meaning is mobility/ability to move,sonnet
+L667079,Q852220,rörlighet,sv,uncertain,rörlighet is broader than specifically anatomical joint flexibility,sonnet
+L43282,Q20481199,samordnare,sv,yes,"samordnare means coordinator, exact match",sonnet
+L241410,Q18600381,saudier,sv,yes,saudier denotes citizens of Saudi Arabia,sonnet
+L241238,Q124216,schweizare,sv,yes,schweizare denotes a citizen or person of Swiss origin,sonnet
+L54173,Q18560095,segrare,sv,yes,"segrare means winner, exactly matches 'en som vinner'",sonnet
+L33626,Q10843402,simmerska,sv,yes,"""simmerska"" is female swimmer, same concept as swimmer",sonnet
+L1414147,Q10737,självmördare,sv,no,"självmördare is the person, not the act of suicide",sonnet
+L57278,Q82592,sjöfågel,sv,yes,Wikidata uses 'Sjöfåglar' as Swedish label for this concept,sonnet
+L1136361,Q10282840,skallerorm,sv,yes,"skallerorm literally means rattlesnake, exact match",sonnet
+L1092750,Q330828,skevhet,sv,yes,skevhet is the standard Swedish statistical term for skewness,sonnet
+L230371,Q519,skit,sv,yes,Swedish skit denotes the vulgar term for feces,haiku
+L33190,Q104439342,skiva,sv,uncertain,"skiva also means disc, record, board—not food-slice only",sonnet
+L1508132,Q1255864,skoj,sv,uncertain,skoj means fun but also joke/prank; polysemous,sonnet
+L1508132,Q131138,skoj,sv,no,"'skoj' means 'fun/amusement', not a witty verbal joke",sonnet
+L61284,Q48942,skolpojke,sv,no,skolpojke is male-specific; schoolchild is gender-neutral,sonnet
+L1133152,Q180382,skyfall,sv,yes,"skyfall means cloudburst, exact match",sonnet
+L55528,Q2648051,skyldighet,sv,yes,skyldighet means obligation/duty exactly,sonnet
+L242989,Q1649489,skytt,sv,no,"Skytt denotes shooter/marksman, not drink",haiku
+L1525043,Q997267,skärmytsling,sv,yes,skärmytsling clearly denotes a brief military skirmish,sonnet
+L1422952,Q4895508,slagfält,sv,yes,"slagfält means battlefield, a place where battle occurs",sonnet
+L1506357,Q160070,slarv,sv,no,"slarv is colloquial carelessness, not the legal term negligence",sonnet
+L242315,Q17996656,slickepott,sv,uncertain,slickepott is rubber bowl-scraper; degskrapa may denote rigid bench scraper,sonnet
+L242315,Q184848,slickepott,sv,no,"slickepott means kitchen spatula, not index finger",sonnet
+L58787,Q12758374,släkting,sv,yes,släkting directly denotes a family relative,sonnet
+L56902,Q630800,slöfock,sv,no,Slöfock is native Swedish; concept is specifically an English-language term,sonnet
+L32309,Q1132167,smak,sv,no,"smak means taste/flavor, not discernment as an activity",sonnet
+L586350,Q166231,smitta,sv,no,"'smitta' is contagion/transmission, not infection (infektion) itself",sonnet
+L1494896,Q2230888,smälek,sv,uncertain,"smälek means ignominy/shame, overlaps but differs from disrepute",sonnet
+L1400879,Q36940,sockerrör,sv,yes,sockerrör is the Swedish term for sugarcane,sonnet
+L1133155,Q193788,solsken,sv,no,"solsken means sunshine (weather phenomenon), not sunlight (radiation)",sonnet
+L33392,Q160894,spanjor,sv,yes,"spanjor is the singular of spanjorer, Spaniards",sonnet
+L1012773,Q185759,spann,sv,uncertain,"spann primarily means bucket in modern Swedish, span sense archaic",sonnet
+L1012773,Q327245,spann,sv,no,"spann means bucket/pail, not team",sonnet
+L1012773,Q47107,spann,sv,yes,spann is standard Swedish for bucket/pail,sonnet
+L32562,Q35197,spegel,sv,yes,"spegel means mirror, a reflective surface",sonnet
+L1561456,Q12912091,spelfilm,sv,yes,spelfilm is the Swedish term for fiction film,sonnet
+L1422044,Q718943,spoling,sv,uncertain,spoling as newbie/rookie is marginal slang; concept match unclear,sonnet
+L412466,Q65862755,springa,sv,no,"springa means any narrow gap/slit, not specifically a crack in rock",sonnet
+L32131,Q2732142,statistiker,sv,yes,"Statistiker is Swedish for statistician, label confirms exact match",sonnet
+L1410902,Q273610,storsäljare,sv,uncertain,storsäljare applies beyond books; bestseller is book-specific,sonnet
+L498601,Q3421342,strimla,sv,no,"strimla means a thin strip of material, not a colored stripe",sonnet
+L616596,Q16364,strupe,sv,yes,"strupe means throat, the anterior neck region",sonnet
+L475982,Q326426,sträng,sv,yes,sträng as noun denotes musical instrument string,sonnet
+L1403692,Q1537445,stuveriarbetare,sv,yes,stuveriarbetare denotes a stevedore who loads/unloads ships,sonnet
+L1551879,Q4389726,stygn,sv,yes,stygn denotes a stitch in sewing or embroidery,sonnet
+L56676,Q193219,subvention,sv,yes,subvention means financial subsidy exactly,sonnet
+L245352,Q3976616,sudanes,sv,yes,sudanes clearly denotes a Sudanese person,sonnet
+L35801,Q15942027,sugga,sv,yes,sugga is the Swedish word for adult female pig,sonnet
+L492678,Q667,syd,sv,yes,syd denotes south as compass direction,sonnet
+L32728,Q30263,säl,sv,no,"säl denotes seals only, not all Pinnipedia",sonnet
+L708436,Q3734963,sälta,sv,yes,"'sälta' means saltiness, a basic taste",sonnet
+L32603,Q177220,sångerska,sv,yes,"sångerska is female singer, same concept",sonnet
+L32446,Q4544684,sökning,sv,uncertain,sökning is general search/query; description implies organized rescue-type search,sonnet
+L475984,Q2728730,tacksamhet,sv,yes,tacksamhet is the direct Swedish word for gratitude,sonnet
+L1414966,Q707133,taiwanes,sv,yes,"taiwanes means a Taiwanese person, exact match",sonnet
+L242269,Q152833,takränna,sv,yes,Takränna is Swedish for roof/rain gutter,haiku
+L1550089,Q673083,tandköttsinflammation,sv,yes,tandköttsinflammation literally means gum inflammation = gingivitis,sonnet
+L33389,Q29099,tax,sv,yes,tax is the Swedish word for dachshund,sonnet
+L1003472,Q268547,tegelpanna,sv,yes,"tegelpanna means roof tile, tile designed to keep out rain",sonnet
+L33179,Q1522225,telegram,sv,yes,telegram is a telegraphically transmitted written message; exact match,sonnet
+L1414900,Q2408569,thailändare,sv,yes,"thailändare means a Thai person, exact match",sonnet
+L246200,Q987168,tiggarmunk,sv,no,"tiggarmunk denotes a mendicant friar/monk, not any mendicant",sonnet
+L47307,Q16321220,tillgång,sv,no,"tillgång means asset/access, not this German legal concept",sonnet
+L47307,Q46737,tillgång,sv,yes,tillgång denotes an economic asset exactly,sonnet
+L247950,Q5179193,tillträde,sv,no,"tillträde means access/admission generally, not a cover charge",sonnet
+L37824,Q13235160,tillverkare,sv,yes,tillverkare exactly denotes manufacturer,sonnet
+L60459,Q7645515,tilläggsavgift,sv,no,"'tilläggsavgift' is a general surcharge, not this specific UK sanction",sonnet
+L35506,Q156851,tjockis,sv,no,"'tjockis' is slang for a fat person, not the Sedum plant genus",sonnet
+L241115,Q162991,tjuvstart,sv,yes,tjuvstart exactly matches false start in competition rules,sonnet
+L60103,Q1416417,toppstudent,sv,no,"'toppstudent' means top student generally, not specifically valedictorian",sonnet
+L1417601,Q160695,torso,sv,yes,torso denotes the human trunk in Swedish,sonnet
+L1494493,Q151501,trams,sv,uncertain,description 'idiom' is too sparse to confirm concept match,sonnet
+L1549857,Q355057,trevnad,sv,yes,"trevnad denotes pleasantness and warmth, matching cosiness",sonnet
+L1553452,Q34255,tristess,sv,yes,"tristess denotes boredom, matching the label exactly",sonnet
+L55255,Q44356,tsarinna,sv,no,tsarinna is tsarina (female); concept denotes tsar (male title),sonnet
+L54285,Q281678,tungviktare,sv,no,tungviktare is a person; concept describes a weight class,sonnet
+L1414894,Q2459831,tunisier,sv,yes,"tunisier means a Tunisian person, exact match",sonnet
+L240281,Q35831,tupplur,sv,no,"tupplur means nap, not sleep in general",sonnet
+L247966,Q25932049,tusende,sv,yes,"tusende = thousandth, exact ordinal match",sonnet
+L1524201,Q2122914,tvärsnitt,sv,yes,tvärsnitt clearly denotes a cross-sectional slice,sonnet
+L708174,Q852100,tvätt,sv,yes,"tvätt means laundry/washing of textiles, exact match",sonnet
+L33475,Q42884,tysk,sv,yes,"""tysk"" as noun means a German person",sonnet
+L619343,Q193607,tönt,sv,yes,Swedish slang tönt means idiot/stupid person,sonnet
+L1001757,Q44806,ukrainare,sv,yes,ukrainare denotes Ukrainians as an ethnic group,sonnet
+L1413295,Q974144,undervisare,sv,yes,"undervisare means instructor/teacher, fits educator",sonnet
+L485295,Q121221,undulat,sv,yes,'undulat' is the Swedish word for budgerigar,sonnet
+L1551874,Q188681,uppståndelse,sv,uncertain,'uppståndelse' also commonly means commotion/fuss in modern Swedish,sonnet
+L58786,Q40735,ursprung,sv,no,'ursprung' means origin generally; coordinate origin is 'origo',sonnet
+L55813,Q545861,utfrågning,sv,uncertain,utfrågning is broader than formal legal hearing,sonnet
+L295592,Q959782,utgrävning,sv,uncertain,"Utgrävning means any excavation, not specifically archaeological",haiku
+L1085604,Q219416,uthållighet,sv,no,"uthållighet means endurance/stamina, not sustainability",sonnet
+L1495396,Q10860242,utkastare,sv,yes,"utkastare literally means bouncer, exact match",sonnet
+L239776,Q2572947,utkik,sv,yes,Swedish utkik denotes a ship's lookout/crew member,haiku
+L589809,Q1418914,vaksamhet,sv,yes,vaksamhet matches vigilance as sustained attentiveness,sonnet
+L582958,Q12014035,vandring,sv,yes,Vandring denotes hiking as an outdoor walking activity,sonnet
+L244708,Q50701,variabel,sv,yes,Swedish 'variabel' denotes mathematical/programming variable,haiku
+L241196,Q9199,vietnames,sv,no,"vietnames denotes a Vietnamese person, not the language",sonnet
+L244835,Q10978,vindruva,sv,yes,"vindruva means grape, the fruit of Vitis",sonnet
+L1492765,Q191493,vinkypare,sv,uncertain,"vinkypare means wine waiter, not exactly trained wine specialist",sonnet
+L412857,Q26911,vinning,sv,no,"'vinning' means general gain/advantage, not specifically the accounting term",sonnet
+L1417980,Q2330647,visionär,sv,yes,visionär means one who envisions the future,sonnet
+L486310,Q464980,visning,sv,no,"visning = showing/viewing, not organised exhibition",sonnet
+L479890,Q188507,vistelse,sv,no,"vistelse = stay/sojourn, not apartment",sonnet
+L244186,Q60738844,vithet,sv,no,"vithet means whiteness the quality, not a sociological theory",sonnet
+L1400430,Q1489271,vältalighet,sv,uncertain,"label matches eloquence but description says rhetoric, broader concept",sonnet
+L32433,Q1495428,värdinna,sv,yes,"värdinna is female host, same core concept",sonnet
+L74469,Q49447,världsbild,sv,yes,världsbild denotes one's conception/picture of the world,sonnet
+L708249,Q466,webb,sv,yes,'webb' in Swedish denotes the World Wide Web,sonnet
+L486468,Q637816,yrkesskada,sv,no,yrkesskada = work injury; concept is occupational disease,sonnet
+L1405790,Q8060,zigenerska,sv,no,"zigenerska is one female individual, not the ethnic group",sonnet
+L55250,Q625369,älskarinna,sv,yes,älskarinna denotes exactly a mistress of a married man,sonnet
+L1563515,Q47107,ämbar,sv,yes,"Ämbar is a Swedish word for bucket, cylindrical liquid container",sonnet
+L491061,Q1057,ämnesomsättning,sv,yes,ämnesomsättning is the standard Swedish term for metabolism,sonnet
+L1379722,Q337349,ärlighet,sv,yes,"ärlighet directly means honesty, a moral quality",sonnet
+L47752,Q1358789,åldring,sv,yes,"åldring = elderly/old person, exact match",sonnet
+L59007,Q473432,återblick,sv,uncertain,"återblick means retrospective broadly, not exclusively narrative flashback",sonnet
+L43286,Q1345473,åtgärd,sv,no,"åtgärd means measure/action, not sanction specifically",sonnet
+L1093017,Q81050,åtta,sv,no,"åtta primarily denotes the number eight, not rowing boat",sonnet
+L54443,Q1758746,ögonblicksbild,sv,yes,"ögonblicksbild means snapshot, matching spontaneous photography",sonnet
+L1092970,Q19816620,ömhet,sv,yes,"ömhet denotes warm, compassionate tenderness",sonnet
+L1092970,Q81938,ömhet,sv,no,"ömhet means tenderness/affection, not pain",sonnet
+L52371,Q1683540,öppenhet,sv,uncertain,öppenhet is general openness; concept is narrowly philosophical,sonnet
+L52371,Q19357492,öppenhet,sv,uncertain,"öppenhet means openness broadly, frankness is just one sense",sonnet
+L1504499,Q3621144,örnunge,sv,no,"örnunge denotes a young eagle bird, not a heraldic figure",sonnet
+L32419,Q237534,österrikare,sv,yes,österrikare denotes a person from Austria,sonnet
+L1082889,Q5958765,överkänslighet,sv,uncertain,överkänslighet is broader than immunological hypersensitivity alone,sonnet
+L1410956,Q6136036,överlevare,sv,yes,överlevare is the exact Swedish word for survivor,sonnet
+L1000724,Q25932396,överlägsenhet,sv,yes,"överlägsenhet directly means superiority, the quality described",sonnet
