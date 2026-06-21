@@ -208,6 +208,25 @@ verification) are all validated on real data.
 - **High tier hugs 95%.** Pooled n=470 gives 95.9% (CI ~[93.5%, 97.5%]) — a point estimate at
   the bar, not clear of it. 2-of-3 voting or the human review queue is needed to be safely above.
 
+## P887 reference item (the heuristic)
+
+Every written statement carries `based on heuristic (P887) → <item>` + `retrieved (P813)`, never
+bare. Wikidata has an intentional "inferred from X" family of heuristic items (all `P31 →
+heuristic Q201413`: e.g. Q69652283 inferred from title, Q84423633 inferred from label), but
+**none fits P5137 cluster-propagation** — the closest, **Q118436369** "inferred from semantic
+correspondence", is scoped to *etymology/derivation* ("derivation statements on lexemes where
+the etymology can be inferred from a matching sense"), not sense→item linking. Decision
+(2026-06): **create a purpose-made item** rather than misuse an existing one —
+
+- label: **inferred from translation** · alias: *inferred from sense-aligned translation cluster*
+- description: *heuristic for sourcing Wikidata statements — a lexeme sense's item (P5137)
+  propagated from another lexeme in a sense-aligned translation cluster (WikDict/DBnary) that
+  already carries it*
+- `instance of (P31) → heuristic (Q201413)`
+
+Spec + QuickStatements are in `write.py`; pin the new Q-id to `HEURISTIC_ITEM` (the writer
+refuses `--write` until then). Creating the item is itself part of the BRFA disclosure.
+
 ## Reproduce
 
 ```bash

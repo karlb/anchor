@@ -24,10 +24,27 @@ import sqlite3
 
 import config
 
-# P887 "based on heuristic" takes an item identifying the heuristic. Set this to
-# the Wikidata item describing this method before any live write. Placeholder is
-# intentionally invalid so a dry-run payload is visibly not-yet-submittable.
-HEURISTIC_ITEM = "Q-TODO-heuristic-item"  # TODO: pin to the inference-method item
+# P887 "based on heuristic" takes an item identifying the heuristic. No existing
+# "inferred from X" item fits P5137 cluster-propagation (closest, Q118436369
+# "inferred from semantic correspondence", is scoped to etymology/derivation), so
+# the plan is to CREATE a purpose-made item with this spec, then pin its Q-id here:
+#
+#   label (en):  inferred from translation
+#   description: heuristic for sourcing Wikidata statements — a lexeme sense's item
+#                (P5137) propagated from another lexeme in a sense-aligned
+#                translation cluster (WikDict/DBnary) that already carries it
+#   alias (en):  inferred from sense-aligned translation cluster
+#   statement:   instance of (P31) -> heuristic (Q201413)
+#
+# QuickStatements to create it (run on your account):
+#   CREATE
+#   LAST  Len  "inferred from translation"
+#   LAST  Den  "heuristic for sourcing Wikidata statements: a lexeme sense's item (P5137) propagated from another lexeme in a sense-aligned translation cluster that already carries it"
+#   LAST  Aen  "inferred from sense-aligned translation cluster"
+#   LAST  P31  Q201413
+#
+# Placeholder is intentionally invalid so dry-run payloads are visibly not-submittable.
+HEURISTIC_ITEM = "Q-TODO-heuristic-item"  # TODO: replace with the created item's Q-id
 
 
 def build_statement(anchor_qid, today):
