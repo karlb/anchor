@@ -231,6 +231,14 @@ calls reviewers (and BRFA examiners) keep hitting:
   "Archaic" is a separate optional register annotation, never a reason to withhold the link.
 - **"Common noun" means the grammatical class (Gattungsname), not "frequent word."** It excludes
   proper nouns, not rare ones. *Aar* is in scope.
+- **Abstract / relational concepts are out of the concrete-noun pilot scope → abstain.** If the
+  anchor is a quality, relation, role, or generic umbrella rather than a concrete thing, decline
+  for the pilot. *plus* → Q24050179 "advantage" (P31 *general term*, P279 *relative quality*) is
+  abstract and loosely denoted (a "general term" vs the colloquial "a plus") → reject. This is
+  gate D's known limit: "anchor has *any* P31" admits abstract typed classes. The fix is the
+  abstract-class **P31/P279 blocklist** (reuse makesense's ~76+9-entry exclusion lists) — a
+  *principled* filter that enforces the pilot scope, unlike the demonym→language filter (which
+  measurement showed is harmful).
 - **Ignore plurality.** P5137 is on the sense, not a form. The lemma is conventionally singular;
   an item labeled with a plural (e.g. *Asiaten* / "Asian people") is just how collective concepts
   are labeled — not a mismatch. *Asiat* → Q4058325 ("Asian people") is fine.
