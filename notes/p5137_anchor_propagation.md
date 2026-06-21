@@ -243,6 +243,23 @@ calls reviewers (and BRFA examiners) keep hitting:
   abstract and loosely denoted (a "general term" vs the colloquial "a plus") → reject. This is
   gate D's known limit: "anchor has *any* P31" admits abstract typed classes. The fix is the
   abstract-class **P31/P279 blocklist** — now built as `gates.py` (see below).
+  - **Refinement: precise count/event/object nouns approve; fuzzy quality/trait nouns reject.**
+    "Abstract" is not the test on its own — *fuzzy-boundary* is. A non-physical noun whose
+    denotation is a **precise, countable concept** is fine: *helgonförklaring* → Q51621
+    (canonization, an act/event), *fackterm* → Q12812139 (specialized term, a metalinguistic
+    count noun) — both exact, both approve. What we reject is the **quality/trait** with edges
+    that can't be pinned to the item: *ihärdighet* → Q21168708 "determination" (perseverance /
+    tenacity / diligence all blur — the runner-up anchor is literally *flit*/diligence), same
+    class as *plus*/*pro* → advantage. Process nouns that are *also* near-synonyms (e.g.
+    *efterforskning* → utredning/inquiry) sit on the seam → abstain.
+- **Register gate (pejorative / slang / vulgar).** P5137 links a sense to the concept it denotes,
+  and register is normally a property of the *word*, not the concept — so it is *usually* not a
+  reason to reject. The exception: when the anchor item is itself **modelled as register-marked**
+  (`P31 → Q545779` *pejorative/skällsord*, or its description says slang/derogatory/vulgar), the
+  target must share that register, else abstain. A neutral word linked to a pejorative-framed item
+  (or vice-versa) is a real mismatch. Confirmed clean both ways: *dumskalle* → Q193607 "idiot"
+  (P31 *pejorative*) and *babbe* → Q356367 "blatte" (pejorative for a person) — target and anchor
+  are both insults, so the link is *strengthened*, not weakened.
 - **Ignore plurality.** P5137 is on the sense, not a form. The lemma is conventionally singular;
   an item labeled with a plural (e.g. *Asiaten* / "Asian people") is just how collective concepts
   are labeled — not a mismatch. *Asiat* → Q4058325 ("Asian people") is fine.
