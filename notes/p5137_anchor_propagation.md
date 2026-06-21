@@ -234,6 +234,15 @@ calls reviewers (and BRFA examiners) keep hitting:
 - **Count vs collective** (one *Asiat* vs the *Asian people* group) is a known soft spot in
   Wikidata's demonym modelling. The bot inherits the existing convention; it does not try to fix
   it, and that is not a reason to abstain.
+- **Biological common names → taxa.** Anchor at the taxon *rank the vernacular denotes* (cactus =
+  family, dog = species, oak = genus) — never narrower than the word implies. Common-noun sense →
+  taxon is standard practice; the taxon doubles as the group of organisms and usually records the
+  word back via P1843 (taxon common name), so the link is reciprocal. Prefer a "group of organisms
+  known by a common name" item only if one *exists* (it does for *eagle* → Q2092297; it does **not**
+  for *cactus*, so the family Q14560 is the only and correct anchor). The real risk is a
+  **wrong-organism homonym**, not rank-vagueness: "Cactus" labels the plant family (Q14560 ✓), a
+  former plant genus, *and* a crustacean genus — the verifier must confirm the right organism at
+  the right rank. *Kaktus* → Q14560 (family Cactaceae) is correct.
 
 ## P887 reference item (the heuristic)
 
