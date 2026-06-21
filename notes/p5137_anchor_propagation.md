@@ -179,9 +179,19 @@ That ~51% "yes" is far below the **85%** "yes" on the held-out gate-ABD set — 
 7,400 pool → **~3,800 verifier-approved writes** — fewer, but with the bad ~half pruned, so
 cleaner. The verifier-"yes" precision on fresh candidates isn't directly measurable (no ground
 truth), but the rejections being right is strong indirect evidence it's high. Per-case verdicts:
-`notes/runs/high_tier_verdicts.csv`. A cheap structural win worth adding: a **demonym→language
-pre-filter** (drop anchors that are P31 "language" when the lemma is a feminine nationality
-noun) would remove the single biggest error class before the verifier even runs.
+`notes/runs/high_tier_verdicts.csv`.
+
+**Demonym→language pre-filter — investigated, NOT viable (negative result).** Tempting to drop
+anchors that are P31 a language (Q34770/Q33742/Q1288568/…) since the demonym errors cluster
+there. But measurement kills it: in held-out A&B&D, language anchors hit **93.1%** (n=29) vs
+84.8% non-language — *higher*, because held-out language links are legit language-name nouns
+(*Latein*→Latin). The candidate-stream language anchors are the opposite population (feminine
+demonyms *Albanerin/Chinesin*→language, never grounded). Same structural feature, opposite
+correctness — so a structural filter would drop high-precision legit cases (and in the 689
+candidates it would drop the one verifier-"yes" case, *Lateinisch*→Q397 Latin, while the
+verifier correctly kept it and dropped the other 31). The demonym-vs-language-name distinction
+is **semantic**, only the verifier can make it (31/32 correct here). Don't pre-filter on anchor
+class; let the verifier judge from the description.
 
 ## Conclusion
 
