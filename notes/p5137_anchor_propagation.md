@@ -223,6 +223,12 @@ calls reviewers (and BRFA examiners) keep hitting:
   verifier can pass these on a surface-plausible read ("both are dim light") — subtle superset/
   subset mismatches are where **human review** adds the most value. You need not find a better
   item; the bot proposed the cluster anchor, the anchor is the wrong granularity, so abstain.
+  - **Tell: verifier hedge-words flag a near-synonym.** When the verifier's reason (or the item's
+    description) reaches for *"substantially overlap"*, *"broadly"*, *"most commonly"*, *"similar
+    to"* instead of asserting plain denotation, inspect for a superset/subset mismatch — it usually
+    is one. *retiree* → Q1749879 "pensioner" (verifier: "substantially overlap"; a retiree need not
+    draw a pension, a pensioner need not be retired) → reject. Contrast a clean accept whose reason
+    is unhedged ("X *is* / *means* / *denotes* Y").
 
 - **Frequency / register is out of scope — archaic common nouns are valid targets.** Wikidata's
   lexicon is comprehensive (archaic, poetic, dialectal, obsolete all belong). If the sense
