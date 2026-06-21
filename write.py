@@ -25,9 +25,7 @@ import sqlite3
 import config
 
 # P887 "based on heuristic" value: the purpose-made item "inferred from translation"
-# (label/description/alias as specified; created 2026-06 on the operator account).
-# NOTE: still add `instance of (P31) -> heuristic (Q201413)` to this item, or P887's
-# value-type constraint will flag it.
+# (created 2026-06 on the operator account; P31 -> heuristic Q201413, constraint-clean).
 HEURISTIC_ITEM = "Q140308675"
 
 
