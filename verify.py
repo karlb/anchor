@@ -18,9 +18,11 @@ Run after fetch_items.py (defaults to a 40-candidate sample):
     uv run verify.py                       # sample the highest-support clean candidates
     uv run verify.py --senseless-only      # only candidates grounding senseless lexemes
     uv run verify.py --all --batch 8       # full run (costs add up — see note above)
+    uv run verify.py --gate ABD --all --model sonnet --csv notes/runs/high_tier_verdicts.csv
 """
 
 import argparse
+import csv
 import json
 import subprocess
 import sqlite3
@@ -49,13 +51,24 @@ CREATE TABLE IF NOT EXISTS verdict(
 
 
 def candidates(args):
-    """Clean candidates joined to the anchor Q's CC0 label/description."""
+    """Clean candidates joined to the anchor Q's CC0 label/description.
+
+    --gate adds structural gates matching measure_lift/ablation: A (>=2 anchors),
+    B (monosemous target, n_senses==1), D (concrete anchor with a P31). ABD is the
+    measured ~95.9%-precision High tier.
+    """
     cn = sqlite3.connect(config.CANDIDATES)
     cn.execute("ATTACH DATABASE ? AS it", [config.ITEMS])
+    gate = args.gate.upper()
     where = "c.homograph_n_lid = 1 AND NOT c.cross_pivot_conflict AND c.support_clusters >= ?"
-    params = [args.min_support]
+    params = [max(args.min_support, 2 if "A" in gate else args.min_support)]
     if args.senseless_only:
         where += " AND c.target_n_senses = 0"
+    if "B" in gate:
+        where += " AND c.target_n_senses = 1"
+    if "D" in gate:
+        where += (" AND EXISTS(SELECT 1 FROM it.item_type t "
+                  "WHERE t.qid = c.anchor_qid AND t.prop = 'P31')")
     rows = cn.execute(
         f"""
         SELECT c.target_lid, c.target_lang, c.target_lemma, c.anchor_qid, c.support_clusters,
@@ -120,6 +133,9 @@ def main():
     ap.add_argument("--model", default="haiku")
     ap.add_argument("--min-support", type=int, default=1)
     ap.add_argument("--senseless-only", action="store_true")
+    ap.add_argument("--gate", default="", help="structural gate filter, e.g. ABD (the High tier)")
+    ap.add_argument("--csv", default="", help="also write the full verdict table to this CSV "
+                    "(committed audit trail; data/verify.sqlite3 is gitignored)")
     args = ap.parse_args()
 
     out = sqlite3.connect(config.VERIFY)
@@ -153,6 +169,16 @@ def main():
     print("\nverdict distribution:")
     for v, n in out.execute("SELECT verdict, count(*) FROM verdict GROUP BY verdict ORDER BY 2 DESC"):
         print(f"  {v:<12} {n:,}")
+
+    if args.csv:
+        cols = ["target_lid", "anchor_qid", "target_lemma", "target_lang",
+                "verdict", "reason", "model"]
+        with open(args.csv, "w", newline="") as f:
+            w = csv.writer(f)
+            w.writerow(cols)
+            w.writerows(out.execute(
+                f"SELECT {','.join(cols)} FROM verdict ORDER BY target_lang, target_lemma"))
+        print(f"\nwrote audit CSV -> {args.csv}")
     out.close()
 
 

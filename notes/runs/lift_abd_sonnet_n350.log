@@ -1,0 +1,57 @@
+gate=ABD; verifiable decided cases: 10,323; sampling 350 (batch=8, model=sonnet)
+baseline structural hit-rate in sample: 86.0% (301/350)
+  verified 8/350
+  verified 16/350
+  verified 24/350
+  verified 32/350
+  verified 40/350
+  verified 48/350
+  verified 56/350
+  verified 64/350
+  verified 72/350
+  verified 80/350
+  verified 88/350
+  verified 96/350
+  verified 104/350
+  verified 112/350
+  verified 120/350
+  verified 128/350
+  verified 136/350
+  verified 144/350
+  verified 152/350
+  verified 160/350
+  verified 168/350
+  verified 176/350
+  verified 184/350
+  verified 192/350
+  verified 200/350
+  verified 208/350
+  verified 216/350
+  verified 224/350
+  verified 232/350
+  verified 240/350
+  verified 248/350
+  verified 256/350
+  verified 264/350
+  verified 272/350
+  verified 280/350
+  verified 288/350
+  verified 296/350
+  verified 304/350
+  verified 312/350
+  verified 320/350
+  verified 328/350
+  verified 336/350
+  verified 344/350
+  verified 350/350
+
+verdict x structural truth:
+  verdict          n  hits  precision
+  yes            296   283      95.6%
+  uncertain       20     9      45.0%
+  no              34     9      26.5%
+
+VERIFIER LIFT:
+  write-everything precision : 86.0%  (baseline)
+  write-only-'yes' precision : 95.6%  (+9.6 pts)
+  true hits kept (recall)    : 94.0%  (283/301 structural hits survive the verifier)
