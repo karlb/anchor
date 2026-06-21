@@ -1,6 +1,6 @@
 == Proposal: add P5137 (item for this sense) to lexemes by anchor-propagation across translation clusters ==
 
-I'd like feedback before filing a BRFA on a method for adding {{P|5137}} ("item for this sense") statements to de/en/sv noun lexemes that currently lack a grounded sense. The pilot has been running as per-edit, human-approved [[Wikidata:Assisted_editing|assisted edits]] on my own account; I want to socialise the method and the licence rationale here first.
+I'd like feedback before filing a BRFA on a method for adding {{P|5137}} ("item for this sense") statements to de/en/sv noun lexemes that currently lack a grounded sense. The pilot has been running as per-edit, human-approved [[Wikidata:Assisted_editing|assisted edits]] on my own account; I'd like to lay out the method and the licence rationale here for feedback before scaling up.
 
 === The idea ===
 
