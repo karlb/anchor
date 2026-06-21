@@ -1,0 +1,71 @@
+== Proposal: add P5137 (item for this sense) to lexemes by anchor-propagation across translation clusters ==
+
+I'd like feedback before filing a BRFA on a method for adding {{P|5137}} ("item for this sense") statements to de/en/sv noun lexemes that currently lack a grounded sense. The pilot has been running as per-edit, human-approved [[Wikidata:Assisted_editing|assisted edits]] on my own account; I want to socialise the method and the licence rationale here first.
+
+=== The idea ===
+
+Many lexemes have forms but no ''meaning'' (no sense linked to a concept). P5137 is the established route to fix that. Instead of inventing a concept, I '''propagate an existing one''':
+
+# Take a translation cluster from WikDict/DBnary (a set of lemmas that translate one another, grouped by a shared sense key — not by gloss text).
+# Find a cluster member whose Wikidata lexeme is '''already''' grounded via P5137 → some Q-item. Call that Q the '''anchor'''.
+# Propose adding the ''same'' P5137 → Q to the other cluster members that lack it.
+# An LLM does a single constrained '''yes/no''' check: "does this lemma denote ''this concept''?", judged '''only against the anchor Q-item's own label + description''' (Wikidata→Wikidata).
+
+So the LLM never authors a concept or any text — its output is a verdict, and the statement written is a single bare P5137 link with a reference.
+
+=== Licence rationale (this is the important part) ===
+
+WikDict is built on DBnary, which is CC-BY-SA. Wikidata is CC0. The boundary is kept clean by '''what is used as evidence''':
+
+* DBnary contributes only '''structure''' (which lemmas cluster — facts) and '''lemmas''' (facts). Both are uncreative facts, copyable to CC0 (cf. WMF Wikilegal on lexicographical data).
+* Verification is done against the '''anchor Q-item's own CC0 label and description''' — never the DBnary/Wiktionary gloss. No CC-BY-SA expression is ever read by the verifier or written to Wikidata.
+* The output is a single re-verified bare P5137 link. The translation correspondence is consumed as ''evidence'', never republished — '''no translation property, no gloss text is written'''.
+* As a guardrail against any EU sui-generis "extraction of a substantial part" concern, pilot/bulk volumes are kept modest and reviewed.
+
+This is deliberately ''not'' a bulk import of a translation dictionary; it's per-statement grounding verified against CC0 data.
+
+=== Precision (measured, held-out) ===
+
+I measured precision by hiding a known P5137→Q and checking recovery (leave-one-out), stratified to de-bias the cognate cases:
+
+* '''Structure alone caps ~81%''' honestly (on the non-cognate subset, with ≥2 agreeing anchors ∩ monosemous ∩ concrete anchor). So a structural filter is not enough on its own.
+* '''The LLM verifier lifts this to 95.9%''' on the "High tier" (clean cluster ∩ ≥2 agreeing anchors ∩ concrete anchor with P31), pooled n=470, recall 94%, Wilson CI ≈ [93.5%, 97.5%].
+* Honesty check on ''fresh'' candidates (the actual writes, which lack ground truth to measure against): of 689 monosemous High-tier candidates the verifier accepted '''51%''', rejected 33%, was uncertain 16%. The rejections are correct catches — e.g. a feminine demonym wrongly clustered onto a ''language'' item rather than the ''people'' concept. The fresh stream is harder than held-out, and the verifier is load-bearing exactly there.
+
+The High tier is ~7,400 candidate statements across de/en/sv; applying the measured 51% accept-rate, ~3,800 would be proposed for human review.
+
+=== What gets ''declined'' (reviewer discipline) ===
+
+P5137 asserts the sense ''denotes that exact concept'', so the bar is equality, not similarity. Worked rules I apply (and which a reviewer can audit):
+
+* '''Near-synonym / hypernym / hyponym → abstain.''' e.g. ''Zwielicht'' (dim light, possible with the sun up) → "twilight" (defined by the sun being ''below'' the horizon) is a superset mismatch → declined.
+* '''Abstract qualities/traits → out of the concrete-noun pilot''' (e.g. "advantage", "determination"), while precise non-physical count/event nouns are fine (e.g. "canonization", "specialized term").
+* '''Register gate''': if the anchor item is itself modelled as pejorative/slang, the target must share that register.
+* '''Demonyms''': the anchor must be the ''people'' concept, never the language or the continent.
+* '''Biological common names''' anchor at the taxon rank the word denotes (cactus = family, dog = species).
+
+=== Reference scheme ===
+
+Every statement carries a mandatory reference — never bare:
+* {{P|887}} (based on heuristic) → [[Q140308675]] "inferred from translation" (a purpose-made heuristic item; {{P|31}} → heuristic)
+* {{P|813}} (retrieved) → date
+
+The edit summary discloses the inferred-from-translation + LLM-verified + human-approved nature of each edit. No lineage that would republish DBnary's structure (source languages/translations) is recorded — that stays off-wiki.
+
+=== Live examples (assisted edits, on my account) ===
+
+A first per-edit-approved batch is live, each hand-checked against the anchor's CC0 description:
+* ''Aar'' (de) → [[Q2092297]] (eagle) — [[Special:Diff/2508825516]]
+* ''Beutelwolf'' (de) → [[Q123102]] (thylacine) — [[Special:Diff/2508826923]]
+* ''Blattlaus'' (de) → [[Q183350]] (aphid) — [[Special:Diff/2508826930]]
+* ''Asiat''/''Asiatin'' (de) → [[Q4058325]] (Asian people) — same neutral people-concept for both gendered forms
+
+=== What I'm asking ===
+
+# Is the CC0 licence boundary (verify against the anchor's own CC0 label/description; never the DBnary gloss; write only a bare referenced P5137) sound as described?
+# Is the P887 → [[Q140308675]] reference scheme the right way to disclose the heuristic, or is a different reference preferred?
+# Any objection to me filing a BRFA for a 50–250-edit trial on the High tier, monosemous targets first (adding to an existing sense; sense-''creation'' deferred pending a gloss-source decision)?
+
+Thanks — happy to share the full method write-up, the precision harness, and per-case verdicts.
+
+~~~~
