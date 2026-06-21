@@ -213,6 +213,17 @@ verification) are all validated on real data.
 P5137 links a **sense to a concept** — it is form-, frequency-, and gender-independent. The
 calls reviewers (and BRFA examiners) keep hitting:
 
+- **Near-synonym / partial overlap → ABSTAIN (the most important rule).** P5137 asserts the sense
+  *denotes that exact concept*. If the lexeme's sense is **broader (hypernym), narrower (hyponym),
+  or merely related** — not equal — decline; a loose link asserts a false equivalence and is worse
+  than no link. *Zwielicht* (dim/ambiguous light, can occur with the sun above the horizon) → 
+  Q164160 ("twilight", *defined* by the sun being below the horizon) is a **superset** mismatch →
+  reject. This is the *steam/vapor*, *novella/novel* class the strict precision deliberately
+  scores as a miss; declining it is exactly the discipline that lifts precision to ~96%. The
+  verifier can pass these on a surface-plausible read ("both are dim light") — subtle superset/
+  subset mismatches are where **human review** adds the most value. You need not find a better
+  item; the bot proposed the cluster anchor, the anchor is the wrong granularity, so abstain.
+
 - **Frequency / register is out of scope — archaic common nouns are valid targets.** Wikidata's
   lexicon is comprehensive (archaic, poetic, dialectal, obsolete all belong). If the sense
   denotes the concept, link it. *Aar* → Q2092297 (eagle) is correct even though *Aar* is archaic
