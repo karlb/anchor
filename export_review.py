@@ -46,16 +46,29 @@ def main():
         ORDER BY c.support_clusters DESC, c.target_lang, c.target_lemma
     """).fetchall()
 
-    def cell(lang, label, desc):
-        l = label or ""
-        d = desc or ""
-        return f"<b>{html.escape(l)}</b><br><span class=d>{html.escape(d)}</span>"
+    def pick(lang, vals):
+        """First non-empty value, preferring the target language then en/de/sv.
+        Returns (text, shown_lang) so a fallback language can be tagged."""
+        order = [lang] + [x for x in ("en", "de", "sv") if x != lang]
+        for code in order:
+            if vals.get(code):
+                return vals[code], code
+        return "", None
+
+    def cell(lang, labels, descs):
+        l, llang = pick(lang, labels)
+        d, dlang = pick(lang, descs)
+        tag = lambda c: f" <span class=fl>[{c}]</span>" if c and c != lang else ""
+        lab = f"<b>{html.escape(l)}</b>{tag(llang)}" if l else "<span class=d>(no label)</span>"
+        dsc = f"<span class=d>{html.escape(d)}{tag(dlang)}</span>" if d else ""
+        return f"{lab}<br>{dsc}"
 
     tr = []
     for (lang, lemma, lid, qid, support, nsenses,
          lde, len_, lsv, dde, den, dsv, verdict, reason) in rows:
-        labels = {"de": (lde, dde), "en": (len_, den), "sv": (lsv, dsv)}
-        anchor = cell(lang, *labels.get(lang, (None, None)))
+        labels = {"de": lde, "en": len_, "sv": lsv}
+        descs = {"de": dde, "en": den, "sv": dsv}
+        anchor = cell(lang, labels, descs)
         vclass = {"yes": "yes", "no": "no", "uncertain": "unc"}.get(verdict, "")
         vcell = f"<span class='v {vclass}'>{html.escape(verdict)}</span>" if verdict else ""
         rtxt = html.escape(reason or "")
@@ -82,6 +95,7 @@ def main():
  th{{position:sticky;top:0;background:#fafafa;border-bottom:2px solid #ccc}}
  .lg{{color:#888;text-transform:uppercase;font-size:.8rem}}
  .lm{{font-weight:600}} .d{{color:#666;font-size:.86rem}} .n{{text-align:center}}
+ .fl{{color:#aaa;font-size:.72rem;font-weight:400}}
  .v{{font-weight:700;font-size:.8rem;text-transform:uppercase}}
  .yes{{color:#197a19}} .no{{color:#b00}} .unc{{color:#b8860b}}
  a{{color:#3366cc;text-decoration:none}} tr:hover{{background:#f6f9ff}}
