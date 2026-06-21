@@ -24,26 +24,11 @@ import sqlite3
 
 import config
 
-# P887 "based on heuristic" takes an item identifying the heuristic. No existing
-# "inferred from X" item fits P5137 cluster-propagation (closest, Q118436369
-# "inferred from semantic correspondence", is scoped to etymology/derivation), so
-# the plan is to CREATE a purpose-made item with this spec, then pin its Q-id here:
-#
-#   label (en):  inferred from translation
-#   description: inferring the item for this sense (P5137) of a lexeme from a
-#                translation in another language whose corresponding sense already has it
-#   alias (en):  inferred from sense-aligned translation cluster
-#   statement:   instance of (P31) -> heuristic (Q201413)
-#
-# QuickStatements to create it (run on your account):
-#   CREATE
-#   LAST  Len  "inferred from translation"
-#   LAST  Den  "inferring the item for this sense (P5137) of a lexeme from a translation in another language whose corresponding sense already has it"
-#   LAST  Aen  "inferred from sense-aligned translation cluster"
-#   LAST  P31  Q201413
-#
-# Placeholder is intentionally invalid so dry-run payloads are visibly not-submittable.
-HEURISTIC_ITEM = "Q-TODO-heuristic-item"  # TODO: replace with the created item's Q-id
+# P887 "based on heuristic" value: the purpose-made item "inferred from translation"
+# (label/description/alias as specified; created 2026-06 on the operator account).
+# NOTE: still add `instance of (P31) -> heuristic (Q201413)` to this item, or P887's
+# value-type constraint will flag it.
+HEURISTIC_ITEM = "Q140308675"
 
 
 def build_statement(anchor_qid, today):

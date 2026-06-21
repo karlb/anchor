@@ -302,8 +302,9 @@ the etymology can be inferred from a matching sense"), not sense→item linking.
   another language whose corresponding sense already has it*
 - `instance of (P31) → heuristic (Q201413)`
 
-Spec + QuickStatements are in `write.py`; pin the new Q-id to `HEURISTIC_ITEM` (the writer
-refuses `--write` until then). Creating the item is itself part of the BRFA disclosure.
+Created as **Q140308675** (2026-06) and pinned to `HEURISTIC_ITEM` in `write.py`. **TODO on-wiki:**
+add `instance of (P31) → heuristic (Q201413)` to Q140308675 — without it, P887's value-type
+constraint flags the reference. Creating the item is itself part of the BRFA disclosure.
 
 ## Reproduce
 
