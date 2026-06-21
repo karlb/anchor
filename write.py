@@ -199,6 +199,8 @@ def write_edits(edits):
         q.commit()
         written += 1
         print(f"  wrote {lid} → {anchor}  (rev {revid})")
+        print(f"    https://www.wikidata.org/wiki/Lexeme:{lid}")
+        print(f"    https://www.wikidata.org/wiki/Special:Diff/{revid}")
     q.close()
     print(f"\n{written}/{len(edits)} submitted.")
 
