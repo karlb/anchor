@@ -208,6 +208,33 @@ verification) are all validated on real data.
 - **High tier hugs 95%.** Pooled n=470 gives 95.9% (CI ~[93.5%, 97.5%]) — a point estimate at
   the bar, not clear of it. 2-of-3 voting or the human review queue is needed to be safely above.
 
+## Reviewer guidance (recurring judgment calls)
+
+P5137 links a **sense to a concept** — it is form-, frequency-, and gender-independent. The
+calls reviewers (and BRFA examiners) keep hitting:
+
+- **Frequency / register is out of scope — archaic common nouns are valid targets.** Wikidata's
+  lexicon is comprehensive (archaic, poetic, dialectal, obsolete all belong). If the sense
+  denotes the concept, link it. *Aar* → Q2092297 (eagle) is correct even though *Aar* is archaic
+  and unknown to most Germans — grounding under-served vocabulary is a strength, not a problem.
+  "Archaic" is a separate optional register annotation, never a reason to withhold the link.
+- **"Common noun" means the grammatical class (Gattungsname), not "frequent word."** It excludes
+  proper nouns, not rare ones. *Aar* is in scope.
+- **Ignore plurality.** P5137 is on the sense, not a form. The lemma is conventionally singular;
+  an item labeled with a plural (e.g. *Asiaten* / "Asian people") is just how collective concepts
+  are labeled — not a mismatch. *Asiat* → Q4058325 ("Asian people") is fine.
+- **Ignore grammatical gender UNLESS the concept itself is gendered.** Neutral people/profession
+  concepts (no P2521 female-form / P3321 male-form split) take both masculine and feminine
+  demonyms: *Asiat* (m.) and *Asiatin* (f.) both link to the same neutral item; gender lives on
+  the lexeme, not in P5137. Only if the anchor is specifically "X man" vs "X woman" does a
+  gender-crossed link become wrong.
+- **For demonyms, the real check is people-vs-place-vs-language.** The anchor must be the *people*
+  concept (correct: *Asiat* → "Asian people"), not the continent or — the systematic error class
+  the verifier catches — the **language** (wrong: *Albanerin* → Albanian language).
+- **Count vs collective** (one *Asiat* vs the *Asian people* group) is a known soft spot in
+  Wikidata's demonym modelling. The bot inherits the existing convention; it does not try to fix
+  it, and that is not a reason to abstain.
+
 ## P887 reference item (the heuristic)
 
 Every written statement carries `based on heuristic (P887) → <item>` + `retrieved (P813)`, never
