@@ -219,9 +219,8 @@ the etymology can be inferred from a matching sense"), not sense→item linking.
 (2026-06): **create a purpose-made item** rather than misuse an existing one —
 
 - label: **inferred from translation** · alias: *inferred from sense-aligned translation cluster*
-- description: *heuristic for sourcing Wikidata statements — a lexeme sense's item (P5137)
-  propagated from another lexeme in a sense-aligned translation cluster (WikDict/DBnary) that
-  already carries it*
+- description: *inferring the item for this sense (P5137) of a lexeme from a translation in
+  another language whose corresponding sense already has it*
 - `instance of (P31) → heuristic (Q201413)`
 
 Spec + QuickStatements are in `write.py`; pin the new Q-id to `HEURISTIC_ITEM` (the writer

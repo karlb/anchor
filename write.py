@@ -30,16 +30,15 @@ import config
 # the plan is to CREATE a purpose-made item with this spec, then pin its Q-id here:
 #
 #   label (en):  inferred from translation
-#   description: heuristic for sourcing Wikidata statements — a lexeme sense's item
-#                (P5137) propagated from another lexeme in a sense-aligned
-#                translation cluster (WikDict/DBnary) that already carries it
+#   description: inferring the item for this sense (P5137) of a lexeme from a
+#                translation in another language whose corresponding sense already has it
 #   alias (en):  inferred from sense-aligned translation cluster
 #   statement:   instance of (P31) -> heuristic (Q201413)
 #
 # QuickStatements to create it (run on your account):
 #   CREATE
 #   LAST  Len  "inferred from translation"
-#   LAST  Den  "heuristic for sourcing Wikidata statements: a lexeme sense's item (P5137) propagated from another lexeme in a sense-aligned translation cluster that already carries it"
+#   LAST  Den  "inferring the item for this sense (P5137) of a lexeme from a translation in another language whose corresponding sense already has it"
 #   LAST  Aen  "inferred from sense-aligned translation cluster"
 #   LAST  P31  Q201413
 #
