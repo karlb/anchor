@@ -31,10 +31,8 @@ def main():
     conn.execute("ATTACH DATABASE ? AS it", [config.ITEMS])
     conn.execute("ATTACH DATABASE ? AS vf", [config.VERIFY])
 
-    gate = "" if args.all_clean else (
-        " AND c.support_clusters>=2 AND c.target_n_senses=1"
-        " AND EXISTS(SELECT 1 FROM it.item_type t WHERE t.qid=c.anchor_qid AND t.prop='P31')"
-        " AND NOT " + gates.exclusion_clause("c", "it"))
+    where = ("c.homograph_n_lid=1 AND NOT c.cross_pivot_conflict" if args.all_clean
+             else gates.high_tier_where("c", "it"))
 
     rows = conn.execute(f"""
         SELECT c.target_lang, c.target_lemma, c.target_lid, c.anchor_qid, c.support_clusters,
@@ -44,7 +42,7 @@ def main():
         FROM cn.candidate c
         LEFT JOIN it.item i ON i.qid = c.anchor_qid AND NOT i.missing
         LEFT JOIN vf.verdict v ON v.target_lid = c.target_lid AND v.anchor_qid = c.anchor_qid
-        WHERE c.homograph_n_lid=1 AND NOT c.cross_pivot_conflict{gate}
+        WHERE {where}
         ORDER BY c.support_clusters DESC, c.target_lang, c.target_lemma
     """).fetchall()
 

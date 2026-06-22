@@ -28,6 +28,7 @@ import subprocess
 import sqlite3
 
 import config
+import gates
 
 SYSTEM = (
     "You are a lexicographer. For each item you are given a NOUN, its LANGUAGE, and a "
@@ -77,8 +78,12 @@ def candidates(args):
     if "B" in gate:
         where += " AND c.target_n_senses = 1"
     if "D" in gate:
+        # concrete anchor (has a P31) AND in-scope — the scope exclusion is part of
+        # the concrete-noun tier, so --gate ABD matches review_queue/export's High tier
+        # (it used to omit the exclusion and verify a slightly broader set).
         where += (" AND EXISTS(SELECT 1 FROM it.item_type t "
-                  "WHERE t.qid = c.anchor_qid AND t.prop = 'P31')")
+                  "WHERE t.qid = c.anchor_qid AND t.prop = 'P31')"
+                  " AND NOT " + gates.exclusion_clause("c", "it"))
     rows = cn.execute(
         f"""
         SELECT c.target_lid, c.target_lang, c.target_lemma, c.anchor_qid, c.support_clusters,

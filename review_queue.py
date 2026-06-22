@@ -84,11 +84,7 @@ def pool():
         FROM candidate c
         JOIN vf.verdict v ON v.target_lid = c.target_lid AND v.anchor_qid = c.anchor_qid
         JOIN it.item i ON i.qid = c.anchor_qid AND NOT i.missing
-        WHERE c.homograph_n_lid = 1 AND NOT c.cross_pivot_conflict
-          AND c.support_clusters >= 2 AND c.target_n_senses = 1
-          AND EXISTS(SELECT 1 FROM it.item_type t WHERE t.qid = c.anchor_qid AND t.prop='P31')
-          AND NOT """ + gates.exclusion_clause("c", "it") + """
-          AND v.verdict = 'yes'
+        WHERE """ + gates.high_tier_where("c", "it") + """ AND v.verdict = 'yes'
         ORDER BY c.target_lang, c.target_lemma
         """).fetchall()
     cn.close()
