@@ -14,8 +14,9 @@ Gates measured (all CC0 / structural, no gloss):
 
 CAVEAT on gate C: much of the held-out P5137 ground truth was itself created by
 label-matching tools (makesense), so C's measured precision is *circularly
-inflated*. Trust it only after de-biasing on the non-label-matched subset
-(needs P887 reference extraction in load_lexemes.py). Flagged in the output.
+inflated*. Trust it only after de-biasing on the non-label-matched subset —
+which would need per-statement P887 provenance; load_lexemes.py extracts it
+(sense_ref), but references are far too sparse to use. Flagged in the output.
 
 Run after match.py + fetch_items.py:
     uv run ablation.py
@@ -110,8 +111,8 @@ def main():
     measure(recs, "A & C & D", lambda r: A(r) and C(r) and D(r))
     measure(recs, "A & B & C & D", lambda r: A(r) and B(r) and C(r) and D(r))
 
-    # De-biased view: provenance isn't in the dump (only 48/65k P5137 carry any
-    # reference, none P887), so we can't exclude label-matched edits directly.
+    # De-biased view: per-statement provenance is far too sparse to use (only ~48/65k
+    # P5137 carry any reference, ≈1 with P887), so we can't exclude label-matched edits.
     # Instead restrict to NON-cognate ground truth (lemma != true Q's label) — rows
     # label-matching could not have produced. Gate C degenerates here (a correct
     # prediction has label == true-label != lemma, so C can't fire), so we report
@@ -128,8 +129,8 @@ def main():
     print("  (gate C omitted — degenerate on non-cognate truth)")
 
     print("\nTakeaways: gate A (>=2 anchors) is non-circular and holds on hard non-cognate "
-          "cases. Gate C cannot be de-biased from data alone (no provenance + 82.7% of truth "
-          "is cognate); its real precision must be checked by the independent LLM verifier, "
+          "cases. Gate C cannot be de-biased from data alone (provenance too sparse + 82.7% of "
+          "truth is cognate); its real precision must be checked by the independent LLM verifier, "
           "which judges from the description, not the label.")
     conn.close()
 

@@ -24,9 +24,10 @@ Two granularities are reported:
 CAVEAT (stated, per the plan): this measures *agreement with existing P5137*, not
 absolute truth. A fraction of held-out labels may share the method's own
 low-gate (label-matching) origin, which inflates the number. True provenance
-stratification (makesense-origin vs. other) needs the P887 reference on each
-P5137 statement, which ``load_lexemes.py`` does not yet extract — see "Provenance"
-at the end of the output. All inputs here are CC0 / structural; no gloss is read.
+stratification (makesense-origin vs. other) would need the P887 reference on each
+P5137 statement; ``load_lexemes.py`` does extract references (the ``sense_ref``
+table), but they are far too sparse to de-bias — see "Provenance" in the output.
+All inputs here are CC0 / structural; no gloss is read.
 
 Run after match.py:
     uv run precision.py
@@ -165,9 +166,21 @@ def report(records):
 
     tolerant_precision(records)
 
-    print("\nProvenance: not stratified — needs the P887 reference on each P5137 "
-          "statement, which load_lexemes.py does not extract yet. Treat the numbers "
-          "above as agreement-with-existing-data (an upper bound on true precision).")
+
+def provenance_note(conn):
+    """Why the numbers above are agreement-with-existing-data, not absolute truth.
+
+    De-biasing would exclude label-matched P5137 (identifiable by their P887
+    reference). load_lexemes.py *does* extract references (sense_ref), but they are
+    far too sparse to stratify on — so the de-bias is not viable from data alone."""
+    total = conn.execute("SELECT count(DISTINCT lid||sid||qid) FROM wd.sense_item").fetchone()[0]
+    refs = conn.execute("SELECT count(DISTINCT lid||sid||qid) FROM wd.sense_ref").fetchone()[0]
+    p887 = conn.execute(
+        "SELECT count(DISTINCT lid||sid||qid) FROM wd.sense_ref WHERE prop='P887'").fetchone()[0]
+    print(f"\nProvenance: only {refs:,} of {total:,} P5137 statements carry any reference "
+          f"({p887:,} with P887) — load_lexemes.py extracts these (sense_ref) but they are far "
+          f"too sparse to de-bias, so treat the numbers above as agreement-with-existing-data "
+          f"(an upper bound on true precision).")
 
 
 def main():
@@ -176,6 +189,7 @@ def main():
     conn.execute("ATTACH DATABASE ? AS wd", [config.WIKIDATA])
     clusters = load_clusters(conn)
     report(evaluate(clusters))
+    provenance_note(conn)
     conn.close()
 
 
