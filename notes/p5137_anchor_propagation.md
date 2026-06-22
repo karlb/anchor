@@ -209,8 +209,13 @@ verification) are all validated on real data.
 - **Provenance not yet separated.** The held-out "truth" includes P5137s that may share the
   method's own label-matching origin, which can inflate the baseline. De-biasing needs P887
   reference extraction in `load_lexemes.py` (not done).
-- **High tier hugs 95%.** Pooled n=470 gives 95.9% (CI ~[93.5%, 97.5%]) — a point estimate at
-  the bar, not clear of it. 2-of-3 voting or the human review queue is needed to be safely above.
+- **The verifier alone hugs 95%; the per-edit human gate is the real safety mechanism.** Pooled
+  held-out n=470 gives verifier-only 95.9% (CI ~[93.5%, 97.5%]) — at the bar, not clear of it,
+  and at a true rate this close no feasible n lifts the whole interval above 95%. This is the
+  wrong number to gate on: in the pilot/trial every edit is individually human-confirmed against
+  the anchor's CC0 description before writing, so output precision is bounded by human review, not
+  the verifier's statistical rate. The 95.7% fresh-stream figure (180/188) is reported for
+  transparency, not as the guarantee. 2-of-3 voting remains available but is optional.
 
 ## Reviewer guidance (recurring judgment calls)
 
