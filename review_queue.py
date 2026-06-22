@@ -1,23 +1,28 @@
 #!/usr/bin/env python3
-"""Human review queue for verified P5137 candidates — the authorization gate.
+"""Human review for verified P5137 candidates — the authorization gate.
 
-The verifier proposes; a human approves; only then may write.py act. This holds
-that boundary in a tiny SQLite table and a dependency-free approve/reject UI
-(stdlib http.server — no Flask).
+The verifier proposes; a human approves; only then may write.py act. The human
+decisions are the ONE irreplaceable thing in the pipeline (everything else is
+regenerable from the dump + infer.sqlite3), so they are the single source of
+truth: an append-only CSV log at config.DECISIONS (committed, diffable). There is
+no review SQLite DB — "pending" is computed as the verifier-'yes' High-tier
+candidate pool MINUS whatever the log already covers.
 
-    uv run review_queue.py seed        # load verifier-"yes" High-tier rows as 'pending'
     uv run review_queue.py serve       # http://localhost:8731  approve/reject buttons
-    uv run review_queue.py status      # counts by status
-    uv run review_queue.py export      # committed CSV audit trail of all decisions
+    uv run review_queue.py status       # counts (decided from the log; pending computed)
 
-Status flow: pending -> approved | rejected ; write.py sets approved -> written.
-The queue lives in data/review.sqlite3 (gitignored); `export` mirrors decisions
-to notes/runs/review_decisions.csv so the human judgements survive a data/ wipe.
+Status flow: a (lexeme, anchor) starts undecided (= pending). An approve/reject
+appends one event; write.py appends a 'written' event with the revid. Replaying
+the log, last-event-per-pair wins. The log lives in git, so the human judgements
+survive a data/ wipe and every change shows up as a reviewable diff.
 """
 
 import argparse
+import collections
 import csv
+import datetime
 import html
+import os
 import sqlite3
 import urllib.parse
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -25,27 +30,87 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 import config
 import gates
 
-QUEUE = config.DATA + "/review.sqlite3"
-EXPORT_CSV = "notes/runs/review_decisions.csv"
+DECISIONS = config.DECISIONS
 PORT = 8731
 
-SCHEMA = """
-CREATE TABLE IF NOT EXISTS review(
-    target_lid TEXT, anchor_qid TEXT,
-    target_lemma TEXT, target_lang TEXT, target_n_senses INT,
-    verdict TEXT, reason TEXT,
-    status TEXT DEFAULT 'pending',
-    reviewer TEXT, ts TEXT, revid TEXT,
-    PRIMARY KEY (target_lid, anchor_qid)
-) WITHOUT ROWID;
-"""
+# Append-only log columns. Beyond the (lid, anchor) key and the decision itself,
+# we snapshot what the reviewer saw (lemma, verdict, reason, model) so each line
+# is a self-contained audit record that does not depend on the regenerable caches.
+LOG_COLS = ["ts", "target_lid", "anchor_qid", "target_lemma", "target_lang",
+            "target_n_senses", "verdict", "reason", "model", "status", "reviewer", "revid"]
 
 
-def connect():
-    db = sqlite3.connect(QUEUE)
-    db.executescript(SCHEMA)
-    return db
+def now():
+    return datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
 
+
+def load_decisions(path=DECISIONS):
+    """Replay the append-only log; the last event per (lid, anchor) wins.
+
+    Returns {(target_lid, anchor_qid): {col: value, ...}}."""
+    out = {}
+    if not os.path.exists(path):
+        return out
+    with open(path, newline="") as f:
+        for row in csv.DictReader(f):
+            out[(row["target_lid"], row["anchor_qid"])] = row
+    return out
+
+
+def append_decision(rec, path=DECISIONS):
+    """Append one decision event (a dict over LOG_COLS); write the header if new."""
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    new = not os.path.exists(path)
+    with open(path, "a", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=LOG_COLS)
+        if new:
+            w.writeheader()
+        w.writerow({c: rec.get(c, "") for c in LOG_COLS})
+
+
+def pool():
+    """The reviewable set: verifier-'yes' High-tier candidates (clean ∩ A: >=2
+    anchors ∩ B: monosemous ∩ D: concrete/P31 ∩ in-scope), each with the anchor's
+    own CC0 label/description and the verdict's reason/model. 'pending' = this
+    minus whatever the decision log already covers."""
+    cn = sqlite3.connect(config.CANDIDATES)
+    cn.execute("ATTACH DATABASE ? AS it", [config.ITEMS])
+    cn.execute("ATTACH DATABASE ? AS vf", [config.VERIFY])
+    rows = cn.execute(
+        """
+        SELECT c.target_lid, c.anchor_qid, c.target_lemma, c.target_lang,
+               c.target_n_senses, v.verdict, v.reason, v.model,
+               i.label_de, i.label_en, i.label_sv, i.desc_de, i.desc_en, i.desc_sv
+        FROM candidate c
+        JOIN vf.verdict v ON v.target_lid = c.target_lid AND v.anchor_qid = c.anchor_qid
+        JOIN it.item i ON i.qid = c.anchor_qid AND NOT i.missing
+        WHERE c.homograph_n_lid = 1 AND NOT c.cross_pivot_conflict
+          AND c.support_clusters >= 2 AND c.target_n_senses = 1
+          AND EXISTS(SELECT 1 FROM it.item_type t WHERE t.qid = c.anchor_qid AND t.prop='P31')
+          AND NOT """ + gates.exclusion_clause("c", "it") + """
+          AND v.verdict = 'yes'
+        ORDER BY c.target_lang, c.target_lemma
+        """).fetchall()
+    cn.close()
+    return rows
+
+
+def counts():
+    """(status -> n) from the log, plus a computed 'pending'."""
+    decisions = load_decisions()
+    c = collections.Counter(d["status"] for d in decisions.values())
+    c["pending"] = sum(1 for r in pool() if (r[0], r[1]) not in decisions)
+    return c
+
+
+def status(args):
+    print(f"decision log: {DECISIONS}")
+    c = counts()
+    for s in ("pending", "approved", "rejected", "written"):
+        print(f"  {s:<10} {c.get(s, 0):,}")
+
+
+# ---- minimal approve/reject web UI (stdlib only) ----------------------------
 
 def pick(lang, vals):
     """First non-empty value, target language preferred then en/de/sv."""
@@ -55,78 +120,17 @@ def pick(lang, vals):
     return "", None
 
 
-def seed(args):
-    """Insert verifier-'yes' High-tier (clean ∩ A ∩ B ∩ D) candidates as pending."""
-    db = connect()
-    src = sqlite3.connect(config.CANDIDATES)
-    src.execute("ATTACH DATABASE ? AS it", [config.ITEMS])
-    src.execute("ATTACH DATABASE ? AS vf", [config.VERIFY])
-    rows = src.execute(
-        """
-        SELECT c.target_lid, c.anchor_qid, c.target_lemma, c.target_lang,
-               c.target_n_senses, v.verdict, v.reason
-        FROM candidate c
-        JOIN vf.verdict v ON v.target_lid = c.target_lid AND v.anchor_qid = c.anchor_qid
-        JOIN it.item i ON i.qid = c.anchor_qid AND NOT i.missing
-        WHERE c.homograph_n_lid = 1 AND NOT c.cross_pivot_conflict
-          AND c.support_clusters >= 2 AND c.target_n_senses = 1
-          AND EXISTS(SELECT 1 FROM it.item_type t WHERE t.qid = c.anchor_qid AND t.prop='P31')
-          AND NOT """ + gates.exclusion_clause("c", "it") + """
-          AND v.verdict = 'yes'
-        """).fetchall()
-    src.close()
-    db.executemany(
-        "INSERT OR IGNORE INTO review(target_lid,anchor_qid,target_lemma,target_lang,"
-        "target_n_senses,verdict,reason) VALUES (?,?,?,?,?,?,?)", rows)
-    db.commit()
-    print(f"seeded {len(rows):,} verifier-'yes' High-tier candidates "
-          f"(new rows added; existing decisions kept)")
-    status(args, db)
-
-
-def status(args, db=None):
-    db = db or connect()
-    print("status:")
-    for s, n in db.execute("SELECT status, count(*) FROM review GROUP BY status ORDER BY 2 DESC"):
-        print(f"  {s:<10} {n:,}")
-
-
-def export(args):
-    db = connect()
-    cols = ["target_lid", "anchor_qid", "target_lemma", "target_lang",
-            "verdict", "reason", "status", "reviewer", "ts", "revid"]
-    with open(EXPORT_CSV, "w", newline="") as f:
-        w = csv.writer(f)
-        w.writerow(cols)
-        w.writerows(db.execute(
-            f"SELECT {','.join(cols)} FROM review ORDER BY status, target_lang, target_lemma"))
-    n = db.execute("SELECT count(*) FROM review").fetchone()[0]
-    print(f"exported {n:,} rows -> {EXPORT_CSV}")
-
-
-# ---- minimal approve/reject web UI (stdlib only) ----------------------------
-
-def anchor_text(qid):
-    it = sqlite3.connect(config.ITEMS)
-    r = it.execute("SELECT label_de,label_en,label_sv,desc_de,desc_en,desc_sv "
-                   "FROM item WHERE qid=? AND NOT missing", [qid]).fetchone()
-    it.close()
-    return r
-
-
-def render(db, limit):
-    rows = db.execute(
-        "SELECT target_lid,anchor_qid,target_lemma,target_lang,reason FROM review "
-        "WHERE status='pending' ORDER BY target_lang, target_lemma LIMIT ?", [limit]).fetchall()
-    counts = dict(db.execute("SELECT status, count(*) FROM review GROUP BY status"))
-    head = " · ".join(f"{k}: {v}" for k, v in sorted(counts.items())) or "empty"
+def render(limit):
+    decisions = load_decisions()
+    rows = [r for r in pool() if (r[0], r[1]) not in decisions]
+    c = collections.Counter(d["status"] for d in decisions.values())
+    c["pending"] = len(rows)
+    head = " · ".join(f"{k}: {v}" for k, v in sorted(c.items())) or "empty"
     trs = []
-    for lid, qid, lemma, lang, reason in rows:
-        a = anchor_text(qid)
-        labels = {"de": a[0], "en": a[1], "sv": a[2]} if a else {}
-        descs = {"de": a[3], "en": a[4], "sv": a[5]} if a else {}
-        lab, llang = pick(lang, labels)
-        dsc, dlang = pick(lang, descs)
+    for (lid, qid, lemma, lang, _ns, _v, reason, _m,
+         lde, len_, lsv, dde, den, dsv) in rows[:limit]:
+        lab, llang = pick(lang, {"de": lde, "en": len_, "sv": lsv})
+        dsc, dlang = pick(lang, {"de": dde, "en": den, "sv": dsv})
         ltag = f" [{llang}]" if llang and llang != lang else ""
         dtag = f" [{dlang}]" if dlang and dlang != lang else ""
         form = (f"<form method=post action=/act style='display:inline'>"
@@ -165,8 +169,7 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path.startswith("/act"):
             return self._send(405, "use POST")
-        db = connect()
-        self._send(200, render(db, 50))
+        self._send(200, render(50))
 
     def do_POST(self):
         length = int(self.headers.get("Content-Length", 0))
@@ -175,11 +178,16 @@ class Handler(BaseHTTPRequestHandler):
         qid = data.get("qid", [""])[0]
         action = data.get("action", [""])[0]
         if action in ("approved", "rejected"):
-            db = connect()
-            db.execute("UPDATE review SET status=?, reviewer='local', "
-                       "ts=datetime('now') WHERE target_lid=? AND anchor_qid=?",
-                       [action, lid, qid])
-            db.commit()
+            row = next((r for r in pool() if r[0] == lid and r[1] == qid), None)
+            decided = load_decisions()
+            if row and (lid, qid) not in decided:  # ignore replays / stale double-clicks
+                (l, q, lemma, lang, ns, v, reason, model, *_rest) = row
+                append_decision({
+                    "ts": now(), "target_lid": l, "anchor_qid": q,
+                    "target_lemma": lemma, "target_lang": lang, "target_n_senses": ns,
+                    "verdict": v, "reason": reason, "model": model,
+                    "status": action, "reviewer": "local", "revid": "",
+                })
         self.send_response(303)
         self.send_header("Location", "/")
         self.end_headers()
@@ -189,21 +197,23 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def serve(args):
-    seeded = connect().execute("SELECT count(*) FROM review").fetchone()[0]
-    if not seeded:
-        print("queue empty — run `uv run review_queue.py seed` first")
+    n = len(pool())
+    if not n:
+        print("no verifier-'yes' High-tier candidates — run verify.py --gate ABD first")
         return
-    print(f"review UI on http://localhost:{PORT}  ({seeded:,} in queue) — Ctrl-C to stop")
+    c = counts()
+    print(f"review UI on http://localhost:{PORT}  ({c.get('pending', 0):,} pending of "
+          f"{n:,} candidates) — Ctrl-C to stop")
     HTTPServer(("127.0.0.1", PORT), Handler).serve_forever()
 
 
 def main():
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="cmd", required=True)
-    for name in ("seed", "serve", "status", "export"):
+    for name in ("serve", "status"):
         sub.add_parser(name)
     args = ap.parse_args()
-    {"seed": seed, "serve": serve, "status": status, "export": export}[args.cmd](args)
+    {"serve": serve, "status": status}[args.cmd](args)
 
 
 if __name__ == "__main__":

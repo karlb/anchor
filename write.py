@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Write P5137 sense statements to Wikidata — gated on human approval.
 
-Reads ONLY rows the human approved in review_queue.py (status='approved') and,
-for each, builds a `wbeditentity` payload adding P5137 → anchor Q to a sense,
-with a MANDATORY reference (never bare): based on heuristic (P887) + retrieved
-(P813). The CC-BY-SA DBnary gloss is never written.
+Reads ONLY the rows the human approved in the decision log (config.DECISIONS,
+status='approved') and, for each, builds a `wbeditentity` payload adding
+P5137 → anchor Q to a sense, with a MANDATORY reference (never bare): based on
+heuristic (P887) + retrieved (P813). The CC-BY-SA DBnary gloss is never written.
+On success it appends a 'written' event (with the revid) to the same log.
 
     uv run write.py --dry-run                 # print exact payloads, submit nothing
     uv run write.py --dry-run --preview       # preview verifier-'yes' rows (no approval needed)
@@ -31,6 +32,7 @@ import urllib.parse
 import urllib.request
 
 import config
+from review_queue import append_decision, load_decisions, now, pool
 
 API = "https://www.wikidata.org/w/api.php"
 USER_AGENT = ("anchor-p5137-pilot/0.1 (https://www.wikidata.org/; karl42@gmail.com) "
@@ -93,26 +95,19 @@ def build_edit(row, today, include_senseless):
 
 
 def load_rows(args):
-    db = sqlite3.connect(config.DATA + "/review.sqlite3")
+    """(lid, anchor_qid, lemma, lang, n_senses) rows to build edits from.
+
+    --preview reuses the review queue's verifier-'yes' High-tier pool directly
+    (inspect before any approval). Otherwise read the rows the human approved from
+    the decision log (the single source of truth); 'approved' is the current
+    replayed status, so anything later written/rejected is naturally excluded."""
     if args.preview:
-        db.execute("ATTACH DATABASE ? AS cn", [config.CANDIDATES])
-        db.execute("ATTACH DATABASE ? AS vf", [config.VERIFY])
-        db.execute("ATTACH DATABASE ? AS it", [config.ITEMS])
-        rows = db.execute(
-            """SELECT c.target_lid,c.anchor_qid,c.target_lemma,c.target_lang,c.target_n_senses
-               FROM cn.candidate c JOIN vf.verdict v
-                 ON v.target_lid=c.target_lid AND v.anchor_qid=c.anchor_qid
-               WHERE c.homograph_n_lid=1 AND NOT c.cross_pivot_conflict
-                 AND c.support_clusters>=2 AND c.target_n_senses=1 AND v.verdict='yes'
-                 AND EXISTS(SELECT 1 FROM it.item_type t WHERE t.qid=c.anchor_qid AND t.prop='P31')
-               ORDER BY c.support_clusters DESC LIMIT ?""", [args.limit]).fetchall()
-    else:
-        rows = db.execute(
-            "SELECT target_lid,anchor_qid,target_lemma,target_lang,target_n_senses "
-            "FROM review WHERE status='approved' ORDER BY target_lang, target_lemma "
-            "LIMIT ?", [args.limit]).fetchall()
-    db.close()
-    return rows
+        return [r[:5] for r in pool()[: args.limit]]
+    rows = [(d["target_lid"], d["anchor_qid"], d["target_lemma"], d["target_lang"],
+             int(d["target_n_senses"]))
+            for d in load_decisions().values() if d["status"] == "approved"]
+    rows.sort(key=lambda r: (r[3], r[2]))
+    return rows[: args.limit]
 
 
 # ---- Action API submission (stdlib only) -----------------------------------
@@ -177,7 +172,7 @@ def write_edits(edits):
     opener = urllib.request.build_opener(
         urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))
     csrf = login(opener, user, pw)
-    q = sqlite3.connect(config.DATA + "/review.sqlite3")
+    decisions = load_decisions()  # to carry the audited fields onto the 'written' event
     written = 0
     for lid, data in edits:
         sense = data["senses"][0]
@@ -194,14 +189,18 @@ def write_edits(edits):
             revid = submit(opener, csrf, lid, data)
         except Exception as e:  # noqa: BLE001 — one bad edit shouldn't abort the batch
             print(f"  FAIL {lid} → {anchor}: {e}"); continue
-        q.execute("UPDATE review SET status='written', revid=? "
-                  "WHERE target_lid=? AND anchor_qid=?", [str(revid), lid, anchor])
-        q.commit()
+        d = decisions.get((lid, anchor), {})
+        append_decision({
+            "ts": now(), "target_lid": lid, "anchor_qid": anchor,
+            "target_lemma": d.get("target_lemma", ""), "target_lang": d.get("target_lang", ""),
+            "target_n_senses": d.get("target_n_senses", ""), "verdict": d.get("verdict", ""),
+            "reason": d.get("reason", ""), "model": d.get("model", ""),
+            "status": "written", "reviewer": "write.py", "revid": str(revid),
+        })
         written += 1
         print(f"  wrote {lid} → {anchor}  (rev {revid})")
         print(f"    https://www.wikidata.org/wiki/Lexeme:{lid}")
         print(f"    https://www.wikidata.org/wiki/Special:Diff/{revid}")
-    q.close()
     print(f"\n{written}/{len(edits)} submitted.")
 
 

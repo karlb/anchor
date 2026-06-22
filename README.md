@@ -28,7 +28,7 @@ latest-lexemes.json.gz ─load_lexemes.py──▶ wikidata.sqlite3 ─┘      
                                                                                         ├─ verify.py ─▶ verify.sqlite3 (LLM yes/no)
                                                                                         ├─ measure_lift.py (verifier-lift eval)
                                                                                         ├─ export_review.py ─▶ data/review.html
-                                                                                        ├─ review_queue.py ─▶ review.sqlite3 (human approve/reject)
+                                                                                        ├─ review_queue.py ─▶ notes/runs/decisions.csv (human approve/reject log)
                                                                                         └─ write.py ─▶ wbeditentity (gated on approval)
 ```
 
@@ -50,11 +50,14 @@ latest-lexemes.json.gz ─load_lexemes.py──▶ wikidata.sqlite3 ─┘      
 5. **`fetch_items.py`** — polite Wikidata Action API client; caches anchor Q **CC0**
    labels/descriptions + P31/P279 into `wd_items.sqlite3`.
 6. **`verify.py`** — LLM yes/no verifier over `claude -p` (CC0 label/description only). `--gate ABD`
-   runs the High tier; `--csv` writes a committed audit trail.
+   runs the High tier. Verdicts are cached in `data/verify.sqlite3`; `--csv` exports them on demand.
 7. **`measure_lift.py`** — measures the verifier's precision lift on held-out ground truth.
 8. **`export_review.py`** / **`review_queue.py`** — browsable HTML + a stdlib approve/reject UI
-   (the authorization gate). **`write.py`** builds the `wbeditentity` payload (P5137 + mandatory
-   P887/P813 reference), reads only approved rows, and defaults to `--dry-run`.
+   (the authorization gate). Decisions are an append-only, git-committed log at
+   `notes/runs/decisions.csv` (the single source of truth — there is no review DB; "pending" is
+   computed as the verifier-'yes' pool minus what the log covers). **`write.py`** builds the
+   `wbeditentity` payload (P5137 + mandatory P887/P813 reference), reads only approved rows from
+   that log, appends a `written` event with the revid, and defaults to `--dry-run`.
 
 ## Run
 
@@ -77,13 +80,13 @@ uv run precision.py
 uv run fetch_items.py
 
 # 5. verify the High tier (clean ∩ ≥2 anchors ∩ monosemous ∩ concrete) and measure lift
-uv run verify.py --gate ABD --all --model sonnet --csv notes/runs/high_tier_verdicts.csv
+uv run verify.py --gate ABD --all --model sonnet
 uv run measure_lift.py --gate ABD --sample 350 --model sonnet
 
-# 6. review + write
+# 6. review + write  (decisions are logged to notes/runs/decisions.csv — the source of truth)
 uv run export_review.py                 # data/review.html
-uv run review_queue.py seed             # load verifier-'yes' rows
 uv run review_queue.py serve            # http://localhost:8731  approve/reject
+uv run review_queue.py status           # pending (computed) / approved / rejected / written
 uv run write.py --dry-run               # print payloads for approved rows (submits nothing)
 
 # 7. go live (assisted edits on your account; no autoconfirmed needed for statement-adds)

@@ -18,7 +18,7 @@ Run after fetch_items.py (defaults to a 40-candidate sample):
     uv run verify.py                       # sample the highest-support clean candidates
     uv run verify.py --senseless-only      # only candidates grounding senseless lexemes
     uv run verify.py --all --batch 8       # full run (costs add up — see note above)
-    uv run verify.py --gate ABD --all --model sonnet --csv notes/runs/high_tier_verdicts.csv
+    uv run verify.py --gate ABD --all --model sonnet   # the High tier
 """
 
 import argparse
@@ -134,8 +134,8 @@ def main():
     ap.add_argument("--min-support", type=int, default=1)
     ap.add_argument("--senseless-only", action="store_true")
     ap.add_argument("--gate", default="", help="structural gate filter, e.g. ABD (the High tier)")
-    ap.add_argument("--csv", default="", help="also write the full verdict table to this CSV "
-                    "(committed audit trail; data/verify.sqlite3 is gitignored)")
+    ap.add_argument("--csv", default="", help="export the full verdict table to this CSV "
+                    "on demand (the verdicts cache is data/verify.sqlite3)")
     args = ap.parse_args()
 
     out = sqlite3.connect(config.VERIFY)

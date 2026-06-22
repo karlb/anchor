@@ -178,8 +178,8 @@ That ~51% "yes" is far below the **85%** "yes" on the held-out gate-ABD set — 
 **Revised writable yield:** applying the *measured* 51% "yes" (not the optimistic 85%) to the
 7,400 pool → **~3,800 verifier-approved writes** — fewer, but with the bad ~half pruned, so
 cleaner. The verifier-"yes" precision on fresh candidates isn't directly measurable (no ground
-truth), but the rejections being right is strong indirect evidence it's high. Per-case verdicts:
-`notes/runs/high_tier_verdicts.csv`.
+truth), but the rejections being right is strong indirect evidence it's high. Per-case verdicts are cached in
+`data/verify.sqlite3` (export on demand with `verify.py --csv`).
 
 **Demonym→language pre-filter — investigated, NOT viable (negative result).** Tempting to drop
 anchors that are P31 a language (Q34770/Q33742/Q1288568/…) since the demonym errors cluster
@@ -298,7 +298,7 @@ genuinely denote it — abstractness/scope is an axis it doesn't judge. So the f
 the verifier structurally can't. Consequently held-out hit-rate is the *wrong* yardstick (a correct
 propagation to an out-of-scope concept should still be dropped); measured anyway, it removes a
 small, mildly-below-average slice: held-out A&B&D dropped set 71–75% (vs 85% kept), **~3% of
-High-tier volume** (20/689). Applied at `review_queue.py seed` and `export_review.py` so out-of-scope
+High-tier volume** (20/689). Applied in `review_queue.py` (the pool query) and `export_review.py` so out-of-scope
 anchors never reach human review (removed 6 from the live queue, incl. *plus*/*pro*). Contrast the
 **demonym→language** filter, which measurement *rejected* (it dropped a 93%-precision legit set);
 the difference is that this filter drops on a scope axis the verifier ignores, not a precision claim
