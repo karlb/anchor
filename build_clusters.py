@@ -11,6 +11,10 @@ are kept apart because they come from different pivot senses.
 License note: we read only ``lexentry``, ``sense_num`` and the lemma strings
 from ``infer.sqlite3``. The CC-BY-SA gloss text (``all_trans.sense``) is never
 copied or persisted — only the (lexentry, sense_num) sense *identity* is used.
+``sense_num`` is a factual index (the entry's own sense ordinal), not creative
+text; it is used solely to keep one sense's translations together and is never
+written to Wikidata — the output P5137 link re-derives its concept from
+Wikidata's own CC0 data, so no sense number or partition leaves DBnary.
 
 Output: ``data/clusters.sqlite3``. Run from this dir:
     uv run build_clusters.py
