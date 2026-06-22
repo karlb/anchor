@@ -177,9 +177,13 @@ That ~51% "yes" is far below the **85%** "yes" on the held-out gate-ABD set — 
 
 **Revised writable yield:** applying the *measured* 51% "yes" (not the optimistic 85%) to the
 7,400 pool → **~3,800 verifier-approved writes** — fewer, but with the bad ~half pruned, so
-cleaner. The verifier-"yes" precision on fresh candidates isn't directly measurable (no ground
-truth), but the rejections being right is strong indirect evidence it's high. Per-case verdicts are cached in
-`data/verify.sqlite3` (export on demand with `verify.py --csv`).
+cleaner. The verifier-"yes" precision on fresh candidates is now measured **directly** by the
+human review: of 188 verifier-"yes" High-tier candidates reviewed, 180 were confirmed →
+**95.7%** (Wilson 95% CI [91.8%, 97.8%]). This is the *real write stream* (not the held-out set,
+which is enriched for easy cognate cases), and it overlaps the held-out 95.9% — two independent
+estimates that agree. Caveat: a single reviewer, and the verifier and reviewer are not
+independent (both judge from the same CC0 description). Reproduce with `review_queue.py status`;
+per-case verdicts are cached in `data/verify.sqlite3` (export on demand with `verify.py --csv`).
 
 **Demonym→language pre-filter — investigated, NOT viable (negative result).** Tempting to drop
 anchors that are P31 a language (Q34770/Q33742/Q1288568/…) since the demonym errors cluster

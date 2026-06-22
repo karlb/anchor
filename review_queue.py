@@ -108,6 +108,14 @@ def status(args):
     c = counts()
     for s in ("pending", "approved", "rejected", "written"):
         print(f"  {s:<10} {c.get(s, 0):,}")
+    # Every decided row was a verifier-'yes' candidate (the pool is verdict='yes'),
+    # so the human verdict on it directly measures verifier-'yes' precision on the
+    # real (fresh) write stream — the number held-out precision can only approximate.
+    confirmed = c.get("approved", 0) + c.get("written", 0)
+    decided = confirmed + c.get("rejected", 0)
+    if decided:
+        print(f"  verifier-'yes' precision (human-confirmed): {confirmed}/{decided} = "
+              f"{100.0 * confirmed / decided:.1f}%")
 
 
 # ---- minimal approve/reject web UI (stdlib only) ----------------------------
