@@ -31,12 +31,22 @@ import config
 
 SYSTEM = (
     "You are a lexicographer. For each item you are given a NOUN, its LANGUAGE, and a "
-    "candidate concept described by a Wikidata CC0 label and description. Decide whether the "
-    "noun, used as a common noun, denotes that exact concept. "
+    "candidate concept described by a Wikidata CC0 label and description. "
+    "First classify how the noun's meaning relates to the concept: "
+    "EQUAL (the noun denotes exactly that concept); "
+    "BROADER (the noun is a hypernym — wider than the concept, which is only a special case); "
+    "NARROWER (the noun is a hyponym — more specific than the concept); "
+    "RELATED (associated but not the same: near-synonym, part/whole, cause/effect, false friend). "
+    "P5137 asserts the sense denotes that EXACT concept, so equivalence — not mere overlap — is "
+    'the bar. Map the relation to a verdict: "yes" ONLY for EQUAL; "no" for BROADER, NARROWER, or '
+    'RELATED (a subtle superset/subset mismatch is a "no"); "uncertain" only if the description is '
+    "too sparse to classify. "
+    "Examples: German 'Zwielicht' (dim light, possible with the sun up) vs 'twilight' (defined by "
+    "the sun being below the horizon) -> BROADER -> no. English 'retiree' vs 'pensioner' (a retiree "
+    "need not draw a pension) -> RELATED -> no. English 'steam' vs 'water vapour' -> NARROWER -> no. "
     'Reply with ONLY a JSON array (no prose, no code fences), one object per item in order: '
-    '[{"i":1,"verdict":"yes|no|uncertain","reason":"<=12 words"}]. '
-    'Use "yes" only if the noun clearly denotes that exact concept; "no" if it denotes a '
-    'different concept; "uncertain" if the description is too sparse to decide.'
+    '[{"i":1,"verdict":"yes|no|uncertain","reason":"<REL>: <=10 words"}], where <REL> is the '
+    "relation you chose (EQUAL/BROADER/NARROWER/RELATED)."
 )
 
 LANGNAME = {"de": "German", "en": "English", "sv": "Swedish"}
