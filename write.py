@@ -87,10 +87,12 @@ def build_edit(row, today, include_senseless):
         sense = {"id": f"<{lid}-S? resolved live>", "claims": {"P5137": [claim]}}
         return {"senses": [sense]}, "add to existing sense"
     if include_senseless:
-        gloss = anchor_label(qid, lang) or lemma
+        gloss = anchor_label(qid, lang)
+        if not gloss:  # no CC0 anchor label -> never fall back to the headword (degenerate)
+            return None, "skipped: senseless, no CC0 anchor label (no gloss source)"
         sense = {"add": "", "glosses": {lang: {"language": lang, "value": gloss}},
                  "claims": {"P5137": [claim]}}
-        return {"senses": [sense]}, f"CREATE sense (gloss seeded from CC0 label: {gloss!r})"
+        return {"senses": [sense]}, f"CREATE sense (gloss = CC0 anchor label: {gloss!r})"
     return None, "skipped: senseless (needs gloss policy; use --include-senseless)"
 
 
