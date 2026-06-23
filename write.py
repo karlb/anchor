@@ -27,6 +27,7 @@ import datetime
 import http.cookiejar
 import json
 import os
+import re
 import sqlite3
 import urllib.parse
 import urllib.request
@@ -44,13 +45,24 @@ SUMMARY = ("Add [[Property:P5137]] (item for this sense) inferred from translati
 # (created 2026-06 on the operator account; P31 -> heuristic Q201413, constraint-clean).
 HEURISTIC_ITEM = "Q140308675"
 
+# Semantic gender (P10339) values, for the two-part convention: a gendered lexeme links
+# via P5137 to the gender-NEUTRAL concept and records its sex here (gender.py supplies the
+# female/male/neutral call). We only add P10339 when the anchor concept is itself neutral —
+# if the anchor is already sex-specific (e.g. "heroine", "house husband"), P10339 is redundant.
+SEMGENDER = {"female": "Q6581072", "male": "Q6581097"}
+# whole-word markers that the anchor's own CC0 text is sex-specific (English label/desc).
+SEXMARK = re.compile(
+    r"\b(female|woman|women|man|men|male|consort|heroine|actress|empress|princess|widow|widower)\b",
+    re.I)
+
+
+def entity_snak(prop, qid):
+    return {"snaktype": "value", "property": prop,
+            "datavalue": {"type": "wikibase-entityid", "value": {"id": qid}}}
+
 
 def build_statement(anchor_qid, today):
     """The P5137 claim dict with its mandatory reference (CC0-clean)."""
-    def entity_snak(prop, qid):
-        return {"snaktype": "value", "property": prop,
-                "datavalue": {"type": "wikibase-entityid",
-                              "value": {"id": qid}}}
     time_snak = {"snaktype": "value", "property": "P813",
                  "datavalue": {"type": "time", "value": {
                      "time": f"+{today}T00:00:00Z", "precision": 11,
@@ -66,6 +78,14 @@ def build_statement(anchor_qid, today):
     }
 
 
+def gender_claim(gender):
+    """P10339 (semantic gender) claim. Left unreferenced: the sex of a demonym/occupation
+    word is a self-evident lexical fact (unlike the inferred P5137 link), and unreferenced
+    gender/grammatical statements are the Wikidata norm."""
+    return {"mainsnak": entity_snak("P10339", SEMGENDER[gender]),
+            "type": "statement", "rank": "normal"}
+
+
 def anchor_label(qid, lang):
     """CC0 label for a would-be new sense's gloss (target lang, fallback en)."""
     it = sqlite3.connect(config.ITEMS)
@@ -73,6 +93,30 @@ def anchor_label(qid, lang):
                    [qid]).fetchone()
     it.close()
     return (r[0] or r[1]) if r else None
+
+
+_GENDER = None
+
+
+def gender_of(lid):
+    """Cached semantic gender ('female'/'male'/...) for a lexeme, or None (gender.py output)."""
+    global _GENDER
+    if _GENDER is None:
+        _GENDER = {}
+        if os.path.exists(config.GENDER):
+            g = sqlite3.connect(config.GENDER)
+            _GENDER = {r[0]: r[1] for r in g.execute("SELECT target_lid, gender FROM gender")}
+            g.close()
+    return _GENDER.get(lid)
+
+
+def anchor_is_sex_specific(qid, lang):
+    """True if the anchor concept's own CC0 text is sex-specific (then P10339 is redundant)."""
+    it = sqlite3.connect(config.ITEMS)
+    r = it.execute(f"SELECT label_en, desc_en, label_{lang}, desc_{lang} "
+                   f"FROM item WHERE qid=? AND NOT missing", [qid]).fetchone()
+    it.close()
+    return bool(r and SEXMARK.search(" ".join(x for x in r if x)))
 
 
 def build_edit(row, today, include_senseless):
@@ -83,16 +127,29 @@ def build_edit(row, today, include_senseless):
     sense, which needs a gloss — seeded from the anchor's own CC0 label."""
     lid, qid, lemma, lang, n_senses = row
     claim = build_statement(qid, today)
+    # Convention: a gendered lexeme also records semantic gender (P10339) — but only when the
+    # anchor concept is gender-neutral (a sex-specific anchor already carries the sex).
+    g = gender_of(lid)
+    p10339 = ([gender_claim(g)] if g in SEMGENDER and not anchor_is_sex_specific(qid, lang)
+              else None)
+    gtag = f" + P10339={g}" if p10339 else ""
+
+    def claims():
+        c = {"P5137": [claim]}
+        if p10339:
+            c["P10339"] = p10339
+        return c
+
     if n_senses == 1:
-        sense = {"id": f"<{lid}-S? resolved live>", "claims": {"P5137": [claim]}}
-        return {"senses": [sense]}, "add to existing sense"
+        sense = {"id": f"<{lid}-S? resolved live>", "claims": claims()}
+        return {"senses": [sense]}, "add to existing sense" + gtag
     if include_senseless:
         gloss = anchor_label(qid, lang)
         if not gloss:  # no CC0 anchor label -> never fall back to the headword (degenerate)
             return None, "skipped: senseless, no CC0 anchor label (no gloss source)"
         sense = {"add": "", "glosses": {lang: {"language": lang, "value": gloss}},
-                 "claims": {"P5137": [claim]}}
-        return {"senses": [sense]}, f"CREATE sense (gloss = CC0 anchor label: {gloss!r})"
+                 "claims": claims()}
+        return {"senses": [sense]}, f"CREATE sense (gloss = CC0 anchor label: {gloss!r})" + gtag
     return None, "skipped: senseless (needs gloss policy; use --include-senseless)"
 
 
@@ -139,19 +196,20 @@ def login(opener, user, pw):
 
 
 def resolve_sense(opener, lid):
-    """Re-fetch the live lexeme. Return (sense_id, {existing P5137 qids}).
+    """Re-fetch the live lexeme. Return (sense_id, {prop: {value qids}}) of existing claims.
     Raises if the lexeme no longer has exactly one sense."""
     ent = _api(opener, {"action": "wbgetentities", "ids": lid})["entities"][lid]
     senses = ent.get("senses", [])
     if len(senses) != 1:
         raise ValueError(f"{lid} now has {len(senses)} senses (expected 1)")
     s = senses[0]
-    existing = set()
-    for c in s.get("claims", {}).get("P5137", []):
-        try:
-            existing.add(c["mainsnak"]["datavalue"]["value"]["id"])
-        except (KeyError, TypeError):
-            pass
+    existing = {}
+    for prop, claims in s.get("claims", {}).items():
+        for c in claims:
+            try:
+                existing.setdefault(prop, set()).add(c["mainsnak"]["datavalue"]["value"]["id"])
+            except (KeyError, TypeError):
+                existing.setdefault(prop, set())
     return s["id"], existing
 
 
@@ -182,12 +240,15 @@ def write_edits(edits):
         try:
             if "id" in sense:  # monosemous: resolve the live sense id + guard
                 sid, existing = resolve_sense(opener, lid)
-                if anchor in existing:
+                p5137 = existing.get("P5137", set())
+                if anchor in p5137:
                     print(f"  skip {lid}: already has P5137 → {anchor}"); continue
-                if existing:
-                    print(f"  skip {lid}: sense already has P5137 {existing} (never override)")
+                if p5137:
+                    print(f"  skip {lid}: sense already has P5137 {p5137} (never override)")
                     continue
                 sense["id"] = sid
+                if existing.get("P10339") and "P10339" in sense["claims"]:
+                    del sense["claims"]["P10339"]  # sense already has semantic gender; don't dup
             revid = submit(opener, csrf, lid, data)
         except Exception as e:  # noqa: BLE001 — one bad edit shouldn't abort the batch
             print(f"  FAIL {lid} → {anchor}: {e}"); continue

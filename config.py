@@ -22,6 +22,7 @@ CANDIDATES = os.path.join(DATA, "candidates.sqlite3")
 DUMP = os.path.join(DATA, "latest-lexemes.json.gz")
 ITEMS = os.path.join(DATA, "wd_items.sqlite3")  # cached CC0 labels/descriptions + P31/P279
 VERIFY = os.path.join(DATA, "verify.sqlite3")    # LLM yes/no verdicts
+GENDER = os.path.join(DATA, "gender.sqlite3")    # LLM semantic-gender (P10339), per lexeme
 
 # The human review decisions — the ONE irreplaceable artifact (every other DB is
 # regenerable from the dump + infer.sqlite3). Kept as a committed, append-only
