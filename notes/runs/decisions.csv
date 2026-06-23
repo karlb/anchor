@@ -187,3 +187,4 @@ ts,target_lid,anchor_qid,target_lemma,target_lang,target_n_senses,verdict,reason
 2026-06-21 16:12:17,L494552,Q1499127,girigbuk,sv,1,yes,"girigbuk directly denotes a miser, stingy hoarder",sonnet,approved,local,
 2026-06-21 16:12:18,L1143178,Q51621,helgonförklaring,sv,1,yes,"helgonförklaring literally means canonization, exact match",sonnet,approved,local,
 2026-06-21 16:12:20,L585889,Q99895,huvudkudde,sv,1,yes,"Huvudkudde literally means head cushion, i.e. pillow",sonnet,approved,local,
+2026-06-23 21:01:46,L35857,Q21849766,arvtagerska,sv,1,yes,"'arvtagerska' is the female form of heir, matches heiress",sonnet,rejected,audit,
