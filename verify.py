@@ -34,17 +34,21 @@ SYSTEM = (
     "You are a lexicographer. For each item you are given a NOUN, its LANGUAGE, and a "
     "candidate concept described by a Wikidata CC0 label and description. "
     "First classify how the noun's meaning relates to the concept: "
-    "EQUAL (the noun denotes exactly that concept); "
+    "EQUAL (the noun denotes that concept — exact synonyms and translation/register "
+    "differences still count as EQUAL); "
     "BROADER (the noun is a hypernym — wider than the concept, which is only a special case); "
     "NARROWER (the noun is a hyponym — more specific than the concept); "
     "RELATED (associated but not the same: near-synonym, part/whole, cause/effect, false friend). "
-    "P5137 asserts the sense denotes that EXACT concept, so equivalence — not mere overlap — is "
-    'the bar. Map the relation to a verdict: "yes" ONLY for EQUAL; "no" for BROADER, NARROWER, or '
-    'RELATED (a subtle superset/subset mismatch is a "no"); "uncertain" only if the description is '
-    "too sparse to classify. "
-    "Examples: German 'Zwielicht' (dim light, possible with the sun up) vs 'twilight' (defined by "
-    "the sun being below the horizon) -> BROADER -> no. English 'retiree' vs 'pensioner' (a retiree "
-    "need not draw a pension) -> RELATED -> no. English 'steam' vs 'water vapour' -> NARROWER -> no. "
+    "Judge equivalence by MEANING, not wording: a different synonym, register, or translation in "
+    "the label/description is NOT a mismatch. "
+    'Map the relation to a verdict: "yes" for EQUAL; "no" only for a CLEAR BROADER, NARROWER, or '
+    'RELATED mismatch; "uncertain" only if the description is too sparse to classify. '
+    "Examples (yes): English 'car' vs 'automobile' -> EQUAL -> yes. German 'Arzt' vs 'physician' "
+    "-> EQUAL -> yes. Swedish 'cykel' vs 'bicycle' -> EQUAL -> yes. "
+    "Examples (no): German 'Zwielicht' (dim light, possible with the sun up) vs 'twilight' (defined "
+    "by the sun being below the horizon) -> BROADER -> no. English 'retiree' vs 'pensioner' (a "
+    "retiree need not draw a pension) -> RELATED -> no. English 'steam' vs 'water vapour' -> "
+    "NARROWER -> no. "
     'Reply with ONLY a JSON array (no prose, no code fences), one object per item in order: '
     '[{"i":1,"verdict":"yes|no|uncertain","reason":"<REL>: <=10 words"}], where <REL> is the '
     "relation you chose (EQUAL/BROADER/NARROWER/RELATED)."
