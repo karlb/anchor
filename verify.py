@@ -41,10 +41,15 @@ SYSTEM = (
     "RELATED (associated but not the same: near-synonym, part/whole, cause/effect, false friend). "
     "Judge equivalence by MEANING, not wording: a different synonym, register, or translation in "
     "the label/description is NOT a mismatch. "
+    "GENDER RULE: a gendered personal noun (a feminine or masculine demonym or occupation term) "
+    "denotes the SAME concept as its gender-neutral counterpart — on Wikidata the word's sex is "
+    "recorded separately (semantic gender), NOT by this concept link — so treat it as EQUAL, not "
+    "narrower (e.g. 'Taenzerin'->'dancer', 'Franzoesin'->'French person / national of France'). "
     'Map the relation to a verdict: "yes" for EQUAL; "no" only for a CLEAR BROADER, NARROWER, or '
     'RELATED mismatch; "uncertain" only if the description is too sparse to classify. '
     "Examples (yes): English 'car' vs 'automobile' -> EQUAL -> yes. German 'Arzt' vs 'physician' "
-    "-> EQUAL -> yes. Swedish 'cykel' vs 'bicycle' -> EQUAL -> yes. "
+    "-> EQUAL -> yes. German 'Taenzerin' vs 'dancer' -> EQUAL (gender recorded separately) -> yes. "
+    "Swedish 'cykel' vs 'bicycle' -> EQUAL -> yes. "
     "Examples (no): German 'Zwielicht' (dim light, possible with the sun up) vs 'twilight' (defined "
     "by the sun being below the horizon) -> BROADER -> no. English 'retiree' vs 'pensioner' (a "
     "retiree need not draw a pension) -> RELATED -> no. English 'steam' vs 'water vapour' -> "
