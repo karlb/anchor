@@ -52,8 +52,8 @@ HEURISTIC_ITEM = "Q140308675"
 SEMGENDER = {"female": "Q6581072", "male": "Q6581097"}
 # whole-word markers that the anchor's own CC0 text is sex-specific (English label/desc).
 SEXMARK = re.compile(
-    r"\b(female|woman|women|man|men|male|consort|heroine|actress|empress|princess|widow|widower)\b",
-    re.I)
+    r"\b(female|woman|women|man|men|male|husband|wife|consort|heroine|actress|empress|"
+    r"princess|widow|widower)\b", re.I)
 
 
 def entity_snak(prop, qid):
@@ -110,13 +110,17 @@ def gender_of(lid):
     return _GENDER.get(lid)
 
 
-def anchor_is_sex_specific(qid, lang):
-    """True if the anchor concept's own CC0 text is sex-specific (then P10339 is redundant)."""
+def anchor_is_sex_specific(qid):
+    """True if the anchor concept is sex-specific (then P10339 is redundant — skip it).
+    SEXMARK is English, so judge the English label+desc. If the item has NO English text to
+    vet, return True (conservative — never add P10339 onto an un-vettable anchor)."""
     it = sqlite3.connect(config.ITEMS)
-    r = it.execute(f"SELECT label_en, desc_en, label_{lang}, desc_{lang} "
-                   f"FROM item WHERE qid=? AND NOT missing", [qid]).fetchone()
+    r = it.execute("SELECT label_en, desc_en FROM item WHERE qid=? AND NOT missing",
+                   [qid]).fetchone()
     it.close()
-    return bool(r and SEXMARK.search(" ".join(x for x in r if x)))
+    if not r or not (r[0] or r[1]):
+        return True
+    return bool(SEXMARK.search(" ".join(x for x in r if x)))
 
 
 def build_edit(row, today, include_senseless):
@@ -130,7 +134,7 @@ def build_edit(row, today, include_senseless):
     # Convention: a gendered lexeme also records semantic gender (P10339) — but only when the
     # anchor concept is gender-neutral (a sex-specific anchor already carries the sex).
     g = gender_of(lid)
-    p10339 = ([gender_claim(g)] if g in SEMGENDER and not anchor_is_sex_specific(qid, lang)
+    p10339 = ([gender_claim(g)] if g in SEMGENDER and not anchor_is_sex_specific(qid)
               else None)
     gtag = f" + P10339={g}" if p10339 else ""
 
@@ -247,8 +251,8 @@ def write_edits(edits):
                     print(f"  skip {lid}: sense already has P5137 {p5137} (never override)")
                     continue
                 sense["id"] = sid
-                if existing.get("P10339") and "P10339" in sense["claims"]:
-                    del sense["claims"]["P10339"]  # sense already has semantic gender; don't dup
+                if "P10339" in existing and "P10339" in sense["claims"]:
+                    del sense["claims"]["P10339"]  # already has semantic gender (incl. novalue); don't dup
             revid = submit(opener, csrf, lid, data)
         except Exception as e:  # noqa: BLE001 — one bad edit shouldn't abort the batch
             print(f"  FAIL {lid} → {anchor}: {e}"); continue
