@@ -12,20 +12,44 @@ errors. This is pure data — no LLM cost. With --json it emits each disagreemen
 with the anchor's own CC0 label/description (never a DBnary gloss), ready to feed
 an independent adjudication panel.
 
-    uv run audit_decisions.py            # human-readable report
+A second, LLM-based mode (--gloss) audits CONFIRMED links the other way: it compares
+each lexeme's own CC0 Wikidata sense gloss against the anchor and flags clear
+contradictions (the sense-mismatch class the lemma-only verifier is blind to, e.g.
+'hov' glossed "royal court" linked to "hoof"). Precision-tuned → human re-review.
+
+    uv run audit_decisions.py            # human-readable disagreement report (pure data)
     uv run audit_decisions.py --json     # JSON + CC0 evidence (pipe into a panel)
+    uv run audit_decisions.py --gloss    # LLM: flag links whose CC0 gloss contradicts the anchor
 """
 
 import argparse
 import collections
 import json
 import sqlite3
+import subprocess
 
 import config
 from review_queue import load_decisions
 
 CONFIRMED = ("approved", "written")  # human said the verifier-'yes' was correct
 LANGNAME = {"de": "German", "en": "English", "sv": "Swedish"}
+
+# --gloss audit: the verifier sees only the lemma, so it can't tell which sense a
+# monosemous lexeme holds. The lexeme's OWN CC0 Wikidata gloss can — when it plainly
+# describes a different concept than the anchor (e.g. 'hov' glossed "royal court"
+# linked to "hoof"). Tuned for PRECISION: only clear contradictions, because raw gloss
+# signal is noisy (terse/wrong-language/synonym glosses) — it routes to human re-review.
+GLOSS_SYSTEM = (
+    "You are a lexicographer auditing Wikidata P5137 links for SENSE MISMATCHES. Each item gives a "
+    "WORD, its LANGUAGE, the word's own Wikidata sense GLOSS, and the linked concept (CC0 label + "
+    "description). Answer 'contradiction' ONLY when the gloss clearly describes a GENUINELY "
+    "DIFFERENT concept than the linked one (e.g. gloss 'group of people surrounding a leader' "
+    "[royal court] vs concept 'hoof' -> contradiction). Wikidata glosses are often terse, in "
+    "another language, a bare synonym, or slightly broader/narrower -- those are NOT "
+    "contradictions; answer 'ok'. Use 'unsure' only if the gloss is empty or impossible to read. "
+    'Reply with ONLY a JSON array, one object per item in order: '
+    '[{"i":1,"verdict":"contradiction|ok|unsure","reason":"<=10 words"}].'
+)
 
 
 def cc0(it, qid, lang):
@@ -59,10 +83,67 @@ def disagreements(dec, verdicts):
     return acc, rej
 
 
+def best_gloss(wd, lid, lang):
+    """The lexeme's own CC0 Wikidata sense gloss, target-language preferred."""
+    vals = {lg: g for lg, g in wd.execute("SELECT lang, gloss FROM sense_gloss WHERE lid=?", [lid])}
+    for code in [lang, "en", "de", "sv"]:
+        if vals.get(code):
+            return vals[code]
+    return next(iter(vals.values()), "")
+
+
+def run_gloss_batch(rows, model):
+    lines = []
+    for n, (d, gloss, lab, desc) in enumerate(rows, 1):
+        lines.append(
+            f'{n}. word="{d["target_lemma"]}" ({LANGNAME.get(d["target_lang"], d["target_lang"])}) '
+            f'sense_gloss="{gloss}" | concept {d["anchor_qid"]}: label="{lab}" description="{desc}"')
+    out = subprocess.run(
+        ["claude", "-p", "--output-format", "json", "--model", model, "--system-prompt", GLOSS_SYSTEM],
+        input="Items:\n" + "\n".join(lines), capture_output=True, text=True, timeout=300)
+    if out.returncode != 0:
+        raise RuntimeError(out.stderr[:300])
+    result = json.loads(out.stdout)["result"].strip()
+    if result.startswith("```"):
+        result = result.split("\n", 1)[1].rsplit("```", 1)[0]
+    by_i = {v.get("i"): v for v in json.loads(result)}
+    return [by_i.get(n, {"verdict": "parse_error", "reason": ""}) for n in range(1, len(rows) + 1)]
+
+
+def gloss_audit(dec, it, wd, model, batch):
+    """Flag confirmed (approved/written) links whose lexeme CC0 gloss contradicts the anchor."""
+    rows = []
+    for (lid, qid), d in dec.items():
+        if d["status"] not in CONFIRMED:
+            continue
+        g = best_gloss(wd, lid, d["target_lang"])
+        if not g:
+            continue
+        lab, desc = cc0(it, qid, d["target_lang"])
+        rows.append((d, g, lab, desc))
+    flagged = []
+    for i in range(0, len(rows), batch):
+        b = rows[i:i + batch]
+        try:
+            verdicts = run_gloss_batch(b, model)
+        except Exception as e:  # noqa: BLE001 — one bad batch shouldn't kill the run
+            print(f"  batch {i // batch} failed: {e}")
+            continue
+        for (d, g, lab, desc), v in zip(b, verdicts):
+            if v.get("verdict") == "contradiction":
+                flagged.append((d, g, lab, desc, v.get("reason", "")))
+    return rows, flagged
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--json", action="store_true",
                     help="emit disagreements with CC0 anchor evidence (for a panel)")
+    ap.add_argument("--gloss", action="store_true",
+                    help="LLM audit: flag approved/written links whose lexeme CC0 gloss "
+                         "contradicts the anchor (precision-tuned; routes to human re-review)")
+    ap.add_argument("--model", default="sonnet")
+    ap.add_argument("--batch", type=int, default=8)
     args = ap.parse_args()
 
     dec = load_decisions()
@@ -72,6 +153,22 @@ def main():
     verdicts = {(a, b): (v, r) for a, b, v, r in
                 vf.execute("SELECT target_lid, anchor_qid, verdict, reason FROM verdict")}
     it = sqlite3.connect(config.ITEMS)
+
+    if args.gloss:
+        wd = sqlite3.connect(config.WIKIDATA)
+        rows, flagged = gloss_audit(dec, it, wd, args.model, args.batch)
+        print(f"gloss-contradiction audit: {len(rows)} confirmed links with a CC0 gloss "
+              f"(model={args.model})")
+        print(f"\n=== FLAGGED for re-review — lexeme gloss contradicts anchor: {len(flagged)} ===")
+        for d, g, lab, desc, reason in sorted(flagged, key=lambda x: (x[0]["target_lang"], x[0]["target_lemma"])):
+            print(f"  {d['target_lang']} {d['target_lemma']:<16} {d['target_lid']}/{d['anchor_qid']}  "
+                  f"human={d['status']}")
+            print(f"     gloss : {g}")
+            print(f"     anchor: {lab} — {desc}")
+            print(f"     why   : {reason}")
+        print("\n(precision-tuned: clear contradictions only; human re-review, not auto-action)")
+        return
+
     acc, rej = disagreements(dec, verdicts)
 
     if args.json:

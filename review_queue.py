@@ -126,9 +126,21 @@ def pick(lang, vals):
     return "", None
 
 
+def lexeme_gloss(wd, lid, lang):
+    """The lexeme's own CC0 Wikidata sense gloss (target-language preferred).
+
+    Lets the reviewer compare the lexeme's actual sense against the anchor concept —
+    e.g. a monosemous 'sheet' glossed 'a piece of paper' should NOT link to a nautical
+    line. Glosses are CC0 (Wikidata's own), loaded by load_lexemes.py into sense_gloss."""
+    vals = {lg: g for lg, g in
+            wd.execute("SELECT lang, gloss FROM sense_gloss WHERE lid=?", [lid])}
+    return pick(lang, vals)
+
+
 def render(limit):
     decisions = load_decisions()
     rows = [r for r in pool() if (r[0], r[1]) not in decisions]
+    wd = sqlite3.connect(config.WIKIDATA)
     c = collections.Counter(d["status"] for d in decisions.values())
     c["pending"] = len(rows)
     head = " · ".join(f"{k}: {v}" for k, v in sorted(c.items())) or "empty"
@@ -139,6 +151,9 @@ def render(limit):
         dsc, dlang = pick(lang, {"de": dde, "en": den, "sv": dsv})
         ltag = f" [{llang}]" if llang and llang != lang else ""
         dtag = f" [{dlang}]" if dlang and dlang != lang else ""
+        gl, glang = lexeme_gloss(wd, lid, lang)
+        gtag = f" [{glang}]" if glang and glang != lang else ""
+        gloss_html = f"“{html.escape(gl)}”{gtag}" if gl else "<i>(no sense gloss)</i>"
         form = (f"<form method=post action=/act style='display:inline'>"
                 f"<input type=hidden name=lid value='{html.escape(lid)}'>"
                 f"<input type=hidden name=qid value='{html.escape(qid)}'>"
@@ -148,7 +163,7 @@ def render(limit):
         trs.append(
             f"<tr><td class=lg>{html.escape(lang)}</td>"
             f"<td class=lm><a href='https://www.wikidata.org/wiki/Lexeme:{lid}' target=_blank>"
-            f"{html.escape(lemma)}</a></td>"
+            f"{html.escape(lemma)}</a><br><span class=d>{gloss_html}</span></td>"
             f"<td><a href='https://www.wikidata.org/wiki/{qid}' target=_blank>{qid}</a><br>"
             f"<b>{html.escape(lab)}</b>{ltag}<br><span class=d>{html.escape(dsc)}{dtag}</span></td>"
             f"<td class=d>{html.escape(reason or '')}</td>"
@@ -160,7 +175,7 @@ table{{border-collapse:collapse;width:100%}} td,th{{border-bottom:1px solid #e3e
 button{{font-size:.85rem;padding:3px 8px;cursor:pointer;border:1px solid #ccc;border-radius:4px;background:#fafafa}}
 .ok{{color:#197a19}} .no{{color:#b00}} .hold{{color:#a60}} a{{color:#36c;text-decoration:none}}</style>
 <h2>P5137 review queue</h2><p class=d>{head} — showing up to {limit} pending</p>
-<table><tr><th>lang</th><th>lemma → Lexeme</th><th>anchor concept (CC0)</th><th>verifier reason</th><th></th></tr>
+<table><tr><th>lang</th><th>lemma → Lexeme<br>(its CC0 sense gloss)</th><th>anchor concept (CC0)</th><th>verifier reason</th><th></th></tr>
 {chr(10).join(trs) or '<tr><td colspan=5>nothing pending 🎉</td></tr>'}</table>"""
 
 

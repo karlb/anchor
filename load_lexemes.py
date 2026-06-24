@@ -6,9 +6,11 @@ array with one lexeme entity per line). We keep only German/English/Swedish
 lexemes and extract bare facts: L-id, language, lexical category, every lemma
 representation, and each sense's P5137 ("item for this sense") target Q-id.
 
-License: glosses (``senses[].glosses``) are CC-BY-SA-incompatible creative text
-and are **never read or stored**. We keep only the sense *id* and its P5137
-Q-id, both bare facts.
+License: Wikidata's own data is CC0, including sense glosses (``senses[].glosses``),
+so we DO store them — they let a reviewer see the lexeme's own sense and let us audit
+sense matches (a Wikidata gloss like "a piece of paper" reveals that a monosemous
+"sheet" is not the nautical-line sense). It is *DBnary's* glosses that are CC-BY-SA;
+those are never touched. We also keep each sense *id* and its P5137 Q-id, bare facts.
 
 Run once you have the dump (default --dump is data/latest-lexemes.json.gz):
     uv run load_lexemes.py --dump path/to/latest-lexemes.json.gz
@@ -31,11 +33,14 @@ DROP TABLE IF EXISTS lexeme;
 DROP TABLE IF EXISTS lemma;
 DROP TABLE IF EXISTS sense;
 DROP TABLE IF EXISTS sense_item;
+DROP TABLE IF EXISTS sense_ref;
+DROP TABLE IF EXISTS sense_gloss;
 CREATE TABLE lexeme(lid TEXT PRIMARY KEY, lang TEXT, lexcat TEXT) WITHOUT ROWID;
 CREATE TABLE lemma(lid TEXT, tag TEXT, lemma TEXT);
 CREATE TABLE sense(lid TEXT, sid TEXT);
 CREATE TABLE sense_item(lid TEXT, sid TEXT, qid TEXT);  -- P5137 targets
 CREATE TABLE sense_ref(lid TEXT, sid TEXT, qid TEXT, prop TEXT, value TEXT);  -- P5137 ref snaks
+CREATE TABLE sense_gloss(lid TEXT, sid TEXT, lang TEXT, gloss TEXT);  -- CC0 Wikidata glosses
 """
 
 INDEXES = """
@@ -46,6 +51,7 @@ CREATE INDEX sense_item_lid ON sense_item(lid);
 CREATE INDEX sense_item_qid ON sense_item(qid);
 CREATE INDEX sense_ref_key ON sense_ref(lid, qid);
 CREATE INDEX sense_ref_prop ON sense_ref(prop);
+CREATE INDEX sense_gloss_lid ON sense_gloss(lid);
 """
 
 
@@ -96,7 +102,7 @@ def load(dump, out):
     conn = sqlite3.connect(out)
     conn.executescript(SCHEMA)
 
-    lexemes, lemmas, senses, items, refs = [], [], [], [], []
+    lexemes, lemmas, senses, items, refs, glosses = [], [], [], [], [], []
     n_kept = 0
 
     def flush():
@@ -105,7 +111,8 @@ def load(dump, out):
         conn.executemany("INSERT INTO sense VALUES (?,?)", senses)
         conn.executemany("INSERT INTO sense_item VALUES (?,?,?)", items)
         conn.executemany("INSERT INTO sense_ref VALUES (?,?,?,?,?)", refs)
-        lexemes.clear(); lemmas.clear(); senses.clear(); items.clear(); refs.clear()
+        conn.executemany("INSERT INTO sense_gloss VALUES (?,?,?,?)", glosses)
+        lexemes.clear(); lemmas.clear(); senses.clear(); items.clear(); refs.clear(); glosses.clear()
 
     for ent in iter_entities(dump):
         if ent.get("type") != "lexeme":
@@ -120,7 +127,9 @@ def load(dump, out):
         for s in ent.get("senses", []):
             sid = s["id"]
             senses.append((lid, sid))
-            for qid, claim_refs in p5137_claims(s):  # glosses deliberately ignored
+            for lang_code, g in s.get("glosses", {}).items():  # CC0 Wikidata glosses
+                glosses.append((lid, sid, lang_code, g["value"]))
+            for qid, claim_refs in p5137_claims(s):
                 items.append((lid, sid, qid))
                 for prop, value in claim_refs:
                     refs.append((lid, sid, qid, prop, value))
