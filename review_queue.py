@@ -8,11 +8,13 @@ truth: an append-only CSV log at config.DECISIONS (committed, diffable). There i
 no review SQLite DB — "pending" is computed as the verifier-'yes' High-tier
 candidate pool MINUS whatever the log already covers.
 
-    uv run review_queue.py serve       # http://localhost:8731  approve/reject buttons
+    uv run review_queue.py serve       # http://localhost:8731  approve/reject/defer buttons
     uv run review_queue.py status       # counts (decided from the log; pending computed)
 
-Status flow: a (lexeme, anchor) starts undecided (= pending). An approve/reject
+Status flow: a (lexeme, anchor) starts undecided (= pending). An approve/reject/defer
 appends one event; write.py appends a 'written' event with the revid. Replaying
+('deferred' = a hold: not written, and excluded from precision/validation scoring —
+distinct from a confident 'rejected').
 the log, last-event-per-pair wins. The log lives in git, so the human judgements
 survive a data/ wipe and every change shows up as a reviewable diff.
 """
@@ -102,7 +104,7 @@ def counts():
 def status(args):
     print(f"decision log: {DECISIONS}")
     c = counts()
-    for s in ("pending", "approved", "rejected", "written"):
+    for s in ("pending", "approved", "deferred", "rejected", "written"):
         print(f"  {s:<10} {c.get(s, 0):,}")
     # Every decided row was a verifier-'yes' candidate (the pool is verdict='yes'),
     # so the human verdict on it directly measures verifier-'yes' precision on the
@@ -141,7 +143,8 @@ def render(limit):
                 f"<input type=hidden name=lid value='{html.escape(lid)}'>"
                 f"<input type=hidden name=qid value='{html.escape(qid)}'>"
                 f"<button name=action value=approved class=ok>✓ approve</button> "
-                f"<button name=action value=rejected class=no>✗ reject</button></form>")
+                f"<button name=action value=rejected class=no>✗ reject</button> "
+                f"<button name=action value=deferred class=hold>? defer</button></form>")
         trs.append(
             f"<tr><td class=lg>{html.escape(lang)}</td>"
             f"<td class=lm><a href='https://www.wikidata.org/wiki/Lexeme:{lid}' target=_blank>"
@@ -155,7 +158,7 @@ def render(limit):
 table{{border-collapse:collapse;width:100%}} td,th{{border-bottom:1px solid #e3e3e3;padding:7px 9px;vertical-align:top;text-align:left}}
 .lg{{color:#888;text-transform:uppercase;font-size:.8rem}} .lm{{font-weight:600}} .d{{color:#666;font-size:.86rem}}
 button{{font-size:.85rem;padding:3px 8px;cursor:pointer;border:1px solid #ccc;border-radius:4px;background:#fafafa}}
-.ok{{color:#197a19}} .no{{color:#b00}} a{{color:#36c;text-decoration:none}}</style>
+.ok{{color:#197a19}} .no{{color:#b00}} .hold{{color:#a60}} a{{color:#36c;text-decoration:none}}</style>
 <h2>P5137 review queue</h2><p class=d>{head} — showing up to {limit} pending</p>
 <table><tr><th>lang</th><th>lemma → Lexeme</th><th>anchor concept (CC0)</th><th>verifier reason</th><th></th></tr>
 {chr(10).join(trs) or '<tr><td colspan=5>nothing pending 🎉</td></tr>'}</table>"""
@@ -181,7 +184,7 @@ class Handler(BaseHTTPRequestHandler):
         lid = data.get("lid", [""])[0]
         qid = data.get("qid", [""])[0]
         action = data.get("action", [""])[0]
-        if action in ("approved", "rejected"):
+        if action in ("approved", "rejected", "deferred"):
             row = next((r for r in pool() if r[0] == lid and r[1] == qid), None)
             decided = load_decisions()
             if row and (lid, qid) not in decided:  # ignore replays / stale double-clicks

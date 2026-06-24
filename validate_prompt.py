@@ -91,8 +91,10 @@ def main():
     if not new:
         raise SystemExit(f"no verdicts at {config.VERIFY} — rebuild the cache first")
 
+    n_def = sum(1 for r in gold.values() if r["status"] == "deferred")
+    defnote = f"; {n_def} deferred (held, excluded from scoring)" if n_def else ""
     print(f"decision log : {config.DECISIONS}  ({len(gold)} gold rows, "
-          f"all verifier-'yes' under the old prompt)")
+          f"all verifier-'yes' under the old prompt{defnote})")
     print(f"new cache    : {config.VERIFY}  ({len(new)} verdicts; model: {models(config.VERIFY)})")
     if base:
         print(f"baseline     : {args.baseline}  ({len(base)} verdicts)")
