@@ -24,7 +24,9 @@ read (those are CC-BY-SA).
 Backend: the local ``claude`` CLI in print mode (reuses your existing auth, no
 API key). Each CLI call reloads ~19k tokens of agent context, so candidates are
 **batched** (default 8/call) to amortise that ~10×. Verdicts are cached in
-``data/verify.sqlite3`` keyed by (target_lid, anchor_qid) — re-runs skip done work.
+``data/verify.sqlite3`` keyed by (target_lid, anchor_qid) — re-runs skip done work, but a
+changed prompt (tracked by its SHA1 fingerprint) auto-invalidates stale verdicts so they
+are re-verified rather than silently trusted.
 
 Run after fetch_items.py (defaults to a 40-candidate sample):
     uv run verify.py                       # sample the highest-support clean candidates
@@ -35,6 +37,7 @@ Run after fetch_items.py (defaults to a 40-candidate sample):
 
 import argparse
 import csv
+import hashlib
 import json
 import subprocess
 import sqlite3
@@ -77,12 +80,16 @@ SYSTEM = (
     "relation you chose (EQUAL/BROADER/NARROWER/DIFFERENT)."
 )
 
+# Fingerprint of the prompt: a changed SYSTEM yields a new PROMPT_VER, which automatically
+# invalidates verdicts cached under an older prompt (they are re-verified, not trusted).
+PROMPT_VER = hashlib.sha1(SYSTEM.encode()).hexdigest()[:8]
+
 LANGNAME = {"de": "German", "en": "English", "sv": "Swedish"}
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS verdict(
     target_lid TEXT, anchor_qid TEXT, target_lemma TEXT, target_lang TEXT,
-    verdict TEXT, reason TEXT, model TEXT,
+    verdict TEXT, reason TEXT, model TEXT, prompt_ver TEXT,
     PRIMARY KEY (target_lid, anchor_qid)
 ) WITHOUT ROWID;
 """
@@ -220,8 +227,16 @@ def main():
 
     out = sqlite3.connect(config.VERIFY)
     out.executescript(SCHEMA)
+    try:
+        out.execute("ALTER TABLE verdict ADD COLUMN prompt_ver TEXT")  # migrate a pre-fingerprint cache
+        out.commit()
+    except sqlite3.OperationalError:
+        pass  # column already present
+    # Only verdicts produced by the CURRENT prompt count as done; a prompt edit (new PROMPT_VER)
+    # auto-invalidates the rest so they are re-verified without needing --force.
     done = set() if args.force else {
-        (r[0], r[1]) for r in out.execute("SELECT target_lid, anchor_qid FROM verdict")}
+        (r[0], r[1]) for r in out.execute(
+            "SELECT target_lid, anchor_qid FROM verdict WHERE prompt_ver = ?", [PROMPT_VER])}
 
     rows = [r for r in candidates(args) if (r[0], r[3]) not in done and has_evidence(r)]
     if not args.all:
@@ -243,9 +258,9 @@ def main():
             lid, lang, lemma, qid = row[0], row[1], row[2], row[3]
             verdict = v.get("verdict", "parse_error")
             counts[verdict] = counts.get(verdict, 0) + 1
-            recs.append((lid, qid, lemma, lang, verdict, v.get("reason", ""), args.model))
+            recs.append((lid, qid, lemma, lang, verdict, v.get("reason", ""), args.model, PROMPT_VER))
         out.executemany(
-            "INSERT OR REPLACE INTO verdict VALUES (?,?,?,?,?,?,?)", recs)
+            "INSERT OR REPLACE INTO verdict VALUES (?,?,?,?,?,?,?,?)", recs)
         out.commit()
         print(f"  {min(i + args.batch, len(rows)):,}/{len(rows):,}  {counts}")
 
