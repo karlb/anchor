@@ -224,6 +224,8 @@ def main():
     ap.add_argument("--csv", default="", help="export the full verdict table to this CSV "
                     "on demand (the verdicts cache is data/verify.sqlite3)")
     args = ap.parse_args()
+    if args.senseless_only and "B" in args.gate.upper():
+        ap.error("--senseless-only (targets n_senses=0) is incompatible with gate B (requires n_senses=1)")
 
     out = sqlite3.connect(config.VERIFY)
     out.executescript(SCHEMA)
