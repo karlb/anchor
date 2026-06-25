@@ -101,11 +101,12 @@ def main():
     print(f"baseline structural hit-rate in sample: {precision.pct(base_hits, len(sample))} "
           f"({base_hits}/{len(sample)})")
 
-    # verify in batches
+    # verify in batches (gloss map keyed by held-out lid, matching production verify.py)
+    gmap = verify.load_glosses({r[0] for r, _ in sample})
     verdicts = []
     for i in range(0, len(sample), args.batch):
         chunk = sample[i : i + args.batch]
-        vs = verify.run_batch([r for r, _ in chunk], args.model)
+        vs = verify.run_batch([r for r, _ in chunk], args.model, gmap)
         verdicts.extend(v.get("verdict", "parse_error") for v in vs)
         print(f"  verified {min(i + args.batch, len(sample))}/{len(sample)}")
 

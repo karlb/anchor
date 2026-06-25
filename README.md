@@ -3,7 +3,9 @@
 Generate reliable **P5137 ("item for this sense")** candidates for Wikidata lexemes by
 propagating an *existing* anchor concept across WikDict sense-grounded translation clusters.
 The LLM only does a constrained yes/no, verified against the anchor Q-item's **own CC0**
-label/description. No DBnary gloss text is ever read or written. See the full method and
+label/description plus the target lexeme's **own CC0 Wikidata sense gloss** (which pins *which*
+sense is meant — e.g. *sheet* = paper vs. the nautical line). No DBnary gloss text (CC-BY-SA) is
+ever read or written. See the full method and
 license rationale in `notes/p5137_anchor_propagation.md` and the plan in
 `~/.claude/plans/i-want-to-improve-twinkling-puppy.md`.
 
@@ -37,8 +39,9 @@ latest-lexemes.json.gz ─load_lexemes.py──▶ wikidata.sqlite3 ─┘      
    Groups translation edges by the structural key `(lexentry, sense_num)` (never the gloss),
    which removes ~30% of naive lemma triples that would otherwise stitch different senses
    together (e.g. de *Bank* = bench vs. financial).
-2. **`load_lexemes.py`** — streams the Wikidata lexeme dump, keeps de/en/sv lexemes and each
-   sense's P5137 target. Glosses are deliberately dropped (no gloss column exists).
+2. **`load_lexemes.py`** — streams the Wikidata lexeme dump, keeps de/en/sv lexemes, each
+   sense's P5137 target, and each sense's **own CC0 Wikidata gloss** (`sense_gloss` table;
+   DBnary's CC-BY-SA glosses are never touched).
 3. **`match.py`** — matches cluster members to noun lexemes (Q1084), finds the single dominant
    anchor Q per cluster, and emits one candidate per `(target lexeme, anchor Q)` with a
    `support_clusters` confidence count. Abstains on conflicting anchors and never overrides an
@@ -49,8 +52,10 @@ latest-lexemes.json.gz ─load_lexemes.py──▶ wikidata.sqlite3 ─┘      
    ablation (the A/B/D gates; see notes for the de-bias).
 5. **`fetch_items.py`** — polite Wikidata Action API client; caches anchor Q **CC0**
    labels/descriptions + P31/P279 into `wd_items.sqlite3`.
-6. **`verify.py`** — LLM yes/no verifier over `claude -p` (CC0 label/description only). `--gate ABD`
-   runs the High tier. Verdicts are cached in `data/verify.sqlite3`; `--csv` exports them on demand.
+6. **`verify.py`** — LLM yes/no verifier over `claude -p` (CC0 anchor label/description + the
+   target lexeme's own CC0 gloss; tolerant criterion — broader/narrower count as yes, only a
+   genuinely different concept is 'no'). `--gate ABD` runs the High tier. Verdicts are cached in
+   `data/verify.sqlite3` (`--force` re-verifies after a prompt change); `--csv` exports them.
 7. **`measure_lift.py`** — measures the verifier's precision lift on held-out ground truth.
 8. **`export_review.py`** / **`review_queue.py`** — browsable HTML + a stdlib approve/reject UI
    (the authorization gate). Decisions are an append-only, git-committed log at
@@ -120,10 +125,10 @@ Pipeline validated end-to-end on the real dump. Headline results (full detail in
   the fresh stream is harder than held-out, and the verifier's rejections are correct catches
   (e.g. feminine demonyms wrongly anchored to a *language* item).
 
-## What's left before the first edits
+## What's left before the BRFA
 
-- **Create the P887 heuristic item** "inferred from translation" and pin its Q-id in `write.py`
-  (spec + QuickStatements in the file; the writer refuses `--write` until pinned).
+- **P887 heuristic item** "inferred from translation" — created as **Q140308675** and pinned in
+  `write.py` (done). ~11 pre-BRFA assisted edits already written (see `notes/runs/decisions.csv`).
 - **Senseless gloss policy** — the pilot writes monosemous targets only; sense-creation
   (`--include-senseless`) needs a CC0 gloss decision first.
-- **Talk-page post** (method + license rationale) → **BRFA** (~10 pre-BRFA edits, then a 50–250 trial).
+- **Talk-page post** (method + license rationale) → **BRFA** (a few more pre-BRFA edits, then a 50–250 trial).
