@@ -114,6 +114,23 @@ def status(args):
     if decided:
         print(f"  verifier-'yes' precision (human-confirmed): {confirmed}/{decided} = "
               f"{100.0 * confirmed / decided:.1f}%")
+    # Drift: the log snapshots the verifier verdict at decision time, but the cache can change
+    # later (e.g. a prompt-version rebuild). Surface decided pairs whose CURRENT cache verdict
+    # differs from what was reviewed — informational only (writes are log-driven, not cache-driven).
+    if os.path.exists(config.VERIFY):
+        decisions = load_decisions()
+        cn = sqlite3.connect(config.VERIFY)
+        cache = {(a, b): v for a, b, v in
+                 cn.execute("SELECT target_lid, anchor_qid, verdict FROM verdict")}
+        cn.close()
+        drift = [d["target_lemma"] for (lid, qid), d in decisions.items()
+                 if (lid, qid) in cache and d.get("verdict") and cache[(lid, qid)] != d["verdict"]]
+        if drift:
+            shown = ", ".join(sorted(drift)[:6]) + ("…" if len(drift) > 6 else "")
+            print(f"  ⚠ {len(drift)} decided pair(s) now disagree with the verify cache "
+                  f"(prompt changed since review): {shown}")
+            print("    → writes are log-driven, so this is informational; "
+                  "run audit_decisions.py to inspect")
 
 
 # ---- minimal approve/reject web UI (stdlib only) ----------------------------
