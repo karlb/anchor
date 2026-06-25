@@ -31,7 +31,8 @@ latest-lexemes.json.gz ─load_lexemes.py──▶ wikidata.sqlite3 ─┘      
                                                                                         ├─ measure_lift.py (verifier-lift eval)
                                                                                         ├─ export_review.py ─▶ data/review.html
                                                                                         ├─ review_queue.py ─▶ notes/runs/decisions.csv (human approve/reject log)
-                                                                                        └─ write.py ─▶ wbeditentity (gated on approval)
+                                                                                        ├─ gender.py ─▶ gender.sqlite3 (LLM semantic gender → P10339)
+                                                                                        └─ write.py ─▶ wbeditentity: P5137 + P10339 (gated on approval)
 ```
 
 **Build the candidate stream:**
@@ -57,12 +58,20 @@ latest-lexemes.json.gz ─load_lexemes.py──▶ wikidata.sqlite3 ─┘      
    genuinely different concept is 'no'). `--gate ABD` runs the High tier. Verdicts are cached in
    `data/verify.sqlite3` (`--force` re-verifies after a prompt change); `--csv` exports them.
 7. **`measure_lift.py`** — measures the verifier's precision lift on held-out ground truth.
-8. **`export_review.py`** / **`review_queue.py`** — browsable HTML + a stdlib approve/reject UI
+8. **`export_review.py`** / **`review_queue.py`** — browsable HTML + a stdlib approve/reject/defer UI
    (the authorization gate). Decisions are an append-only, git-committed log at
    `notes/runs/decisions.csv` (the single source of truth — there is no review DB; "pending" is
-   computed as the verifier-'yes' pool minus what the log covers). **`write.py`** builds the
-   `wbeditentity` payload (P5137 + mandatory P887/P813 reference), reads only approved rows from
-   that log, appends a `written` event with the revid, and defaults to `--dry-run`.
+   computed as the verifier-'yes' pool minus what the log covers).
+9. **`gender.py`** — LLM semantic-gender tagger (CC0: bare lemma only) over approved candidates;
+   supplies the **P10339** value for the two-part gendered-lexeme convention (P5137 → the
+   gender-neutral concept, the word's sex recorded separately). Cached in `gender.sqlite3`.
+10. **`write.py`** — builds the `wbeditentity` payload (**P5137** + mandatory P887/P813 reference,
+   plus **P10339** from `gender.py` when the anchor concept is gender-neutral), reads only approved
+   rows from that log, appends a `written` event with the revid, and defaults to `--dry-run`.
+
+**QA tooling:** **`audit_decisions.py`** surfaces human/verifier disagreements and runs an optional
+CC0 gloss-contradiction audit (`--gloss`); **`validate_prompt.py`** checks a verifier-prompt change
+against the human-gold decisions (keep% / catch%) with no extra LLM cost.
 
 ## Run
 
@@ -88,10 +97,11 @@ uv run fetch_items.py
 uv run verify.py --gate ABD --all --model sonnet
 uv run measure_lift.py --gate ABD --sample 350 --model sonnet
 
-# 6. review + write  (decisions are logged to notes/runs/decisions.csv — the source of truth)
+# 6. review, then tag gender + write  (decisions logged to notes/runs/decisions.csv — source of truth)
 uv run export_review.py                 # data/review.html
-uv run review_queue.py serve            # http://localhost:8731  approve/reject
-uv run review_queue.py status           # pending (computed) / approved / rejected / written
+uv run review_queue.py serve            # http://localhost:8731  approve/reject/defer
+uv run review_queue.py status           # pending (computed) / approved / deferred / rejected / written
+uv run gender.py --all --model sonnet   # P10339 semantic gender for approved lexemes
 uv run write.py --dry-run               # print payloads for approved rows (submits nothing)
 
 # 7. go live (assisted edits on your account; no autoconfirmed needed for statement-adds)
@@ -120,10 +130,14 @@ Pipeline validated end-to-end on the real dump. Headline results (full detail in
 - **34,821** clean candidates; **High tier** (clean ∩ ≥2 anchors ∩ concrete) = **7,400**
   (~6,700 grounding a currently-senseless lexeme).
 - **Structural precision** caps ~81% honestly (held-out, de-biased); the LLM verifier is required.
-- **Verifier lift** on the High tier: ~86% → **95.9%** precision (pooled n=470).
-- Verifying all **689** monosemous High-tier *candidates*: **51% yes / 33% no / 16% uncertain** —
-  the fresh stream is harder than held-out, and the verifier's rejections are correct catches
-  (e.g. feminine demonyms wrongly anchored to a *language* item).
+- **Verifier lift** on the High tier (held-out, strict-Q truth): pre-gloss lemma-only ~86% →
+  **95.9%** (pooled n=470); the current **gloss·tolerant** verifier ~86% → **93.8% at 100% recall**
+  (n=350) — the small dip is tolerance accepting broader/narrower near-synonyms that exact-Q truth
+  scores as misses. On the **human-reviewed gold set** it keeps **98.3%** and catches every genuine
+  homograph (*sheet*=paper, *hov*=court) the lemma-only verifier missed.
+- Verifying all **669** High-tier *candidates* with the gloss·tolerant verifier: **470 yes / 198 no
+  / 1 uncertain** (~70% / 30%); the rejections include true homograph catches the lemma-only verifier
+  waved through (e.g. *sheet*→nautical line, *hov*→hoof).
 
 ## What's left before the BRFA
 

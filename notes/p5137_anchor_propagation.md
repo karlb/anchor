@@ -98,6 +98,11 @@ robustness. **Conclusion: all five structural levers exhausted; structure alone 
 a trustworthy ≥95% requires the LLM verifier**, which independently checks cognate correctness
 from the description (catching false friends the same-label gate waves through).
 
+> **Note (2026-06-25):** the three subsections below are the **original lemma-only verifier**
+> (anchor CC0 label/description only). The current verifier also reads the target lexeme's own
+> CC0 Wikidata gloss and uses a tolerant EQUAL/BROADER/NARROWER→yes criterion — see the
+> **"Gloss·tolerant verifier"** subsection below for the updated numbers.
+
 ### Verifier (verify.py — CC0 label/description, single-vote, `claude -p` haiku)
 On a 48-candidate senseless-target sample: **36 yes / 9 no / 3 uncertain** (~25% pruned). The
 rejections were correct, including the two *highest-support* candidates `Schützin@de` /
@@ -138,6 +143,40 @@ feasible n lifts the whole interval above 95%. Caveats both ways: (1) strict hel
 credit, so 95.6% strict is a floor; (2) recall held at 94% at scale (verifier isn't
 over-pruning). To clear 95% comfortably: **2-of-3 voting** (precision↑, recall↓) or rely on
 the per-edit human review queue (the pre-BRFA edits are approved by hand anyway).
+
+### Gloss·tolerant verifier (2026-06-25)
+The verifier now also reads the **target lexeme's own CC0 Wikidata sense gloss** (monosemous lexemes
+only) and judges with a **tolerant** criterion: EQUAL/BROADER/NARROWER → yes, only a *genuinely
+different concept* (homograph / wrong sense) → no, falling back to the bare lemma when the gloss is
+missing/terse/foreign. It targets the sense-mismatch class the lemma-only verifier is structurally
+blind to: a monosemous Wikidata lexeme whose one recorded sense is the word's *dominant* meaning,
+bridged onto a cluster built on a *different* sense (`sheet`=paper vs the nautical line; `hov`=royal
+court vs hoof).
+
+**Why it wins** — blind 2×2 (input × criterion), 3-sample majority vote, judges blind to the human
+call, on the cleaned human-gold set. Holding the criterion *tolerant*, adding the gloss takes catch
+from 0 → all 4 genuine homographs at ~100% keep; the earlier "gloss hurts keep" result was a
+*strict-EQUAL* criterion artifact, not gloss noise (glosses are high quality: 140/171 RICH, 0 empty).
+
+| arm | keep% | catch |
+|---|---|---|
+| lemma·strict (old verifier) | 94.2 | 2/8 (scope only; misses all 4 homographs) |
+| lemma·tolerant | 99.4 | 0/8 |
+| gloss·strict | 93.6 | 6/8 |
+| **gloss·tolerant** | **100.0** | **4/4 genuine homographs** (spares the 2 scope + 2 mistaken rejects) |
+
+**Production validation after the `--force` cache rebuild (sonnet, 669 High-tier candidates):**
+- verdict mix shifted lemma-strict **362 yes / 300 no** → gloss-tolerant **470 yes / 198 no / 1
+  unc** (tolerant now counts broader/narrower; the 22 old-`yes`→`no` flips are the homograph catches).
+- human-gold set: **keep 169/172 = 98.3%**, **catch 4/6 = 66.7%** (the 4 genuine homographs; it
+  correctly spares the 2 defensible scope rejects `retiree`/`arvtagerska`). `validate_prompt` **PASS**.
+- held-out strict-Q lift (`measure_lift`, n=350): **86.0% → 93.8% at 100% recall**. The 93.8% is a
+  *floor* — the tolerant criterion deliberately accepts broader/narrower near-synonyms that exact-Q
+  held-out truth scores as misses, so the human-reviewed 98.3% keep is the truer precision signal.
+
+Robustness: the verdict cache now stores a **prompt fingerprint** (`prompt_ver` = sha1(SYSTEM)[:8]);
+a prompt change auto-invalidates stale verdicts instead of silently trusting them (`--force` still
+forces a full re-verify). Full investigation in project memory `sense-gloss-matching`.
 
 ### Writable volume (how many statements this generates)
 The held-out 689 is only the *monosemous* slice (the part with ground truth to measure). The
