@@ -106,6 +106,12 @@ def status(args):
     c = counts()
     for s in ("pending", "approved", "deferred", "rejected", "written"):
         print(f"  {s:<10} {c.get(s, 0):,}")
+    decided = load_decisions()
+    n_scope = sum(1 for r in pool() if (r[0], r[1]) not in decided
+                  and scope_hint(r[6])[1].startswith("defer"))
+    if n_scope:
+        print(f"  ⚠ of pending, {n_scope:,} are broader/narrower scope mismatches "
+              "(review individually — likely defer/reject)")
     # Every decided row was a verifier-'yes' candidate (the pool is verdict='yes'),
     # so the human verdict on it directly measures verifier-'yes' precision on the
     # real (fresh) write stream — the number held-out precision can only approximate.
@@ -154,16 +160,53 @@ def lexeme_gloss(wd, lid, lang):
     return pick(lang, vals)
 
 
+# ---- scope triage -----------------------------------------------------------
+# The verifier's TOLERANT criterion maps EQUAL/BROADER/NARROWER -> 'yes', so a
+# scope-mismatched pair still reaches review on a surface-plausible read. But P5137
+# asserts the sense denotes that EXACT concept, so a broader/narrower link is usually
+# a hold (defer) or reject — UNLESS the scope difference is one the link standard
+# blesses as EQUAL: a demonym individual vs the people-collective, or a gender-specific
+# form (the relation lives on the lexeme, not the sense). We surface the verifier's
+# relation token and an ADVISORY suggestion so these aren't bulk-approved unseen; the
+# human still decides via the buttons. See notes/p5137_anchor_propagation.md "Reviewer
+# guidance" (dominant-referent vs lateral/wrong-rank near-synonym).
+_CONVENTION = ("collective", "demonym", "citizen", "resident", "ethnic",
+               "nationals", " people", "gender", "masculine", "feminine")
+
+
+def scope_hint(reason):
+    """(relation, suggestion, css_class) for a verdict reason.
+
+    relation is the verifier's leading REL token (EQUAL/BROADER/NARROWER/…); an empty
+    suggestion means no scope flag (EQUAL or untagged)."""
+    rel = (reason or "").split(":", 1)[0].strip().upper()
+    if rel not in ("BROADER", "NARROWER"):
+        return rel, "", ""
+    if any(k in (reason or "").lower() for k in _CONVENTION):
+        return rel, "keep? (demonym/gender convention)", "ok"
+    return rel, "defer? (scope mismatch)", "hold"
+
+
 def render(limit):
     decisions = load_decisions()
     rows = [r for r in pool() if (r[0], r[1]) not in decisions]
+    # Float scope mismatches to the top: defer-suggested first, then convention
+    # broader/narrower, then clean EQUAL — so a scope case is never pushed past `limit`.
+    rows.sort(key=lambda r: ((lambda s: 0 if s.startswith("defer") else 1 if s else 2)
+                             (scope_hint(r[6])[1]), r[3], r[2]))
     wd = sqlite3.connect(config.WIKIDATA)
     c = collections.Counter(d["status"] for d in decisions.values())
     c["pending"] = len(rows)
+    n_scope = sum(1 for r in rows if scope_hint(r[6])[1].startswith("defer"))
     head = " · ".join(f"{k}: {v}" for k, v in sorted(c.items())) or "empty"
+    if n_scope:
+        head += f" · ⚠ {n_scope} scope-mismatch"
     trs = []
     for (lid, qid, lemma, lang, _ns, _v, reason, _m,
          lde, len_, lsv, dde, den, dsv) in rows[:limit]:
+        rel, sug, scls = scope_hint(reason)
+        scope_html = (f"<span class=rel>{rel}</span><br><span class={scls}>{html.escape(sug)}</span>"
+                      if sug else f"<span class=d>{rel.title()}</span>")
         lab, llang = pick(lang, {"de": lde, "en": len_, "sv": lsv})
         dsc, dlang = pick(lang, {"de": dde, "en": den, "sv": dsv})
         ltag = f" [{llang}]" if llang and llang != lang else ""
@@ -183,6 +226,7 @@ def render(limit):
             f"{html.escape(lemma)}</a><br><span class=d>{gloss_html}</span></td>"
             f"<td><a href='https://www.wikidata.org/wiki/{qid}' target=_blank>{qid}</a><br>"
             f"<b>{html.escape(lab)}</b>{ltag}<br><span class=d>{html.escape(dsc)}{dtag}</span></td>"
+            f"<td>{scope_html}</td>"
             f"<td class=d>{html.escape(reason or '')}</td>"
             f"<td>{form}</td></tr>")
     return f"""<!doctype html><meta charset=utf-8><title>P5137 review</title>
@@ -190,10 +234,11 @@ def render(limit):
 table{{border-collapse:collapse;width:100%}} td,th{{border-bottom:1px solid #e3e3e3;padding:7px 9px;vertical-align:top;text-align:left}}
 .lg{{color:#888;text-transform:uppercase;font-size:.8rem}} .lm{{font-weight:600}} .d{{color:#666;font-size:.86rem}}
 button{{font-size:.85rem;padding:3px 8px;cursor:pointer;border:1px solid #ccc;border-radius:4px;background:#fafafa}}
-.ok{{color:#197a19}} .no{{color:#b00}} .hold{{color:#a60}} a{{color:#36c;text-decoration:none}}</style>
+.ok{{color:#197a19}} .no{{color:#b00}} .hold{{color:#a60}} a{{color:#36c;text-decoration:none}}
+.rel{{font-weight:600;font-size:.78rem;letter-spacing:.02em}}</style>
 <h2>P5137 review queue</h2><p class=d>{head} — showing up to {limit} pending</p>
-<table><tr><th>lang</th><th>lemma → Lexeme<br>(its CC0 sense gloss)</th><th>anchor concept (CC0)</th><th>verifier reason</th><th></th></tr>
-{chr(10).join(trs) or '<tr><td colspan=5>nothing pending 🎉</td></tr>'}</table>"""
+<table><tr><th>lang</th><th>lemma → Lexeme<br>(its CC0 sense gloss)</th><th>anchor concept (CC0)</th><th>scope</th><th>verifier reason</th><th></th></tr>
+{chr(10).join(trs) or '<tr><td colspan=6>nothing pending 🎉</td></tr>'}</table>"""
 
 
 class Handler(BaseHTTPRequestHandler):
