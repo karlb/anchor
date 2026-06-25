@@ -174,7 +174,7 @@ def lexeme_gloss(wd, lid, lang):
 # signal about this link. See notes/p5137_anchor_propagation.md "Reviewer guidance"
 # (dominant-referent vs lateral/wrong-rank near-synonym).
 _CONVENTION = ("collective", "demonym", "citizen", "resident", "ethnic",
-               "nationals", " people", "gender", "masculine", "feminine")
+               "nationals", " people", "gender", "masculine", "feminine", "female", "male")
 
 
 def scope_hint(reason):

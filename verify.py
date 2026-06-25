@@ -62,9 +62,11 @@ SYSTEM = (
     "vs. the whole, or two sibling concepts); "
     "DIFFERENT (a genuinely different concept: a wrong sense, homograph, or false friend). "
     "Judge by MEANING, not wording: a different synonym, register, or translation is NOT a mismatch. "
-    "GENDER RULE: a gendered personal noun (a feminine or masculine demonym or occupation term) "
-    "denotes the SAME concept as its gender-neutral counterpart — on Wikidata the word's sex is "
-    "recorded separately (semantic gender), NOT by this concept link — so treat it as EQUAL. "
+    "GENDER RULE: a gendered personal noun — ANY feminine or masculine person term, not only "
+    "demonyms and occupations but also ordinary common nouns like 'schoolgirl'/'schoolboy', "
+    "'waitress', 'widow' — denotes the SAME concept as its gender-neutral counterpart; on Wikidata "
+    "the word's sex is recorded separately (semantic gender), NOT by this concept link. So a pure "
+    "male/female difference at the same level is EQUAL, NOT NARROWER. "
     'Map the relation to a verdict (TOLERANT — surface every plausible candidate for human review '
     'even when scope or category differs): "yes" for EQUAL, BROADER, NARROWER, or LATERAL; "no" '
     'ONLY for DIFFERENT (a clearly different concept); "uncertain" only if the gloss and '
@@ -72,8 +74,9 @@ SYSTEM = (
     "Examples (yes): English 'car' vs 'automobile' -> EQUAL -> yes. German 'Taenzerin' vs 'dancer' "
     "-> EQUAL (gender recorded separately) -> yes. German 'Bosnier' glossed 'male person from "
     "Bosnia' vs 'Bosnians' -> NARROWER -> yes. Swedish 'bergsbestigare' (mountain climber) vs "
-    "'mountaineer' -> EQUAL -> yes. English 'huntsman' glossed 'hunts with weapons' vs 'hunter' "
-    "-> NARROWER -> yes. "
+    "'mountaineer' -> EQUAL -> yes. English 'schoolgirl' glossed 'young female student' vs "
+    "'schoolchild' -> EQUAL (gender recorded separately, not narrower) -> yes. English 'huntsman' "
+    "glossed 'hunts with weapons' vs 'hunter' -> NARROWER -> yes. "
     "Examples (lateral, still yes): English 'manner' glossed 'mode of action' vs 'behavior' -> "
     "LATERAL (a way of acting, not a kind of behavior). English 'facial recognition' glossed "
     "'identification of human faces' vs 'facial recognition system' -> LATERAL (the process vs. "
