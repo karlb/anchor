@@ -10,20 +10,35 @@ concept format — mixing models would swamp the format effect (haiku vs sonnet 
 ~90-vs-5 precision gap). Each pair is verified `--samples` times per arm and the
 predicted action is majority-voted to damp LLM nondeterminism.
 
-    uv run ab_concept.py --model sonnet --samples 3        # full run
-    uv run ab_concept.py --count                            # just size the job
+    uv run ab_concept.py --limit 60 --samples 1     # LEAN first read (~30k tokens)
+    uv run ab_concept.py --samples 3                 # full run (pricey — ~430k tokens)
+    uv run ab_concept.py --count                      # just size the job
 
-Arms: base (target+en label, 1 desc) / +labels (all langs) / +labels+descs (all langs).
+Resumable: every completed batch is cached to data/ab_concept_cache.jsonl keyed by
+(arm, sample, lid, qid), so a kill / quota stall loses nothing — re-run the SAME
+command and it pays only for batches not yet cached. On a quota / rate-limit error it
+ABORTS cleanly (rather than scoring the failed batches as fake 'defer's) so partial
+results stay trustworthy; just re-run when quota recovers. Delete the cache file to
+force a clean run.
 """
 import argparse
 import collections
+import json
+import os
 
-import config  # noqa: F401  (verify imports it; kept explicit for clarity)
+import config
 import review_queue as rq
 import verify
 
 ARMS = [("base", False, False), ("+labels", True, False), ("+labels+descs", True, True)]
 HUMAN = {"approved": "keep", "written": "keep", "rejected": "reject", "deferred": "defer"}
+CACHE = os.path.join(config.DATA, "ab_concept_cache.jsonl")
+QUOTA_MARKERS = ("quota", "rate limit", "rate-limit", "usage limit", "overloaded",
+                 "429", "limit reached", "too many requests")
+
+
+class QuotaAbort(RuntimeError):
+    """Raised to stop the whole run on a quota/rate-limit failure (vs a transient batch error)."""
 
 
 def predicted_action(verdict, reason):
@@ -51,17 +66,43 @@ def load_eval_rows():
     return rows, truth
 
 
-def run_arm(rows, gmap, model, labels_all, descs_all, samples, batch=8):
+def load_cache():
+    cache = {}
+    if os.path.exists(CACHE):
+        with open(CACHE) as f:
+            for line in f:
+                e = json.loads(line)
+                cache[(e["arm"], e["sample"], e["lid"], e["qid"])] = (e["verdict"], e["reason"])
+    return cache
+
+
+def run_arm(name, rows, gmap, model, labels_all, descs_all, samples, cache, batch=8):
     votes = collections.defaultdict(collections.Counter)
-    for _ in range(samples):
-        for i in range(0, len(rows), batch):
-            chunk = rows[i:i + batch]
-            try:
-                vs = verify.run_batch(chunk, model, gmap, labels_all, descs_all)
-            except Exception:  # noqa: BLE001 — a failed batch shouldn't kill the arm
-                vs = [{"verdict": "error", "reason": ""}] * len(chunk)
-            for row, v in zip(chunk, vs):
-                votes[(row[0], row[3])][predicted_action(v.get("verdict"), v.get("reason", ""))] += 1
+    cf = open(CACHE, "a")
+    try:
+        for s in range(samples):
+            for i in range(0, len(rows), batch):
+                chunk = rows[i:i + batch]
+                keys = [(name, s, r[0], r[3]) for r in chunk]
+                if all(k in cache for k in keys):
+                    results = [cache[k] for k in keys]
+                else:
+                    try:
+                        vs = verify.run_batch(chunk, model, gmap, labels_all, descs_all)
+                    except RuntimeError as e:
+                        if any(m in str(e).lower() for m in QUOTA_MARKERS):
+                            raise QuotaAbort(str(e)[:200]) from e
+                        vs = [{"verdict": "error", "reason": ""}] * len(chunk)
+                    results = [(v.get("verdict"), v.get("reason", "")) for v in vs]
+                    for k, (verdict, reason) in zip(keys, results):
+                        cache[k] = (verdict, reason)
+                        cf.write(json.dumps({"arm": name, "sample": s, "lid": k[2],
+                                             "qid": k[3], "verdict": verdict, "reason": reason}) + "\n")
+                    cf.flush()
+                for r, (verdict, reason) in zip(chunk, results):
+                    votes[(r[0], r[3])][predicted_action(verdict, reason)] += 1
+    finally:
+        cf.close()
     return {k: c.most_common(1)[0][0] for k, c in votes.items()}
 
 
@@ -90,19 +131,30 @@ def main():
     if args.limit:
         rows = rows[: args.limit]
     th = collections.Counter(truth[(r[0], r[3])] for r in rows)
+    cache = load_cache()
+    cached_batches = sum(
+        all((name, s, r[0], r[3]) in cache for r in rows[i:i + 8])
+        for name, _, _ in ARMS for s in range(args.samples)
+        for i in range(0, len(rows), 8))
     nbatches = (-(-len(rows) // 8)) * args.samples * len(ARMS)
     print(f"eval pairs: {len(rows)}  human truth: {dict(th)}")
-    print(f"model={args.model} samples={args.samples} arms={len(ARMS)} -> ~{nbatches} batches")
+    print(f"model={args.model} samples={args.samples} arms={len(ARMS)} -> {nbatches} batches"
+          f"  ({cached_batches} already cached, {nbatches - cached_batches} to run)")
     if args.count:
         return
 
     gmap = verify.load_glosses({r[0] for r in rows})
     preds = {}
-    print(f"\n{'arm':<16}{'exact':>8}{'binary':>8}{'false-keep':>12}{'false-drop':>12}")
-    for name, la, da in ARMS:
-        preds[name] = run_arm(rows, gmap, args.model, la, da, args.samples)
-        sc = score(preds[name], truth)
-        print(f"{name:<16}{sc['exact']:>7.0%}{sc['binary']:>8.0%}{sc['fk']:>12}{sc['fd']:>12}")
+    try:
+        print(f"\n{'arm':<16}{'exact':>8}{'binary':>8}{'false-keep':>12}{'false-drop':>12}")
+        for name, la, da in ARMS:
+            preds[name] = run_arm(name, rows, gmap, args.model, la, da, args.samples, cache)
+            sc = score(preds[name], truth)
+            print(f"{name:<16}{sc['exact']:>7.0%}{sc['binary']:>8.0%}{sc['fk']:>12}{sc['fd']:>12}")
+    except QuotaAbort as e:
+        print(f"\n!! quota/rate-limit hit, aborting: {e}")
+        print(f"   progress is cached in {CACHE} — re-run the SAME command to resume.")
+        return
 
     base, lab = preds["base"], preds["+labels"]
     flips = [(k, base[k], lab[k], truth[k]) for k in base if base[k] != lab[k]]
