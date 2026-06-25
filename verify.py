@@ -60,6 +60,10 @@ SYSTEM = (
     "LATERAL (the right reading of the word, but the concept is ADJACENT rather than a kind of / "
     "wider than it — a process vs. the system or product that performs it, an attribute or facet "
     "vs. the whole, or two sibling concepts); "
+    "INCOHERENT (the CONCEPT ITSELF is self-contradictory — its label, description, and "
+    "translations disagree about what it denotes — so there is no coherent basis to judge the "
+    "relation at all; flag this only for a real contradiction between the given fields, never for "
+    "mere sparseness); "
     "DIFFERENT (a genuinely different concept: a wrong sense, homograph, or false friend). "
     "Judge by MEANING, not wording: a different synonym, register, or translation is NOT a mismatch. "
     "GENDER RULE: a gendered personal noun — ANY feminine or masculine person term, not only "
@@ -68,9 +72,10 @@ SYSTEM = (
     "the word's sex is recorded separately (semantic gender), NOT by this concept link. So a pure "
     "male/female difference at the same level is EQUAL, NOT NARROWER. "
     'Map the relation to a verdict (TOLERANT — surface every plausible candidate for human review '
-    'even when scope or category differs): "yes" for EQUAL, BROADER, NARROWER, or LATERAL; "no" '
-    'ONLY for DIFFERENT (a clearly different concept); "uncertain" only if the gloss and '
-    "description are both too sparse to classify. "
+    'even when scope or category differs): "yes" for EQUAL, BROADER, NARROWER, LATERAL, or '
+    'INCOHERENT (an incoherent target still goes to a human, who will defer it); "no" ONLY for '
+    'DIFFERENT (a clearly different concept); "uncertain" only if the gloss and description are '
+    "both too sparse to classify. "
     "Examples (yes): English 'car' vs 'automobile' -> EQUAL -> yes. German 'Taenzerin' vs 'dancer' "
     "-> EQUAL (gender recorded separately) -> yes. German 'Bosnier' glossed 'male person from "
     "Bosnia' vs 'Bosnians' -> NARROWER -> yes. Swedish 'bergsbestigare' (mountain climber) vs "
@@ -81,13 +86,16 @@ SYSTEM = (
     "LATERAL (a way of acting, not a kind of behavior). English 'facial recognition' glossed "
     "'identification of human faces' vs 'facial recognition system' -> LATERAL (the process vs. "
     "the system that runs it). "
+    "Example (incoherent): Swedish 'anspraak' (demand/expectation) vs a concept whose English "
+    "label says 'cause of action' but whose Swedish form is 'Fordran' (a debt) -> INCOHERENT (the "
+    "target conflates two different concepts, no basis to judge) -> yes (surface to defer). "
     "Examples (no): English 'sheet' glossed 'a piece of paper' vs concept 'one of the lines on a "
     "sail ship' -> DIFFERENT (homograph) -> no. Swedish 'hov' glossed 'group of people surrounding a "
     "leader' vs concept 'hoof' -> DIFFERENT -> no. Swedish 'bit' glossed 'liten del' (small part) vs "
     "concept 'unit of information in computing' -> DIFFERENT -> no. "
     'Reply with ONLY a JSON array (no prose, no code fences), one object per item in order: '
     '[{"i":1,"verdict":"yes|no|uncertain","reason":"<REL>: <=10 words"}], where <REL> is the '
-    "relation you chose (EQUAL/BROADER/NARROWER/LATERAL/DIFFERENT)."
+    "relation you chose (EQUAL/BROADER/NARROWER/LATERAL/INCOHERENT/DIFFERENT)."
 )
 
 # Fingerprint of the prompt: a changed SYSTEM yields a new PROMPT_VER, which automatically
@@ -143,14 +151,28 @@ def candidates(args):
     return rows
 
 
-def fmt_concept(row):
+def fmt_concept(row, labels_all=False, descs_all=False):
+    """(qid, label, description) for the anchor concept, target-language first.
+
+    Default: label = target-lang + English (deduped), description = single best.
+    labels_all / descs_all widen each to ALL available CC0 languages (de/en/sv) —
+    this surfaces cross-language disagreement so the verifier can spot an INCOHERENT
+    target. Both off keeps the legacy format (so production is unchanged until an
+    A/B says a wider format actually helps)."""
     _lid, lang, _lemma, qid, _sup, lde, len_, lsv, dde, den, dsv = row
     labels = {"de": lde, "en": len_, "sv": lsv}
     descs = {"de": dde, "en": den, "sv": dsv}
-    # label in target language plus English, deduped; description target-lang-first.
-    lab = [labels[lang], len_] if lang != "en" else [len_]
-    lab = " / ".join(dict.fromkeys(x for x in lab if x)) or "(no label)"
-    desc = descs[lang] or den or dde or dsv or "(no description)"
+    order = list(dict.fromkeys([lang, "en", "de", "sv"]))   # target-language first
+    if labels_all:
+        lab = " / ".join(dict.fromkeys(labels[c] for c in order if labels[c]))
+    else:
+        lab = " / ".join(dict.fromkeys(x for x in ([labels[lang], len_] if lang != "en" else [len_]) if x))
+    lab = lab or "(no label)"
+    if descs_all:
+        desc = " | ".join(f"{c}: {descs[c]}" for c in order if descs[c])
+    else:
+        desc = descs[lang] or den or dde or dsv
+    desc = desc or "(no description)"
     return qid, lab, desc
 
 
@@ -193,11 +215,11 @@ def pick_gloss(gmap, lid, lang):
     return next(iter(vals.values()), "")
 
 
-def run_batch(rows, model, gmap):
+def run_batch(rows, model, gmap, labels_all=False, descs_all=False):
     lines = []
     for n, row in enumerate(rows, 1):
         lid, lang, lemma, *_ = row
-        qid, lab, desc = fmt_concept(row)
+        qid, lab, desc = fmt_concept(row, labels_all, descs_all)
         gloss = pick_gloss(gmap, lid, lang)
         gpart = f' gloss="{gloss}"' if gloss else ""
         lines.append(

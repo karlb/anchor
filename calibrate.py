@@ -27,7 +27,7 @@ MIN_SAMPLES = 30
 APPROVE_AUTO = 0.97   # clean-rate >= this -> candidate auto-approve (writes data, high bar)
 NOWRITE_AUTO = 0.85   # (reject+defer)/n >= this -> candidate auto-defer (reversible, lower bar)
 
-KNOWN = ("EQUAL", "BROADER", "NARROWER", "LATERAL", "DIFFERENT")
+KNOWN = ("EQUAL", "BROADER", "NARROWER", "LATERAL", "INCOHERENT", "DIFFERENT")
 
 
 def rel_class(reason):

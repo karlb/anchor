@@ -180,11 +180,13 @@ _CONVENTION = ("collective", "demonym", "citizen", "resident", "ethnic",
 def scope_hint(reason):
     """(relation, suggestion, css_class) for a verdict reason.
 
-    relation is the verifier's leading REL token (EQUAL/BROADER/NARROWER/LATERAL/…); an
-    empty suggestion means no scope flag (EQUAL or untagged)."""
+    relation is the verifier's leading REL token (EQUAL/BROADER/NARROWER/LATERAL/INCOHERENT/…);
+    an empty suggestion means no scope flag (EQUAL or untagged)."""
     rel = (reason or "").split(":", 1)[0].strip().upper()
     if rel == "LATERAL":
         return rel, "reject? (lateral — not is-a)", "no"
+    if rel == "INCOHERENT":
+        return rel, "defer? (incoherent anchor — no basis to judge)", "hold"
     if rel not in ("BROADER", "NARROWER"):
         return rel, "", ""
     if any(k in (reason or "").lower() for k in _CONVENTION):
