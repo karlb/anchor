@@ -26,9 +26,9 @@ import argparse
 import collections
 import json
 import sqlite3
-import subprocess
 
 import config
+import llm
 from review_queue import load_decisions
 
 CONFIRMED = ("approved", "written")  # human said the verifier-'yes' was correct
@@ -98,16 +98,8 @@ def run_gloss_batch(rows, model):
         lines.append(
             f'{n}. word="{d["target_lemma"]}" ({LANGNAME.get(d["target_lang"], d["target_lang"])}) '
             f'sense_gloss="{gloss}" | concept {d["anchor_qid"]}: label="{lab}" description="{desc}"')
-    out = subprocess.run(
-        ["claude", "-p", "--output-format", "json", "--model", model, "--system-prompt", GLOSS_SYSTEM],
-        input="Items:\n" + "\n".join(lines), capture_output=True, text=True, timeout=300)
-    if out.returncode != 0:
-        raise RuntimeError(out.stderr[:300])
-    result = json.loads(out.stdout)["result"].strip()
-    if result.startswith("```"):
-        result = result.split("\n", 1)[1].rsplit("```", 1)[0]
-    by_i = {v.get("i"): v for v in json.loads(result)}
-    return [by_i.get(n, {"verdict": "parse_error", "reason": ""}) for n in range(1, len(rows) + 1)]
+    return llm.batch_json(GLOSS_SYSTEM, "Items:\n" + "\n".join(lines), model, len(rows),
+                          {"verdict": "parse_error", "reason": ""})
 
 
 def gloss_audit(dec, it, wd, model, batch):

@@ -38,12 +38,11 @@ Run after fetch_items.py (defaults to a 40-candidate sample):
 import argparse
 import csv
 import hashlib
-import json
-import subprocess
 import sqlite3
 
 import config
 import gates
+import llm
 
 SYSTEM = (
     "You are a lexicographer auditing Wikidata P5137 sense links. For each item you are given a "
@@ -194,20 +193,8 @@ def run_batch(rows, model, gmap):
             f'{n}. language={LANGNAME.get(lang, lang)} noun="{lemma}"{gpart} | '
             f'concept {qid}: label="{lab}" description="{desc}"'
         )
-    prompt = "Items:\n" + "\n".join(lines)
-    out = subprocess.run(
-        ["claude", "-p", "--output-format", "json", "--model", model,
-         "--system-prompt", SYSTEM],
-        input=prompt, capture_output=True, text=True, timeout=300,
-    )
-    if out.returncode != 0:
-        raise RuntimeError(out.stderr[:300])
-    result = json.loads(out.stdout)["result"].strip()
-    if result.startswith("```"):
-        result = result.split("\n", 1)[1].rsplit("```", 1)[0]
-    verdicts = json.loads(result)
-    by_i = {v.get("i"): v for v in verdicts}
-    return [by_i.get(n, {"verdict": "parse_error", "reason": ""}) for n in range(1, len(rows) + 1)]
+    return llm.batch_json(SYSTEM, "Items:\n" + "\n".join(lines), model, len(rows),
+                          {"verdict": "parse_error", "reason": ""})
 
 
 def main():

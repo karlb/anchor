@@ -20,11 +20,10 @@ Run after the human review (reads status='approved' from the decision log):
 """
 
 import argparse
-import json
 import sqlite3
-import subprocess
 
 import config
+import llm
 from review_queue import load_decisions
 
 SYSTEM = (
@@ -66,16 +65,8 @@ def approved_lexemes():
 def run_batch(rows, model):
     lines = [f'{n}. language={LANGNAME.get(lang, lang)} noun="{lemma}"'
              for n, (_lid, lemma, lang) in enumerate(rows, 1)]
-    out = subprocess.run(
-        ["claude", "-p", "--output-format", "json", "--model", model, "--system-prompt", SYSTEM],
-        input="Items:\n" + "\n".join(lines), capture_output=True, text=True, timeout=300)
-    if out.returncode != 0:
-        raise RuntimeError(out.stderr[:300])
-    result = json.loads(out.stdout)["result"].strip()
-    if result.startswith("```"):
-        result = result.split("\n", 1)[1].rsplit("```", 1)[0]
-    by_i = {v.get("i"): v for v in json.loads(result)}
-    return [by_i.get(n, {"gender": "parse_error"}) for n in range(1, len(rows) + 1)]
+    return llm.batch_json(SYSTEM, "Items:\n" + "\n".join(lines), model, len(rows),
+                          {"gender": "parse_error"})
 
 
 def main():
