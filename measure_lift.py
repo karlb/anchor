@@ -106,7 +106,11 @@ def main():
     verdicts = []
     for i in range(0, len(sample), args.batch):
         chunk = sample[i : i + args.batch]
-        vs = verify.run_batch([r for r, _ in chunk], args.model, gmap)
+        try:
+            vs = verify.run_batch([r for r, _ in chunk], args.model, gmap)
+        except Exception as e:  # noqa: BLE001 — a transient batch failure shouldn't abort the whole run
+            print(f"  batch {i // args.batch} failed: {e}")
+            vs = [{"verdict": "error"}] * len(chunk)
         verdicts.extend(v.get("verdict", "parse_error") for v in vs)
         print(f"  verified {min(i + args.batch, len(sample))}/{len(sample)}")
 
