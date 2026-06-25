@@ -213,7 +213,7 @@ def main():
     ap.add_argument("--limit", type=int, default=40, help="max candidates (default 40 sample)")
     ap.add_argument("--all", action="store_true", help="verify every eligible candidate")
     ap.add_argument("--batch", type=int, default=8)
-    ap.add_argument("--model", default="haiku")
+    ap.add_argument("--model", default="sonnet")
     ap.add_argument("--min-support", type=int, default=1)
     ap.add_argument("--senseless-only", action="store_true")
     ap.add_argument("--gate", default="", help="structural gate filter, e.g. ABD (the High tier)")
