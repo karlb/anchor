@@ -25,6 +25,7 @@ import argparse
 import collections
 import json
 import os
+import sqlite3
 import subprocess
 
 import config
@@ -33,6 +34,12 @@ import verify
 
 ARMS = [("base", False, False), ("+labels", True, False), ("+labels+descs", True, True)]
 HUMAN = {"approved": "keep", "written": "keep", "rejected": "reject", "deferred": "defer"}
+# The scope/coherence relations: the cases where the concept boundary is contested and
+# multilingual context could plausibly help. Muddled anchors surface here too
+# (Computerhersteller -> NARROWER, anspraak -> BROADER). --suspect restricts the eval set
+# to these, so the format effect is measured where it can actually appear (not drowned by
+# EQUAL-obvious keeps and clean homograph rejects).
+SCOPE_RELS = ("BROADER", "NARROWER", "LATERAL", "INCOHERENT")
 CACHE = os.path.join(config.DATA, "ab_concept_cache.jsonl")
 QUOTA_MARKERS = ("quota", "rate limit", "rate-limit", "usage limit", "overloaded",
                  "429", "limit reached", "too many requests")
@@ -57,13 +64,25 @@ def predicted_action(verdict, reason):
     return "keep"   # EQUAL / convention-keep / unflagged
 
 
-def load_eval_rows():
+def scope_rel_map():
+    """{(lid, qid): REL token} from the production verify cache — the verifier's relation
+    for each pair, used to restrict the eval set to scope/coherence cases."""
+    db = sqlite3.connect(config.VERIFY)
+    return {(lid, qid): rq.scope_hint(reason)[0]
+            for lid, qid, reason in db.execute(
+                "SELECT target_lid, anchor_qid, reason FROM verdict")}
+
+
+def load_eval_rows(suspect=False):
     truth = {k: HUMAN[(d.get("status") or "").strip()]
              for k, d in rq.load_decisions().items()
              if (d.get("status") or "").strip() in HUMAN}
     args = argparse.Namespace(gate="ABD", min_support=1, senseless_only=False)
     rows = [r for r in verify.candidates(args)
             if verify.has_evidence(r) and (r[0], r[3]) in truth]
+    if suspect:
+        rel = scope_rel_map()
+        rows = [r for r in rows if rel.get((r[0], r[3])) in SCOPE_RELS]
     return rows, truth
 
 
@@ -129,21 +148,27 @@ def main():
     ap.add_argument("--samples", type=int, default=3)
     ap.add_argument("--limit", type=int, default=0, help="cap eval pairs (0 = all)")
     ap.add_argument("--count", action="store_true", help="print job size and exit")
+    ap.add_argument("--suspect", action="store_true",
+                    help="restrict eval set to scope/coherence cases (BROADER/NARROWER/"
+                         "LATERAL/INCOHERENT) — where the concept format can actually matter")
+    ap.add_argument("--arms", default="", help="comma-list of arm names to run "
+                    "(default all); e.g. 'base,+labels+descs' to skip the inert +labels arm")
     args = ap.parse_args()
+    arms = ARMS if not args.arms else [a for a in ARMS if a[0] in args.arms.split(",")]
 
-    rows, truth = load_eval_rows()
+    rows, truth = load_eval_rows(suspect=args.suspect)
     if args.limit:
         rows = rows[: args.limit]
     th = collections.Counter(truth[(r[0], r[3])] for r in rows)
     cache = load_cache()
     cached_batches = sum(
         all((name, s, r[0], r[3]) in cache for r in rows[i:i + 8])
-        for name, _, _ in ARMS for s in range(args.samples)
+        for name, _, _ in arms for s in range(args.samples)
         for i in range(0, len(rows), 8))
-    nbatches = (-(-len(rows) // 8)) * args.samples * len(ARMS)
+    nbatches = (-(-len(rows) // 8)) * args.samples * len(arms)
     print(f"eval pairs: {len(rows)}  human truth: {dict(th)}")
-    print(f"model={args.model} samples={args.samples} arms={len(ARMS)} -> {nbatches} batches"
-          f"  ({cached_batches} already cached, {nbatches - cached_batches} to run)")
+    print(f"model={args.model} samples={args.samples} arms={[a[0] for a in arms]} "
+          f"-> {nbatches} batches  ({cached_batches} cached, {nbatches - cached_batches} to run)")
     if args.count:
         return
 
@@ -151,7 +176,7 @@ def main():
     preds = {}
     try:
         print(f"\n{'arm':<16}{'exact':>8}{'binary':>8}{'false-keep':>12}{'false-drop':>12}")
-        for name, la, da in ARMS:
+        for name, la, da in arms:
             preds[name] = run_arm(name, rows, gmap, args.model, la, da, args.samples, cache)
             sc = score(preds[name], truth)
             print(f"{name:<16}{sc['exact']:>7.0%}{sc['binary']:>8.0%}{sc['fk']:>12}{sc['fd']:>12}")
@@ -160,14 +185,17 @@ def main():
         print(f"   progress is cached in {CACHE} — re-run the SAME command to resume.")
         return
 
-    base, lab = preds["base"], preds["+labels"]
-    flips = [(k, base[k], lab[k], truth[k]) for k in base if base[k] != lab[k]]
-    fixed = sum(1 for _, b, l, t in flips if l == t and b != t)
-    broke = sum(1 for _, b, l, t in flips if b == t and l != t)
-    print(f"\nbase -> +labels: {len(flips)} flips  ({fixed} fixed toward human, {broke} broke away)")
-    for (lid, qid), b, l, t in flips[:30]:
-        mark = "OK " if (l == t and b != t) else ("BAD" if (b == t and l != t) else " . ")
-        print(f"  {mark} {lid} {qid}: {b} -> {l}  (human={t})")
+    # flip analysis: base vs the widest arm that was actually run
+    wide = next((n for n in ("+labels+descs", "+labels") if n in preds), None)
+    if "base" in preds and wide:
+        base, w = preds["base"], preds[wide]
+        flips = [(k, base[k], w[k], truth[k]) for k in base if base[k] != w[k]]
+        fixed = sum(1 for _, b, l, t in flips if l == t and b != t)
+        broke = sum(1 for _, b, l, t in flips if b == t and l != t)
+        print(f"\nbase -> {wide}: {len(flips)} flips  ({fixed} fixed toward human, {broke} broke away)")
+        for (lid, qid), b, l, t in flips[:30]:
+            mark = "OK " if (l == t and b != t) else ("BAD" if (b == t and l != t) else " . ")
+            print(f"  {mark} {lid} {qid}: {b} -> {l}  (human={t})")
 
 
 if __name__ == "__main__":
