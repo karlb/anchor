@@ -2,12 +2,24 @@
 """LLM yes/no verifier for P5137 candidates — CC0 inputs only.
 
 For each candidate ``(target lexeme L, anchor Q)``, the model is asked a single
-constrained question: does the noun ``L.lemma`` (in its language) denote the
-concept identified by Q's **CC0** label + description? The answer is a verdict
-(yes / no / uncertain) plus a one-line reason — never copied text.
+constrained question: does L's specific sense — shown via the lexeme's own CC0
+Wikidata GLOSS when it has one — denote the concept identified by Q's **CC0**
+label + description? The answer is a verdict (yes / no / uncertain) plus a
+one-line reason — never copied text. The gloss disambiguates homographs the bare
+lemma cannot ('sheet'=paper vs the nautical line, 'hov'=court vs hoof); the
+criterion is TOLERANT (broader/narrower still count as yes, only a genuinely
+different concept is 'no'). Validated by a blind 2×2 + 3-sample vote on the gold
+set: gloss+tolerant scored 100% keep and caught every genuine homograph, beating
+the lemma-only strict verifier — see memory ``sense-gloss-matching``.
 
-License: the only concept evidence shown is Q's own CC0 label/description
-(Wikidata→Wikidata) and the bare lemma. No DBnary gloss is ever read.
+A gloss is attached only when L is MONOSEMOUS (one sense); a candidate is
+lemma-level (no sense id), so for a polysemous lexeme we can't know which sense
+the cluster grounds and fall back to the bare lemma. Senseless targets (n=0) have
+no gloss and use the lemma route too.
+
+License: every input is CC0 — Q's own label/description (Wikidata→Wikidata), the
+bare lemma, and L's own Wikidata sense gloss (also CC0). No DBnary gloss is ever
+read (those are CC-BY-SA).
 
 Backend: the local ``claude`` CLI in print mode (reuses your existing auth, no
 API key). Each CLI call reloads ~19k tokens of agent context, so candidates are
@@ -31,32 +43,38 @@ import config
 import gates
 
 SYSTEM = (
-    "You are a lexicographer. For each item you are given a NOUN, its LANGUAGE, and a "
-    "candidate concept described by a Wikidata CC0 label and description. "
-    "First classify how the noun's meaning relates to the concept: "
-    "EQUAL (the noun denotes that concept — exact synonyms and translation/register "
-    "differences still count as EQUAL); "
-    "BROADER (the noun is a hypernym — wider than the concept, which is only a special case); "
-    "NARROWER (the noun is a hyponym — more specific than the concept); "
-    "RELATED (associated but not the same: near-synonym, part/whole, cause/effect, false friend). "
-    "Judge equivalence by MEANING, not wording: a different synonym, register, or translation in "
-    "the label/description is NOT a mismatch. "
+    "You are a lexicographer auditing Wikidata P5137 sense links. For each item you are given a "
+    "NOUN, its LANGUAGE, sometimes the word's own dictionary GLOSS (a short definition of the ONE "
+    "specific sense being linked), and a candidate concept described by a Wikidata CC0 label and "
+    "description. "
+    "Use the GLOSS as the primary signal for WHICH sense of the noun is meant. If no gloss is shown, "
+    "or it is a bare one-word synonym or written in an unexpected language, fall back to judging from "
+    "the noun itself and the concept. "
+    "Classify how that sense relates to the concept: "
+    "EQUAL (the sense denotes that concept — exact synonyms and translation/register differences "
+    "still count as EQUAL); "
+    "BROADER (the sense is a hypernym — wider than the concept); "
+    "NARROWER (the sense is a hyponym — more specific than the concept); "
+    "DIFFERENT (a genuinely different concept: a wrong sense, homograph, or false friend). "
+    "Judge by MEANING, not wording: a different synonym, register, or translation is NOT a mismatch. "
     "GENDER RULE: a gendered personal noun (a feminine or masculine demonym or occupation term) "
     "denotes the SAME concept as its gender-neutral counterpart — on Wikidata the word's sex is "
-    "recorded separately (semantic gender), NOT by this concept link — so treat it as EQUAL, not "
-    "narrower (e.g. 'Taenzerin'->'dancer', 'Franzoesin'->'French person / national of France'). "
-    'Map the relation to a verdict: "yes" for EQUAL; "no" only for a CLEAR BROADER, NARROWER, or '
-    'RELATED mismatch; "uncertain" only if the description is too sparse to classify. '
-    "Examples (yes): English 'car' vs 'automobile' -> EQUAL -> yes. German 'Arzt' vs 'physician' "
-    "-> EQUAL -> yes. German 'Taenzerin' vs 'dancer' -> EQUAL (gender recorded separately) -> yes. "
-    "Swedish 'cykel' vs 'bicycle' -> EQUAL -> yes. "
-    "Examples (no): German 'Zwielicht' (dim light, possible with the sun up) vs 'twilight' (defined "
-    "by the sun being below the horizon) -> BROADER -> no. English 'retiree' vs 'pensioner' (a "
-    "retiree need not draw a pension) -> RELATED -> no. English 'steam' vs 'water vapour' -> "
-    "NARROWER -> no. "
+    "recorded separately (semantic gender), NOT by this concept link — so treat it as EQUAL. "
+    'Map the relation to a verdict (TOLERANT — the concept is the right "item for this sense" even '
+    'when scope differs): "yes" for EQUAL, BROADER, or NARROWER; "no" ONLY for DIFFERENT (a clearly '
+    'different concept); "uncertain" only if the gloss and description are both too sparse to '
+    "classify. "
+    "Examples (yes): English 'car' vs 'automobile' -> EQUAL -> yes. German 'Taenzerin' vs 'dancer' "
+    "-> EQUAL (gender recorded separately) -> yes. German 'Bosnier' glossed 'male person from "
+    "Bosnia' vs 'Bosnians' -> NARROWER -> yes. Swedish 'bergsbestigare' (mountain climber) vs "
+    "'mountaineer' -> EQUAL -> yes. "
+    "Examples (no): English 'sheet' glossed 'a piece of paper' vs concept 'one of the lines on a "
+    "sail ship' -> DIFFERENT (homograph) -> no. Swedish 'hov' glossed 'group of people surrounding a "
+    "leader' vs concept 'hoof' -> DIFFERENT -> no. Swedish 'bit' glossed 'liten del' (small part) vs "
+    "concept 'unit of information in computing' -> DIFFERENT -> no. "
     'Reply with ONLY a JSON array (no prose, no code fences), one object per item in order: '
     '[{"i":1,"verdict":"yes|no|uncertain","reason":"<REL>: <=10 words"}], where <REL> is the '
-    "relation you chose (EQUAL/BROADER/NARROWER/RELATED)."
+    "relation you chose (EQUAL/BROADER/NARROWER/DIFFERENT)."
 )
 
 LANGNAME = {"de": "German", "en": "English", "sv": "Swedish"}
@@ -124,13 +142,49 @@ def has_evidence(row):
     return lab != "(no label)" or desc != "(no description)"
 
 
-def run_batch(rows, model):
+def load_glosses(lids):
+    """{lid: {lang: gloss}} of CC0 Wikidata sense glosses — MONOSEMOUS lexemes only.
+
+    A candidate is lemma-level (no sense id), so a gloss is only safe to attach when the
+    lexeme has exactly one sense; for a polysemous lexeme we can't know which sense the
+    cluster grounds, so we omit it and fall back to the bare lemma."""
+    out = {}
+    if not lids:
+        return out
+    wd = sqlite3.connect(config.WIKIDATA)
+    by_lid = {}
+    lids = list(lids)
+    for i in range(0, len(lids), 500):
+        chunk = lids[i:i + 500]
+        q = ("SELECT lid, sid, lang, gloss FROM sense_gloss WHERE lid IN (%s)"
+             % ",".join("?" * len(chunk)))
+        for lid, sid, lang, gloss in wd.execute(q, chunk):
+            by_lid.setdefault(lid, {}).setdefault(sid, {})[lang] = gloss
+    wd.close()
+    for lid, senses in by_lid.items():
+        if len(senses) == 1:                       # monosemous → unambiguous gloss
+            out[lid] = next(iter(senses.values()))
+    return out
+
+
+def pick_gloss(gmap, lid, lang):
+    """The lexeme's gloss, target-language preferred, else any (en/de/sv); '' if none."""
+    vals = gmap.get(lid, {})
+    for code in [lang, "en", "de", "sv"]:
+        if vals.get(code):
+            return vals[code]
+    return next(iter(vals.values()), "")
+
+
+def run_batch(rows, model, gmap):
     lines = []
     for n, row in enumerate(rows, 1):
-        _lid, lang, lemma, *_ = row
+        lid, lang, lemma, *_ = row
         qid, lab, desc = fmt_concept(row)
+        gloss = pick_gloss(gmap, lid, lang)
+        gpart = f' gloss="{gloss}"' if gloss else ""
         lines.append(
-            f'{n}. language={LANGNAME.get(lang, lang)} noun="{lemma}" | '
+            f'{n}. language={LANGNAME.get(lang, lang)} noun="{lemma}"{gpart} | '
             f'concept {qid}: label="{lab}" description="{desc}"'
         )
     prompt = "Items:\n" + "\n".join(lines)
@@ -158,24 +212,29 @@ def main():
     ap.add_argument("--min-support", type=int, default=1)
     ap.add_argument("--senseless-only", action="store_true")
     ap.add_argument("--gate", default="", help="structural gate filter, e.g. ABD (the High tier)")
+    ap.add_argument("--force", action="store_true", help="re-verify even cached candidates "
+                    "(needed to apply a changed prompt/criterion; overwrites their verdicts)")
     ap.add_argument("--csv", default="", help="export the full verdict table to this CSV "
                     "on demand (the verdicts cache is data/verify.sqlite3)")
     args = ap.parse_args()
 
     out = sqlite3.connect(config.VERIFY)
     out.executescript(SCHEMA)
-    done = {(r[0], r[1]) for r in out.execute("SELECT target_lid, anchor_qid FROM verdict")}
+    done = set() if args.force else {
+        (r[0], r[1]) for r in out.execute("SELECT target_lid, anchor_qid FROM verdict")}
 
     rows = [r for r in candidates(args) if (r[0], r[3]) not in done and has_evidence(r)]
     if not args.all:
         rows = rows[: args.limit]
-    print(f"candidates to verify: {len(rows):,}  (batch={args.batch}, model={args.model})")
+    gmap = load_glosses({r[0] for r in rows})
+    print(f"candidates to verify: {len(rows):,}  ({len(gmap):,} with a CC0 gloss; "
+          f"batch={args.batch}, model={args.model})")
 
     counts = {}
     for i in range(0, len(rows), args.batch):
         batch = rows[i : i + args.batch]
         try:
-            verdicts = run_batch(batch, args.model)
+            verdicts = run_batch(batch, args.model, gmap)
         except Exception as e:  # noqa: BLE001 — one bad batch shouldn't kill the run
             print(f"  batch {i // args.batch} failed: {e}")
             verdicts = [{"verdict": "error", "reason": ""}] * len(batch)

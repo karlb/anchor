@@ -199,3 +199,5 @@ ts,target_lid,anchor_qid,target_lemma,target_lang,target_n_senses,verdict,reason
 2026-06-24 08:20:20,L251549,Q3736439,and,sv,1,yes,"and = duck, matches common name for Anatidae ducks",sonnet,deferred,local,
 2026-06-24 08:20:20,L580314,Q205177,abrakadabra,sv,1,yes,abrakadabra is exactly this magical incantation,sonnet,deferred,local,
 2026-06-24 08:20:20,L22832,Q1110794,daily,en,1,yes,'daily' used as noun clearly means a daily newspaper,sonnet,deferred,local,
+2026-06-25 07:26:42,L485518,Q164160,Zwielicht,de,1,yes,'Zwielicht' denotes the dim light between day and night,sonnet,approved,local,
+2026-06-25 07:26:42,L33534,Q486972,boplats,sv,1,yes,"""boplats"" is a place where people permanently settle",sonnet,deferred,local,
