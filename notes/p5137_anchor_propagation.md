@@ -261,16 +261,29 @@ verification) are all validated on real data.
 P5137 links a **sense to a concept** — it is form-, frequency-, and gender-independent. The
 calls reviewers (and BRFA examiners) keep hitting:
 
-- **Near-synonym / partial overlap → ABSTAIN (the most important rule).** P5137 asserts the sense
-  *denotes that exact concept*. If the lexeme's sense is **broader (hypernym), narrower (hyponym),
-  or merely related** — not equal — decline; a loose link asserts a false equivalence and is worse
-  than no link. *Zwielicht* (dim/ambiguous light, can occur with the sun above the horizon) → 
-  Q164160 ("twilight", *defined* by the sun being below the horizon) is a **superset** mismatch →
-  reject. This is the *steam/vapor*, *novella/novel* class the strict precision deliberately
-  scores as a miss; declining it is exactly the discipline that lifts precision to ~96%. The
-  verifier can pass these on a surface-plausible read ("both are dim light") — subtle superset/
-  subset mismatches are where **human review** adds the most value. You need not find a better
-  item; the bot proposed the cluster anchor, the anchor is the wrong granularity, so abstain.
+- **Scope mismatch → ABSTAIN, but the test is dominant-referent vs lateral, not "broader vs
+  equal" (the most important rule).** P5137 asserts the sense *denotes that exact concept*. A
+  scope difference is **not** an automatic reject — the discriminating question is: *is the anchor
+  the lemma's dominant/default referent, in a clean is-a relation?*
+  - **Accept** when the anchor is the word's central meaning and the gloss merely reads wider than
+    the word's actual denotation (gloss-artifact breadth): *Kugel* glossed "rundes 3D-Objekt" →
+    Q12507 "sphere" (the word *centres* on sphere; the breadth is generic phrasing — closer to a
+    register difference than a true hypernym); *Kanute* glossed "jemand, der Kanu fährt" → Q13382566
+    "canoe athlete" (the word's prototype is the sportsperson). The demonym and gender conventions
+    below are the same case — individual ↔ people-collective and m./f. forms are **EQUAL** for
+    P5137 (the relation lives on the lexeme, not the sense), so *keep* them.
+  - **Abstain** when the anchor is a **laterally-overlapping near-synonym** that is *not* the word's
+    centre, or a **taxon rank narrower than the word implies** — a loose link asserts a false
+    equivalence and is worse than no link. *Zwielicht* (dim/ambiguous light, can occur with the sun
+    above the horizon) → Q164160 "twilight" (*defined* by the sun below the horizon): twilight is
+    not what "Zwielicht" centrally means → reject. *retiree* → "pensioner", *renässans* (revival) →
+    the Renaissance *epoch*, *Mammut* (genus) → one *species*: same class, the *steam/vapor*,
+    *novella/novel* family that strict precision scores as a miss. Declining these is the discipline
+    that lifts precision to ~96%.
+  The verifier passes scope mismatches through on a surface-plausible read ("both are dim light"),
+  so this is exactly where **human review** adds the most value — `review_queue.py` tags each
+  broader/narrower pair with a "defer?/keep?" scope hint and floats them to the top of the queue.
+  You need not find a better item; if the anchor is the wrong granularity, abstain.
   - **Tell: verifier hedge-words flag a near-synonym.** When the verifier's reason (or the item's
     description) reaches for *"substantially overlap"*, *"broadly"*, *"most commonly"*, *"similar
     to"* instead of asserting plain denotation, inspect for a superset/subset mismatch — it usually
