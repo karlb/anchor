@@ -215,7 +215,7 @@ def pick_gloss(gmap, lid, lang):
     return next(iter(vals.values()), "")
 
 
-def run_batch(rows, model, gmap, labels_all=False, descs_all=False):
+def run_batch(rows, model, gmap, labels_all=False, descs_all=False, timeout=300):
     lines = []
     for n, row in enumerate(rows, 1):
         lid, lang, lemma, *_ = row
@@ -227,7 +227,7 @@ def run_batch(rows, model, gmap, labels_all=False, descs_all=False):
             f'concept {qid}: label="{lab}" description="{desc}"'
         )
     return llm.batch_json(SYSTEM, "Items:\n" + "\n".join(lines), model, len(rows),
-                          {"verdict": "parse_error", "reason": ""})
+                          {"verdict": "parse_error", "reason": ""}, timeout=timeout)
 
 
 def main():

@@ -25,6 +25,7 @@ import argparse
 import collections
 import json
 import os
+import subprocess
 
 import config
 import review_queue as rq
@@ -88,7 +89,10 @@ def run_arm(name, rows, gmap, model, labels_all, descs_all, samples, cache, batc
                     results = [cache[k] for k in keys]
                 else:
                     try:
-                        vs = verify.run_batch(chunk, model, gmap, labels_all, descs_all)
+                        vs = verify.run_batch(chunk, model, gmap, labels_all, descs_all, timeout=150)
+                    except subprocess.TimeoutExpired as e:
+                        # a hung call (usually throttling) — stop cleanly; cache makes resume cheap
+                        raise QuotaAbort("batch timed out (likely throttling) — resume when stable") from e
                     except RuntimeError as e:
                         if any(m in str(e).lower() for m in QUOTA_MARKERS):
                             raise QuotaAbort(str(e)[:200]) from e
