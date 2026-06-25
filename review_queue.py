@@ -108,9 +108,9 @@ def status(args):
         print(f"  {s:<10} {c.get(s, 0):,}")
     decided = load_decisions()
     n_scope = sum(1 for r in pool() if (r[0], r[1]) not in decided
-                  and scope_hint(r[6])[1].startswith("defer"))
+                  and scope_hint(r[6])[1].startswith(("defer", "reject")))
     if n_scope:
-        print(f"  ⚠ of pending, {n_scope:,} are broader/narrower scope mismatches "
+        print(f"  ⚠ of pending, {n_scope:,} are broader/narrower/lateral scope mismatches "
               "(review individually — likely defer/reject)")
     # Every decided row was a verifier-'yes' candidate (the pool is verdict='yes'),
     # so the human verdict on it directly measures verifier-'yes' precision on the
@@ -161,15 +161,18 @@ def lexeme_gloss(wd, lid, lang):
 
 
 # ---- scope triage -----------------------------------------------------------
-# The verifier's TOLERANT criterion maps EQUAL/BROADER/NARROWER -> 'yes', so a
+# The verifier's TOLERANT criterion maps EQUAL/BROADER/NARROWER/LATERAL -> 'yes', so a
 # scope-mismatched pair still reaches review on a surface-plausible read. But P5137
-# asserts the sense denotes that EXACT concept, so a broader/narrower link is usually
-# a hold (defer) or reject — UNLESS the scope difference is one the link standard
-# blesses as EQUAL: a demonym individual vs the people-collective, or a gender-specific
-# form (the relation lives on the lexeme, not the sense). We surface the verifier's
-# relation token and an ADVISORY suggestion so these aren't bulk-approved unseen; the
-# human still decides via the buttons. See notes/p5137_anchor_propagation.md "Reviewer
-# guidance" (dominant-referent vs lateral/wrong-rank near-synonym).
+# asserts the sense denotes that EXACT concept, so a broader/narrower link is usually a
+# hold (defer), and a LATERAL one (a process vs. its system, an attribute vs. the whole —
+# adjacent, not a true is-a) usually a reject — UNLESS the scope difference is one the link
+# standard blesses as EQUAL: a demonym individual vs the people-collective, or a
+# gender-specific form (the relation lives on the lexeme, not the sense). We surface the
+# verifier's relation token and an ADVISORY suggestion so these aren't bulk-approved unseen;
+# the human still decides via the buttons. We deliberately do NOT factor in whether a
+# better-scoped Wikidata item exists — its absence is usually just a gap in Wikidata, not a
+# signal about this link. See notes/p5137_anchor_propagation.md "Reviewer guidance"
+# (dominant-referent vs lateral/wrong-rank near-synonym).
 _CONVENTION = ("collective", "demonym", "citizen", "resident", "ethnic",
                "nationals", " people", "gender", "masculine", "feminine")
 
@@ -177,9 +180,11 @@ _CONVENTION = ("collective", "demonym", "citizen", "resident", "ethnic",
 def scope_hint(reason):
     """(relation, suggestion, css_class) for a verdict reason.
 
-    relation is the verifier's leading REL token (EQUAL/BROADER/NARROWER/…); an empty
-    suggestion means no scope flag (EQUAL or untagged)."""
+    relation is the verifier's leading REL token (EQUAL/BROADER/NARROWER/LATERAL/…); an
+    empty suggestion means no scope flag (EQUAL or untagged)."""
     rel = (reason or "").split(":", 1)[0].strip().upper()
+    if rel == "LATERAL":
+        return rel, "reject? (lateral — not is-a)", "no"
     if rel not in ("BROADER", "NARROWER"):
         return rel, "", ""
     if any(k in (reason or "").lower() for k in _CONVENTION):
@@ -192,12 +197,12 @@ def render(limit):
     rows = [r for r in pool() if (r[0], r[1]) not in decisions]
     # Float scope mismatches to the top: defer-suggested first, then convention
     # broader/narrower, then clean EQUAL — so a scope case is never pushed past `limit`.
-    rows.sort(key=lambda r: ((lambda s: 0 if s.startswith("defer") else 1 if s else 2)
+    rows.sort(key=lambda r: ((lambda s: 0 if s.startswith(("defer", "reject")) else 1 if s else 2)
                              (scope_hint(r[6])[1]), r[3], r[2]))
     wd = sqlite3.connect(config.WIKIDATA)
     c = collections.Counter(d["status"] for d in decisions.values())
     c["pending"] = len(rows)
-    n_scope = sum(1 for r in rows if scope_hint(r[6])[1].startswith("defer"))
+    n_scope = sum(1 for r in rows if scope_hint(r[6])[1].startswith(("defer", "reject")))
     head = " · ".join(f"{k}: {v}" for k, v in sorted(c.items())) or "empty"
     if n_scope:
         head += f" · ⚠ {n_scope} scope-mismatch"

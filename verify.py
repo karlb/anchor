@@ -57,26 +57,34 @@ SYSTEM = (
     "still count as EQUAL); "
     "BROADER (the sense is a hypernym — wider than the concept); "
     "NARROWER (the sense is a hyponym — more specific than the concept); "
+    "LATERAL (the right reading of the word, but the concept is ADJACENT rather than a kind of / "
+    "wider than it — a process vs. the system or product that performs it, an attribute or facet "
+    "vs. the whole, or two sibling concepts); "
     "DIFFERENT (a genuinely different concept: a wrong sense, homograph, or false friend). "
     "Judge by MEANING, not wording: a different synonym, register, or translation is NOT a mismatch. "
     "GENDER RULE: a gendered personal noun (a feminine or masculine demonym or occupation term) "
     "denotes the SAME concept as its gender-neutral counterpart — on Wikidata the word's sex is "
     "recorded separately (semantic gender), NOT by this concept link — so treat it as EQUAL. "
-    'Map the relation to a verdict (TOLERANT — the concept is the right "item for this sense" even '
-    'when scope differs): "yes" for EQUAL, BROADER, or NARROWER; "no" ONLY for DIFFERENT (a clearly '
-    'different concept); "uncertain" only if the gloss and description are both too sparse to '
-    "classify. "
+    'Map the relation to a verdict (TOLERANT — surface every plausible candidate for human review '
+    'even when scope or category differs): "yes" for EQUAL, BROADER, NARROWER, or LATERAL; "no" '
+    'ONLY for DIFFERENT (a clearly different concept); "uncertain" only if the gloss and '
+    "description are both too sparse to classify. "
     "Examples (yes): English 'car' vs 'automobile' -> EQUAL -> yes. German 'Taenzerin' vs 'dancer' "
     "-> EQUAL (gender recorded separately) -> yes. German 'Bosnier' glossed 'male person from "
     "Bosnia' vs 'Bosnians' -> NARROWER -> yes. Swedish 'bergsbestigare' (mountain climber) vs "
-    "'mountaineer' -> EQUAL -> yes. "
+    "'mountaineer' -> EQUAL -> yes. English 'huntsman' glossed 'hunts with weapons' vs 'hunter' "
+    "-> NARROWER -> yes. "
+    "Examples (lateral, still yes): English 'manner' glossed 'mode of action' vs 'behavior' -> "
+    "LATERAL (a way of acting, not a kind of behavior). English 'facial recognition' glossed "
+    "'identification of human faces' vs 'facial recognition system' -> LATERAL (the process vs. "
+    "the system that runs it). "
     "Examples (no): English 'sheet' glossed 'a piece of paper' vs concept 'one of the lines on a "
     "sail ship' -> DIFFERENT (homograph) -> no. Swedish 'hov' glossed 'group of people surrounding a "
     "leader' vs concept 'hoof' -> DIFFERENT -> no. Swedish 'bit' glossed 'liten del' (small part) vs "
     "concept 'unit of information in computing' -> DIFFERENT -> no. "
     'Reply with ONLY a JSON array (no prose, no code fences), one object per item in order: '
     '[{"i":1,"verdict":"yes|no|uncertain","reason":"<REL>: <=10 words"}], where <REL> is the '
-    "relation you chose (EQUAL/BROADER/NARROWER/DIFFERENT)."
+    "relation you chose (EQUAL/BROADER/NARROWER/LATERAL/DIFFERENT)."
 )
 
 # Fingerprint of the prompt: a changed SYSTEM yields a new PROMPT_VER, which automatically
