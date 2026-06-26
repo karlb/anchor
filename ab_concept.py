@@ -152,18 +152,25 @@ def run_arm(name, rows, gmap, model, labels_all, descs_all, samples, cache, wide
                 if all(k in cache for k in keys):
                     results = [cache[k] for k in keys]
                 else:
-                    try:
-                        if name == "+alllangs":
-                            vs = run_batch_wide(chunk, model, gmap, wide)
-                        else:
-                            vs = verify.run_batch(chunk, model, gmap, labels_all, descs_all, timeout=150)
-                    except subprocess.TimeoutExpired as e:
-                        # a hung call (usually throttling) — stop cleanly; cache makes resume cheap
-                        raise QuotaAbort("batch timed out (likely throttling) — resume when stable") from e
-                    except RuntimeError as e:
-                        if any(m in str(e).lower() for m in QUOTA_MARKERS):
-                            raise QuotaAbort(str(e)[:200]) from e
-                        vs = [{"verdict": "error", "reason": ""}] * len(chunk)
+                    # wide (+alllangs) batches are bigger and run ~50s; give generous
+                    # headroom and RETRY a slow batch rather than aborting the whole run
+                    # on one transient slow response. Only a real quota marker aborts.
+                    vs = None
+                    for _attempt in range(3):
+                        try:
+                            if name == "+alllangs":
+                                vs = run_batch_wide(chunk, model, gmap, wide, timeout=240)
+                            else:
+                                vs = verify.run_batch(chunk, model, gmap, labels_all, descs_all, timeout=240)
+                            break
+                        except subprocess.TimeoutExpired:
+                            continue   # slow/transient — retry the batch
+                        except RuntimeError as e:
+                            if any(m in str(e).lower() for m in QUOTA_MARKERS):
+                                raise QuotaAbort(str(e)[:200]) from e
+                            break      # non-quota error — give up on this batch
+                    if vs is None:
+                        vs = [{"verdict": "error", "reason": ""}] * len(chunk)  # mark + continue
                     results = [(v.get("verdict"), v.get("reason", "")) for v in vs]
                     for k, (verdict, reason) in zip(keys, results):
                         cache[k] = (verdict, reason)
