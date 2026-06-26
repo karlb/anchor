@@ -38,27 +38,14 @@ import config
 import review_queue as rq
 import verify
 
-# "+multi" arm: tell the prompt the extra language-tagged fields are translations of ONE
-# concept (read together, not as independent claims). Without this, the base prompt — written
-# for a few curated langs — can mis-read raw translations as scope evidence / spurious overlap
-# (the over-equation false-keeps), so a plain widening loses signal it should gain.
-MULTILINGUAL_GUIDE = (
-    "MULTILINGUAL CONCEPT FIELDS: the concept's label and description may be shown in several "
-    "language-tagged fields separated by ' | ' or ' / '. These are translations of ONE concept "
-    "— read them together as a single meaning, not as independent claims. Do NOT treat a terser, "
-    "looser, or differently-phrased translation as evidence of broader/narrower scope; weigh scope "
-    "only from the clearest, most specific description. Flag INCOHERENT only when translations name "
-    "genuinely DIFFERENT referents (e.g. a debt vs. a lawsuit), never for mere variation in detail "
-    "or completeness across languages. "
-)
-GUIDED_SYSTEM = verify.SYSTEM.replace(
-    "Reply with ONLY a JSON array", MULTILINGUAL_GUIDE + "Reply with ONLY a JSON array", 1)
-
-# Each arm is a name -> kwargs for verify.run_batch. base = the legacy de/en/sv format;
-# +multi = the unified multilingual format (item_lang across CONCEPT_LANGS_VERIFY) + guide.
+# Each arm is a name -> kwargs for verify.run_batch. The multilingual guide now lives in
+# verify.SYSTEM (production verifier is +multi+guided), so +multi just selects the wider language
+# spec. NOTE: post-promotion the base arm also runs under the guided verify.SYSTEM; the historical
+# non-guided base verdicts are preserved in the cache and used by score_approaches, so the locked
+# gold comparison (base vs +multi) is unaffected.
 ARMS = {
     "base": {},
-    "+multi": dict(langs=config.CONCEPT_LANGS_VERIFY, system=GUIDED_SYSTEM),
+    "+multi": dict(langs=config.CONCEPT_LANGS_VERIFY),
 }
 HUMAN = {"approved": "keep", "written": "keep", "rejected": "reject", "deferred": "defer"}
 # The scope/coherence relations: the cases where the concept boundary is contested and

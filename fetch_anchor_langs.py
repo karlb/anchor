@@ -29,7 +29,7 @@ import time
 
 import config
 import fetch_items as fi  # reuse http_get + BATCH + SLEEP + etiquette
-import review_queue as rq
+import verify
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS item_lang(
@@ -39,8 +39,12 @@ CREATE TABLE IF NOT EXISTS item_lang_fetched(qid TEXT PRIMARY KEY);
 
 
 def needed_qids(cache):
-    """Distinct anchor Q-ids of the review pool not yet fetched into item_lang."""
-    want = sorted({r[1] for r in rq.pool()})
+    """Distinct anchor Q-ids of the production verify set (ABD candidates) not yet fetched.
+
+    This is the +multi verifier's universe — every anchor it will score needs its all-language
+    concept, so the multilingual format doesn't silently fall back to de/en/sv."""
+    args = argparse.Namespace(gate="ABD", min_support=1, senseless_only=False, all=True, limit=None)
+    want = sorted({r[3] for r in verify.candidates(args) if verify.has_evidence(r)})
     have = {r[0] for r in cache.execute("SELECT qid FROM item_lang_fetched")}
     return [q for q in want if q not in have]
 

@@ -44,6 +44,20 @@ import config
 import gates
 import llm
 
+# Production verifier feeds the concept's MULTILINGUAL CC0 descriptions (the +multi format,
+# config.CONCEPT_LANGS_VERIFY from item_lang). This guide tells the model to read the
+# language-tagged fields as ONE concept — without it a wide prompt mis-reads terser translations
+# as scope evidence (over-equation). Validated to beat the de/en/sv base format on the 118-case
+# gold once paired with the demonym→ethnic-group scope_hint nudge (see review_queue.scope_hint).
+MULTILINGUAL_GUIDE = (
+    "MULTILINGUAL CONCEPT FIELDS: the concept's label and description may be shown in several "
+    "language-tagged fields separated by ' | ' or ' / '. These are translations of ONE concept "
+    "— read them together as a single meaning, not as independent claims. Do NOT treat a terser, "
+    "looser, or differently-phrased translation as evidence of broader/narrower scope; weigh scope "
+    "only from the clearest, most specific description. Flag INCOHERENT only when translations name "
+    "genuinely DIFFERENT referents (e.g. a debt vs. a lawsuit), never for mere variation in detail "
+    "or completeness across languages. "
+)
 SYSTEM = (
     "You are a lexicographer auditing Wikidata P5137 sense links. For each item you are given a "
     "NOUN, its LANGUAGE, sometimes the word's own dictionary GLOSS (a short definition of the ONE "
@@ -93,6 +107,7 @@ SYSTEM = (
     "sail ship' -> DIFFERENT (homograph) -> no. Swedish 'hov' glossed 'group of people surrounding a "
     "leader' vs concept 'hoof' -> DIFFERENT -> no. Swedish 'bit' glossed 'liten del' (small part) vs "
     "concept 'unit of information in computing' -> DIFFERENT -> no. "
+    + MULTILINGUAL_GUIDE +
     'Reply with ONLY a JSON array (no prose, no code fences), one object per item in order: '
     '[{"i":1,"verdict":"yes|no|uncertain","reason":"<REL>: <=10 words"}], where <REL> is the '
     "relation you chose (EQUAL/BROADER/NARROWER/LATERAL/INCOHERENT/DIFFERENT)."
@@ -301,14 +316,17 @@ def main():
     if not args.all:
         rows = rows[: args.limit]
     gmap = load_glosses({r[0] for r in rows})
+    il_map = load_item_lang({r[3] for r in rows})   # all-language concept (+multi format)
+    n_cov = sum(1 for r in rows if r[3] in il_map)
     print(f"candidates to verify: {len(rows):,}  ({len(gmap):,} with a CC0 gloss; "
-          f"batch={args.batch}, model={args.model})")
+          f"item_lang {n_cov:,}/{len(rows):,}; batch={args.batch}, model={args.model})")
 
     counts = {}
     for i in range(0, len(rows), args.batch):
         batch = rows[i : i + args.batch]
         try:
-            verdicts = run_batch(batch, args.model, gmap)
+            verdicts = run_batch(batch, args.model, gmap,
+                                 langs=config.CONCEPT_LANGS_VERIFY, il_map=il_map)
         except Exception as e:  # noqa: BLE001 — one bad batch shouldn't kill the run
             print(f"  batch {i // args.batch} failed: {e}")
             verdicts = [{"verdict": "error", "reason": ""}] * len(batch)
