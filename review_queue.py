@@ -184,12 +184,21 @@ def scope_hint(reason):
     an empty suggestion means no scope flag (EQUAL or untagged)."""
     rel = (reason or "").split(":", 1)[0].strip().upper()
     if rel == "LATERAL":
-        return rel, "reject? (lateral — not is-a)", "no"
+        # Adjacent / not-is-a is a JUDGMENT CALL, not an auto-drop: the verifier can't tell a
+        # lateral-that-should-reject (arrangemang) from one that should go to a human
+        # (barf=substance-vs-act, bekvämlighet=amenity-vs-state) by the relation alone, so we
+        # defer rather than reject — surfacing for review never silently drops a good link.
+        return rel, "defer? (lateral — adjacent, not is-a)", "hold"
     if rel == "INCOHERENT":
         return rel, "defer? (incoherent anchor — no basis to judge)", "hold"
     if rel not in ("BROADER", "NARROWER"):
         return rel, "", ""
-    if any(k in (reason or "").lower() for k in _CONVENTION):
+    # Demonym/gender convention: a gendered or demonymic lexeme still denotes the neutral
+    # concept (sex/scope recorded separately) — but ONLY when the lexeme is NARROWER than (or
+    # equal to) the concept. A BROADER lexeme is a real scope mismatch even if the reason
+    # mentions a gender word: a generic word ('hog' = adult pig) is NOT the sex-specific
+    # concept ('female pig'), so it must not be auto-kept by the convention nudge.
+    if rel == "NARROWER" and any(k in (reason or "").lower() for k in _CONVENTION):
         return rel, "keep? (demonym/gender convention)", "ok"
     return rel, "defer? (scope mismatch)", "hold"
 
