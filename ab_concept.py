@@ -40,6 +40,24 @@ import verify
 LANGS_WIDE = ("en", "de", "sv", "fr", "es", "it", "nl", "pl", "ru", "pt")
 WIDE_DB = os.path.join(config.DATA, "ab_alllangs.sqlite3")
 
+# "+alllangs-guided" arm: the SAME 10-language concept input as "+alllangs", but the
+# prompt is told the extra language fields are translations of ONE concept (read together,
+# not as independent claims). Tests whether plain +alllangs lost to +descs(3) only because
+# the base prompt — written for 3 curated langs — mis-reads many raw translations as scope
+# evidence / spurious overlap (the over-equation false-keeps), rather than because more
+# languages are inherently unhelpful.
+MULTILINGUAL_GUIDE = (
+    "MULTILINGUAL CONCEPT FIELDS: the concept's label and description may be shown in several "
+    "language-tagged fields separated by ' | ' or ' / '. These are translations of ONE concept "
+    "— read them together as a single meaning, not as independent claims. Do NOT treat a terser, "
+    "looser, or differently-phrased translation as evidence of broader/narrower scope; weigh scope "
+    "only from the clearest, most specific description. Flag INCOHERENT only when translations name "
+    "genuinely DIFFERENT referents (e.g. a debt vs. a lawsuit), never for mere variation in detail "
+    "or completeness across languages. "
+)
+GUIDED_SYSTEM = verify.SYSTEM.replace(
+    "Reply with ONLY a JSON array", MULTILINGUAL_GUIDE + "Reply with ONLY a JSON array", 1)
+
 ARMS = [("base", False, False), ("+labels", True, False), ("+labels+descs", True, True)]
 HUMAN = {"approved": "keep", "written": "keep", "rejected": "reject", "deferred": "defer"}
 # The scope/coherence relations: the cases where the concept boundary is contested and
@@ -105,7 +123,7 @@ def fmt_concept_wide(row, wide):
     return qid, lab, " | ".join(descs) or "(no description)"
 
 
-def run_batch_wide(rows, model, gmap, wide, timeout=150):
+def run_batch_wide(rows, model, gmap, wide, timeout=150, system=None):
     lines = []
     for n, row in enumerate(rows, 1):
         lid, lang, lemma = row[0], row[1], row[2]
@@ -114,7 +132,7 @@ def run_batch_wide(rows, model, gmap, wide, timeout=150):
         gpart = f' gloss="{gloss}"' if gloss else ""
         lines.append(f'{n}. language={verify.LANGNAME.get(lang, lang)} noun="{lemma}"{gpart} | '
                      f'concept {qid}: label="{lab}" description="{desc}"')
-    return llm.batch_json(verify.SYSTEM, "Items:\n" + "\n".join(lines), model, len(rows),
+    return llm.batch_json(system or verify.SYSTEM, "Items:\n" + "\n".join(lines), model, len(rows),
                           {"verdict": "parse_error", "reason": ""}, timeout=timeout)
 
 
@@ -160,6 +178,9 @@ def run_arm(name, rows, gmap, model, labels_all, descs_all, samples, cache, wide
                         try:
                             if name == "+alllangs":
                                 vs = run_batch_wide(chunk, model, gmap, wide, timeout=240)
+                            elif name == "+alllangs-guided":
+                                vs = run_batch_wide(chunk, model, gmap, wide, timeout=240,
+                                                    system=GUIDED_SYSTEM)
                             else:
                                 vs = verify.run_batch(chunk, model, gmap, labels_all, descs_all, timeout=240)
                             break
@@ -209,10 +230,10 @@ def main():
     ap.add_argument("--arms", default="", help="comma-list of arm names to run "
                     "(default all); e.g. 'base,+labels+descs' to skip the inert +labels arm")
     args = ap.parse_args()
-    all_arms = ARMS + [("+alllangs", None, None)]
+    all_arms = ARMS + [("+alllangs", None, None), ("+alllangs-guided", None, None)]
     sel = args.arms.split(",") if args.arms else [a[0] for a in ARMS]
     arms = [a for a in all_arms if a[0] in sel]
-    wide = load_wide() if any(a[0] == "+alllangs" for a in arms) else None
+    wide = load_wide() if any(a[0] in ("+alllangs", "+alllangs-guided") for a in arms) else None
 
     rows, truth = load_eval_rows(suspect=args.suspect)
     if args.limit:
@@ -244,7 +265,7 @@ def main():
         return
 
     # flip analysis: base vs the widest arm that was actually run
-    widest = next((n for n in ("+alllangs", "+labels+descs", "+labels") if n in preds), None)
+    widest = next((n for n in ("+alllangs-guided", "+alllangs", "+labels+descs", "+labels") if n in preds), None)
     if "base" in preds and widest:
         base, w = preds["base"], preds[widest]
         flips = [(k, base[k], w[k], truth[k]) for k in base if base[k] != w[k]]
