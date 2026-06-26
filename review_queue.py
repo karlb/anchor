@@ -198,12 +198,34 @@ def anchor_langs(it, qid):
 _CONVENTION = ("collective", "demonym", "citizen", "resident", "ethnic",
                "nationals", " people", "gender", "masculine", "feminine", "female", "male")
 
+# Demonym→ethnic-group split (user call 2026-06-26, see broader-narrower-triage): a demonym
+# lexeme (gloss 'person from X') linked to an ETHNIC-GROUP anchor is a contested keep — a
+# person-by-residence is not the ethnic group — so don't auto-keep it. A demonym linked to a
+# NATIONALITY anchor ('citizens/residents of X') stays a keep. The discriminator is whether
+# the anchor's own description carries an ethnic-group marker (vs only a citizen/resident one).
+# Validated on the 118-case gold: turns +multi's only safety weakness into a strict win.
+_DEMONYM_GLOSS = ("person from", "person från", "person aus", "person av")
+_ETHNIC_ANCHOR = ("ethnic group", "etnisk grupp", "etnisk gruppe", "ethnic", "ethnie",
+                  "ethnique", "slavic", "folkgrupp", "folkeslag", "people native",
+                  "indigenous to", "kaukasisk folk", "südkaukasisches volk")
 
-def scope_hint(reason):
+
+def is_ethnic_demonym(gloss, anchor_desc):
+    """A demonym lexeme linked to an ethnic-group anchor (not a nationality one)."""
+    if not gloss or not anchor_desc:
+        return False
+    if not any(p in gloss.lower() for p in _DEMONYM_GLOSS):
+        return False
+    return any(m in anchor_desc.lower() for m in _ETHNIC_ANCHOR)
+
+
+def scope_hint(reason, gloss=None, anchor_desc=None):
     """(relation, suggestion, css_class) for a verdict reason.
 
     relation is the verifier's leading REL token (EQUAL/BROADER/NARROWER/LATERAL/INCOHERENT/…);
-    an empty suggestion means no scope flag (EQUAL or untagged)."""
+    an empty suggestion means no scope flag (EQUAL or untagged). gloss + anchor_desc (when given)
+    enable the demonym→ethnic-group nudge: a person-from-X linked to an ethnic-group concept is
+    downgraded keep→defer (the split convention)."""
     rel = (reason or "").split(":", 1)[0].strip().upper()
     if rel == "LATERAL":
         # Adjacent / not-is-a is a JUDGMENT CALL, not an auto-drop: the verifier can't tell a
@@ -213,6 +235,8 @@ def scope_hint(reason):
         return rel, "defer? (lateral — adjacent, not is-a)", "hold"
     if rel == "INCOHERENT":
         return rel, "defer? (incoherent anchor — no basis to judge)", "hold"
+    if is_ethnic_demonym(gloss, anchor_desc):
+        return rel, "defer? (demonym vs ethnic group)", "hold"
     if rel not in ("BROADER", "NARROWER"):
         return rel, "", ""
     # Demonym/gender convention: a gendered or demonymic lexeme still denotes the neutral
@@ -244,7 +268,9 @@ def render(limit):
     trs = []
     for (lid, qid, lemma, lang, _ns, _v, reason, _m,
          lde, len_, lsv, dde, den, dsv) in rows[:limit]:
-        rel, sug, scls = scope_hint(reason)
+        gl, glang = lexeme_gloss(wd, lid, lang)
+        anchor_desc = " | ".join(d for d in (dde, den, dsv) if d)
+        rel, sug, scls = scope_hint(reason, gl, anchor_desc)
         scope_html = (f"<span class=rel>{rel}</span><br><span class={scls}>{html.escape(sug)}</span>"
                       if sug else f"<span class=d>{rel.title()}</span>")
         # Anchor concept in the curated languages (item_lang), falling back to the
@@ -262,7 +288,6 @@ def render(limit):
             dtag = f" [{dlang}]" if dlang and dlang != lang else ""
             anchor_html = (f"<b>{html.escape(lab)}</b>{ltag}"
                            f"<br><span class=d>{html.escape(dsc)}{dtag}</span>")
-        gl, glang = lexeme_gloss(wd, lid, lang)
         gtag = f" [{glang}]" if glang and glang != lang else ""
         gloss_html = f"“{html.escape(gl)}”{gtag}" if gl else "<i>(no sense gloss)</i>"
         form = (f"<form method=post action=/act style='display:inline'>"

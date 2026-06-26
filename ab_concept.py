@@ -75,14 +75,15 @@ class QuotaAbort(RuntimeError):
     """Raised to stop the whole run on a quota/rate-limit failure (vs a transient batch error)."""
 
 
-def predicted_action(verdict, reason):
+def predicted_action(verdict, reason, gloss=None, anchor_desc=None):
     """Collapse a verifier verdict+relation to the action it implies, via scope_hint —
-    so the metric scores the decision-relevant output, not the raw token."""
+    so the metric scores the decision-relevant output, not the raw token. gloss + anchor_desc
+    enable scope_hint's demonym→ethnic-group nudge."""
     if verdict == "no":
         return "reject"
     if verdict in ("uncertain", "error", "parse_error"):
         return "defer"
-    _rel, sug, _ = rq.scope_hint(reason)
+    _rel, sug, _ = rq.scope_hint(reason, gloss, anchor_desc)
     if sug.startswith("reject"):
         return "reject"
     if sug.startswith("defer"):
@@ -157,7 +158,9 @@ def run_arm(name, kwargs, rows, gmap, model, samples, cache, il_map, batch=8):
                                              "qid": k[3], "verdict": verdict, "reason": reason}) + "\n")
                     cf.flush()
                 for r, (verdict, reason) in zip(chunk, results):
-                    votes[(r[0], r[3])][predicted_action(verdict, reason)] += 1
+                    gloss = verify.pick_gloss(gmap, r[0], r[1])
+                    anchor_desc = " | ".join(d for d in r[8:11] if d)  # de/en/sv anchor descs
+                    votes[(r[0], r[3])][predicted_action(verdict, reason, gloss, anchor_desc)] += 1
     finally:
         cf.close()
     return {k: c.most_common(1)[0][0] for k, c in votes.items()}

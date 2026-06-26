@@ -18,13 +18,27 @@ import collections
 import csv
 import json
 import re
+import sqlite3
 
 import ab_concept as ab
 import config
+import verify
 
 ARMS = {"base": "base", "+multi": "multi"}   # cache arm name -> short column name
 COLS = ("base", "multi")
 gold = {(r["lid"], r["qid"]): r for r in csv.DictReader(open("notes/problematic_cases.csv"))}
+
+# gloss + de/en/sv anchor descriptions per gold pair, for scope_hint's demonym→ethnic nudge
+gmap = verify.load_glosses([lid for lid, _ in gold])
+adesc = {}
+_cn = sqlite3.connect(config.ITEMS)
+_qids = list({q for _, q in gold})
+for _i in range(0, len(_qids), 500):
+    _ch = _qids[_i:_i + 500]
+    for qid, dde, den, dsv in _cn.execute(
+            "SELECT qid,desc_de,desc_en,desc_sv FROM item WHERE qid IN (%s)"
+            % ",".join("?" * len(_ch)), _ch):
+        adesc[qid] = " | ".join(d for d in (dde, den, dsv) if d)
 
 
 def acceptable(r):
@@ -45,7 +59,10 @@ with open(config.DATA + "/ab_concept_cache.jsonl") as f:
         e = json.loads(line)
         k = (e["lid"], e["qid"])
         if k in gold and e["arm"] in ARMS:
-            votes[(ARMS[e["arm"]], k)][ab.predicted_action(e["verdict"], e["reason"])] += 1
+            act = ab.predicted_action(e["verdict"], e["reason"],
+                                      verify.pick_gloss(gmap, e["lid"], gold[k]["lang"]),
+                                      adesc.get(e["qid"]))
+            votes[(ARMS[e["arm"]], k)][act] += 1
 pred = {ak: resolve(c) for ak, c in votes.items()}
 
 # A gold case is only scored for an arm once that arm has cached verdicts for it (so a
