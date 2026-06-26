@@ -203,20 +203,40 @@ def scope_hint(reason):
     return rel, "defer? (scope mismatch)", "hold"
 
 
-def render(limit):
+def lang_selector(lang_counts, active):
+    """An 'all · de · en · sv' filter bar over the lemma's language (target_lang).
+
+    Counts come from the full pending set so they stay stable as you switch filters."""
+    total = sum(lang_counts.values())
+
+    def link(code, label, n):
+        sel = " sel" if (code or "") == (active or "") else ""
+        href = "/" if code is None else "/?lang=" + urllib.parse.quote(code)
+        return f"<a class='lsel{sel}' href='{href}'>{label} <span class=d>{n}</span></a>"
+
+    links = [link(None, "all", total)] + [link(c, c, lang_counts[c]) for c in sorted(lang_counts)]
+    return "<p class=bar>lemma language: " + " · ".join(links) + "</p>"
+
+
+def render(limit, lang_filter=None):
     decisions = load_decisions()
-    rows = [r for r in pool() if (r[0], r[1]) not in decisions]
+    pending = [r for r in pool() if (r[0], r[1]) not in decisions]
+    # Selector counts are over the unfiltered pending set, so they don't change as you filter.
+    lang_counts = collections.Counter(r[3] for r in pending)
+    rows = [r for r in pending if not lang_filter or r[3] == lang_filter]
     # Float scope mismatches to the top: defer-suggested first, then convention
     # broader/narrower, then clean EQUAL — so a scope case is never pushed past `limit`.
     rows.sort(key=lambda r: ((lambda s: 0 if s.startswith(("defer", "reject")) else 1 if s else 2)
                              (scope_hint(r[6])[1]), r[3], r[2]))
     wd = sqlite3.connect(config.WIKIDATA)
     c = collections.Counter(d["status"] for d in decisions.values())
-    c["pending"] = len(rows)
+    c["pending"] = len(pending)
     n_scope = sum(1 for r in rows if scope_hint(r[6])[1].startswith(("defer", "reject")))
     head = " · ".join(f"{k}: {v}" for k, v in sorted(c.items())) or "empty"
     if n_scope:
         head += f" · ⚠ {n_scope} scope-mismatch"
+    if lang_filter:
+        head += f" · filtered to {html.escape(lang_filter)} ({len(rows)})"
     trs = []
     for (lid, qid, lemma, lang, _ns, _v, reason, _m,
          lde, len_, lsv, dde, den, dsv) in rows[:limit]:
@@ -233,6 +253,7 @@ def render(limit):
         form = (f"<form method=post action=/act style='display:inline'>"
                 f"<input type=hidden name=lid value='{html.escape(lid)}'>"
                 f"<input type=hidden name=qid value='{html.escape(qid)}'>"
+                f"<input type=hidden name=lang value='{html.escape(lang_filter or '')}'>"
                 f"<button name=action value=approved class=ok>✓ approve</button> "
                 f"<button name=action value=rejected class=no>✗ reject</button> "
                 f"<button name=action value=deferred class=hold>? defer</button></form>")
@@ -251,8 +272,10 @@ table{{border-collapse:collapse;width:100%}} td,th{{border-bottom:1px solid #e3e
 .lg{{color:#888;text-transform:uppercase;font-size:.8rem}} .lm{{font-weight:600}} .d{{color:#666;font-size:.86rem}}
 button{{font-size:.85rem;padding:3px 8px;cursor:pointer;border:1px solid #ccc;border-radius:4px;background:#fafafa}}
 .ok{{color:#197a19}} .no{{color:#b00}} .hold{{color:#a60}} a{{color:#36c;text-decoration:none}}
-.rel{{font-weight:600;font-size:.78rem;letter-spacing:.02em}}</style>
+.rel{{font-weight:600;font-size:.78rem;letter-spacing:.02em}}
+.bar{{margin:.4rem 0 1rem}} .lsel{{padding:1px 4px;border-radius:3px}} .lsel.sel{{background:#eef;font-weight:700;color:#000}}</style>
 <h2>P5137 review queue</h2><p class=d>{head} — showing up to {limit} pending</p>
+{lang_selector(lang_counts, lang_filter)}
 <table><tr><th>lang</th><th>lemma → Lexeme<br>(its CC0 sense gloss)</th><th>anchor concept (CC0)</th><th>scope</th><th>verifier reason</th><th></th></tr>
 {chr(10).join(trs) or '<tr><td colspan=6>nothing pending 🎉</td></tr>'}</table>"""
 
@@ -269,7 +292,9 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path.startswith("/act"):
             return self._send(405, "use POST")
-        self._send(200, render(50))
+        qs = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+        lang = qs.get("lang", [None])[0] or None
+        self._send(200, render(50, lang))
 
     def do_POST(self):
         length = int(self.headers.get("Content-Length", 0))
@@ -277,6 +302,7 @@ class Handler(BaseHTTPRequestHandler):
         lid = data.get("lid", [""])[0]
         qid = data.get("qid", [""])[0]
         action = data.get("action", [""])[0]
+        lang = data.get("lang", [""])[0]
         if action in ("approved", "rejected", "deferred"):
             row = next((r for r in pool() if r[0] == lid and r[1] == qid), None)
             decided = load_decisions()
@@ -289,7 +315,7 @@ class Handler(BaseHTTPRequestHandler):
                     "status": action, "reviewer": "local", "revid": "",
                 })
         self.send_response(303)
-        self.send_header("Location", "/")
+        self.send_header("Location", "/?lang=" + urllib.parse.quote(lang) if lang else "/")
         self.end_headers()
 
     def log_message(self, *a):  # quiet
