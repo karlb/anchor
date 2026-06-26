@@ -29,8 +29,16 @@ import sqlite3
 import subprocess
 
 import config
+import llm
 import review_queue as rq
 import verify
+
+# "+alllangs" test arm: widen the concept beyond the 3 editing languages to a major-
+# language set (de/en/sv already + these). NOT all ~73 langs Wikidata has per item —
+# that drowns the prompt in redundant translations. Reads the throwaway probe DB built
+# by scratch_fetch_alllangs.py; only covers the suspect-set anchors.
+LANGS_WIDE = ("en", "de", "sv", "fr", "es", "it", "nl", "pl", "ru", "pt")
+WIDE_DB = os.path.join(config.DATA, "ab_alllangs.sqlite3")
 
 ARMS = [("base", False, False), ("+labels", True, False), ("+labels+descs", True, True)]
 HUMAN = {"approved": "keep", "written": "keep", "rejected": "reject", "deferred": "defer"}
@@ -73,6 +81,43 @@ def scope_rel_map():
                 "SELECT target_lid, anchor_qid, reason FROM verdict")}
 
 
+def load_wide():
+    """{qid: {lang: (label, desc)}} for LANGS_WIDE, from the all-languages probe DB."""
+    out = {}
+    if not os.path.exists(WIDE_DB):
+        return out
+    db = sqlite3.connect(WIDE_DB)
+    for qid, lang, label, desc in db.execute("SELECT qid, lang, label, desc FROM item_label_all"):
+        if lang in LANGS_WIDE:
+            out.setdefault(qid, {})[lang] = (label, desc)
+    return out
+
+
+def fmt_concept_wide(row, wide):
+    """Concept string from the major-language set (target-lang first), mirroring
+    fmt_concept's descs_all format but across more languages."""
+    qid, lang = row[3], row[1]
+    ent = wide.get(qid, {})
+    order = [c for c in dict.fromkeys((lang, *LANGS_WIDE)) if c in ent]
+    labs = [ent[c][0] for c in order if ent[c][0]]
+    descs = [f"{c}: {ent[c][1]}" for c in order if ent[c][1]]
+    lab = " / ".join(dict.fromkeys(labs)) or "(no label)"
+    return qid, lab, " | ".join(descs) or "(no description)"
+
+
+def run_batch_wide(rows, model, gmap, wide, timeout=150):
+    lines = []
+    for n, row in enumerate(rows, 1):
+        lid, lang, lemma = row[0], row[1], row[2]
+        qid, lab, desc = fmt_concept_wide(row, wide)
+        gloss = verify.pick_gloss(gmap, lid, lang)
+        gpart = f' gloss="{gloss}"' if gloss else ""
+        lines.append(f'{n}. language={verify.LANGNAME.get(lang, lang)} noun="{lemma}"{gpart} | '
+                     f'concept {qid}: label="{lab}" description="{desc}"')
+    return llm.batch_json(verify.SYSTEM, "Items:\n" + "\n".join(lines), model, len(rows),
+                          {"verdict": "parse_error", "reason": ""}, timeout=timeout)
+
+
 def load_eval_rows(suspect=False):
     truth = {k: HUMAN[(d.get("status") or "").strip()]
              for k, d in rq.load_decisions().items()
@@ -96,7 +141,7 @@ def load_cache():
     return cache
 
 
-def run_arm(name, rows, gmap, model, labels_all, descs_all, samples, cache, batch=8):
+def run_arm(name, rows, gmap, model, labels_all, descs_all, samples, cache, wide=None, batch=8):
     votes = collections.defaultdict(collections.Counter)
     cf = open(CACHE, "a")
     try:
@@ -108,7 +153,10 @@ def run_arm(name, rows, gmap, model, labels_all, descs_all, samples, cache, batc
                     results = [cache[k] for k in keys]
                 else:
                     try:
-                        vs = verify.run_batch(chunk, model, gmap, labels_all, descs_all, timeout=150)
+                        if name == "+alllangs":
+                            vs = run_batch_wide(chunk, model, gmap, wide)
+                        else:
+                            vs = verify.run_batch(chunk, model, gmap, labels_all, descs_all, timeout=150)
                     except subprocess.TimeoutExpired as e:
                         # a hung call (usually throttling) — stop cleanly; cache makes resume cheap
                         raise QuotaAbort("batch timed out (likely throttling) — resume when stable") from e
@@ -154,7 +202,10 @@ def main():
     ap.add_argument("--arms", default="", help="comma-list of arm names to run "
                     "(default all); e.g. 'base,+labels+descs' to skip the inert +labels arm")
     args = ap.parse_args()
-    arms = ARMS if not args.arms else [a for a in ARMS if a[0] in args.arms.split(",")]
+    all_arms = ARMS + [("+alllangs", None, None)]
+    sel = args.arms.split(",") if args.arms else [a[0] for a in ARMS]
+    arms = [a for a in all_arms if a[0] in sel]
+    wide = load_wide() if any(a[0] == "+alllangs" for a in arms) else None
 
     rows, truth = load_eval_rows(suspect=args.suspect)
     if args.limit:
@@ -177,7 +228,7 @@ def main():
     try:
         print(f"\n{'arm':<16}{'exact':>8}{'binary':>8}{'false-keep':>12}{'false-drop':>12}")
         for name, la, da in arms:
-            preds[name] = run_arm(name, rows, gmap, args.model, la, da, args.samples, cache)
+            preds[name] = run_arm(name, rows, gmap, args.model, la, da, args.samples, cache, wide)
             sc = score(preds[name], truth)
             print(f"{name:<16}{sc['exact']:>7.0%}{sc['binary']:>8.0%}{sc['fk']:>12}{sc['fd']:>12}")
     except QuotaAbort as e:
@@ -186,13 +237,13 @@ def main():
         return
 
     # flip analysis: base vs the widest arm that was actually run
-    wide = next((n for n in ("+labels+descs", "+labels") if n in preds), None)
-    if "base" in preds and wide:
-        base, w = preds["base"], preds[wide]
+    widest = next((n for n in ("+alllangs", "+labels+descs", "+labels") if n in preds), None)
+    if "base" in preds and widest:
+        base, w = preds["base"], preds[widest]
         flips = [(k, base[k], w[k], truth[k]) for k in base if base[k] != w[k]]
         fixed = sum(1 for _, b, l, t in flips if l == t and b != t)
         broke = sum(1 for _, b, l, t in flips if b == t and l != t)
-        print(f"\nbase -> {wide}: {len(flips)} flips  ({fixed} fixed toward human, {broke} broke away)")
+        print(f"\nbase -> {widest}: {len(flips)} flips  ({fixed} fixed toward human, {broke} broke away)")
         for (lid, qid), b, l, t in flips[:30]:
             mark = "OK " if (l == t and b != t) else ("BAD" if (b == t and l != t) else " . ")
             print(f"  {mark} {lid} {qid}: {b} -> {l}  (human={t})")
