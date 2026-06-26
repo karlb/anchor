@@ -151,15 +151,49 @@ def candidates(args):
     return rows
 
 
-def fmt_concept(row, labels_all=False, descs_all=False):
+def load_item_lang(qids):
+    """{qid: {lang: (label, desc)}} from the all-language CC0 cache (item_lang in
+    wd_items.sqlite3, built by fetch_anchor_langs.py). Empty if the table is absent."""
+    out = {}
+    qids = list(qids)
+    if not qids:
+        return out
+    cn = sqlite3.connect(config.ITEMS)
+    if cn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='item_lang'"
+                  ).fetchone():
+        for i in range(0, len(qids), 500):
+            chunk = qids[i:i + 500]
+            q = ("SELECT qid, lang, label, desc FROM item_lang WHERE qid IN (%s)"
+                 % ",".join("?" * len(chunk)))
+            for qid, lang, label, desc in cn.execute(q, chunk):
+                out.setdefault(qid, {})[lang] = (label, desc)
+    cn.close()
+    return out
+
+
+def fmt_concept(row, labels_all=False, descs_all=False, langs=None, il_map=None):
     """(qid, label, description) for the anchor concept, target-language first.
 
     Default: label = target-lang + English (deduped), description = single best.
     labels_all / descs_all widen each to ALL available CC0 languages (de/en/sv) —
     this surfaces cross-language disagreement so the verifier can spot an INCOHERENT
     target. Both off keeps the legacy format (so production is unchanged until an
-    A/B says a wider format actually helps)."""
+    A/B says a wider format actually helps).
+
+    langs (a config.CONCEPT_LANGS_* spec) selects the unified multilingual format: the
+    concept is built from item_lang (il_map) across those languages, target-language
+    first. This is the +multi arm. When item_lang lacks the qid we widen the 3 editing
+    languages instead (labels_all=descs_all=True), so +multi degrades gracefully rather
+    than dropping coverage. langs=None keeps the legacy de/en/sv path byte-identical."""
     _lid, lang, _lemma, qid, _sup, lde, len_, lsv, dde, den, dsv = row
+    if langs is not None:
+        entry = (il_map or {}).get(qid)
+        res = config.resolve_concept_langs(entry, langs, target=lang) if entry else []
+        if res:
+            lab = " / ".join(dict.fromkeys(l for _d, l, _ds in res if l)) or "(no label)"
+            desc = " | ".join(f"{d}: {ds}" for d, _l, ds in res if ds) or "(no description)"
+            return qid, lab, desc
+        labels_all = descs_all = True   # no item_lang coverage -> widen de/en/sv instead
     labels = {"de": lde, "en": len_, "sv": lsv}
     descs = {"de": dde, "en": den, "sv": dsv}
     order = list(dict.fromkeys([lang, "en", "de", "sv"]))   # target-language first
@@ -215,18 +249,21 @@ def pick_gloss(gmap, lid, lang):
     return next(iter(vals.values()), "")
 
 
-def run_batch(rows, model, gmap, labels_all=False, descs_all=False, timeout=300):
+def run_batch(rows, model, gmap, labels_all=False, descs_all=False,
+              langs=None, il_map=None, system=None, timeout=300):
+    """Verify a batch. langs/il_map select the unified +multi concept format; system
+    overrides the default SYSTEM prompt (e.g. the multilingual-guided variant)."""
     lines = []
     for n, row in enumerate(rows, 1):
         lid, lang, lemma, *_ = row
-        qid, lab, desc = fmt_concept(row, labels_all, descs_all)
+        qid, lab, desc = fmt_concept(row, labels_all, descs_all, langs=langs, il_map=il_map)
         gloss = pick_gloss(gmap, lid, lang)
         gpart = f' gloss="{gloss}"' if gloss else ""
         lines.append(
             f'{n}. language={LANGNAME.get(lang, lang)} noun="{lemma}"{gpart} | '
             f'concept {qid}: label="{lab}" description="{desc}"'
         )
-    return llm.batch_json(SYSTEM, "Items:\n" + "\n".join(lines), model, len(rows),
+    return llm.batch_json(system or SYSTEM, "Items:\n" + "\n".join(lines), model, len(rows),
                           {"verdict": "parse_error", "reason": ""}, timeout=timeout)
 
 

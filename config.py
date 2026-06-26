@@ -29,3 +29,39 @@ GENDER = os.path.join(DATA, "gender.sqlite3")    # LLM semantic-gender (P10339) 
 # CSV log OUTSIDE data/ so it is git-tracked and diffable. This file is the single
 # source of truth for approvals/rejections/writes; there is no review SQLite DB.
 DECISIONS = os.path.join(HERE, "notes", "runs", "decisions.csv")
+
+
+# ---- concept-language config (shared by the verifier and the review UI) ------
+# The all-language CC0 label/description cache (item_lang in wd_items.sqlite3, built by
+# fetch_anchor_langs.py) is the ONE multilingual store. Both the verifier's +multi concept
+# format and the review UI draw from it through resolve_concept_langs below, each just
+# passing a different language spec — so there is one store, one resolver, one place to
+# tune which languages appear. Each spec entry is (display_code, source_codes): the source
+# codes are tried in order and the first present wins (Norwegian collapses nb/no/nn).
+CONCEPT_LANGS_DISPLAY = [
+    ("en", ("en",)), ("de", ("de",)), ("sv", ("sv",)), ("eo", ("eo",)),
+    ("no", ("nb", "no", "nn")), ("da", ("da",)), ("fr", ("fr",)), ("nl", ("nl",)),
+]
+# The verifier sees more languages than the human display — extra major languages give it
+# more disambiguating signal at some token cost, without cluttering the reviewer's screen.
+CONCEPT_LANGS_VERIFY = CONCEPT_LANGS_DISPLAY + [
+    ("es", ("es",)), ("it", ("it",)), ("pl", ("pl",)), ("ru", ("ru",)), ("pt", ("pt",)),
+]
+
+
+def resolve_concept_langs(entry, spec, target=None):
+    """[(display_lang, label, desc), ...] from a {lang: (label, desc)} map, in spec order.
+
+    Skips languages with neither a label nor a description; collapses each spec entry's
+    source codes (e.g. nb/no/nn) to the first present. If ``target`` (a display code) is
+    given and present, it is moved to the front (target-language-first, matching base)."""
+    out = []
+    for disp, srcs in spec:
+        for s in srcs:
+            v = entry.get(s)
+            if v and (v[0] or v[1]):
+                out.append((disp, v[0], v[1]))
+                break
+    if target:
+        out.sort(key=lambda x: x[0] != target)   # stable: target first, rest keep order
+    return out

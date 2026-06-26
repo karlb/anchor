@@ -35,6 +35,12 @@ import gates
 DECISIONS = config.DECISIONS
 PORT = 8731
 
+# The anchor languages shown in the review UI live in config.CONCEPT_LANGS_DISPLAY — the
+# SAME spec/resolver the verifier uses (the verifier just feeds a wider set). Cross-checking
+# a scope call against several languages — a demonym vs its ethnic-group concept, say —
+# often reads differently across them. The data is the all-language CC0 cache (item_lang,
+# fetch_anchor_langs.py); if it is absent the UI falls back to the de/en/sv `item` columns.
+
 # Append-only log columns. Beyond the (lid, anchor) key and the decision itself,
 # we snapshot what the reviewer saw (lemma, verdict, reason, model) so each line
 # is a self-contained audit record that does not depend on the regenerable caches.
@@ -160,6 +166,22 @@ def lexeme_gloss(wd, lid, lang):
     return pick(lang, vals)
 
 
+def has_item_lang(it):
+    """Whether the all-language anchor cache (fetch_anchor_langs.py) is populated."""
+    return bool(it.execute("SELECT name FROM sqlite_master "
+                           "WHERE type='table' AND name='item_lang'").fetchone())
+
+
+def anchor_langs(it, qid):
+    """[(display_lang, label, desc), ...] for config.CONCEPT_LANGS_DISPLAY present for qid.
+
+    Thin wrapper over the shared resolver (Norwegian collapses nb/no/nn to the first
+    available; a language is included if it has a label OR a description)."""
+    entry = {lg: (lab, ds) for lg, lab, ds in
+             it.execute("SELECT lang, label, desc FROM item_lang WHERE qid=?", [qid])}
+    return config.resolve_concept_langs(entry, config.CONCEPT_LANGS_DISPLAY)
+
+
 # ---- scope triage -----------------------------------------------------------
 # The verifier's TOLERANT criterion maps EQUAL/BROADER/NARROWER/LATERAL -> 'yes', so a
 # scope-mismatched pair still reaches review on a surface-plausible read. But P5137
@@ -211,6 +233,8 @@ def render(limit):
     rows.sort(key=lambda r: ((lambda s: 0 if s.startswith(("defer", "reject")) else 1 if s else 2)
                              (scope_hint(r[6])[1]), r[3], r[2]))
     wd = sqlite3.connect(config.WIKIDATA)
+    it = sqlite3.connect(config.ITEMS)
+    have_il = has_item_lang(it)
     c = collections.Counter(d["status"] for d in decisions.values())
     c["pending"] = len(rows)
     n_scope = sum(1 for r in rows if scope_hint(r[6])[1].startswith(("defer", "reject")))
@@ -223,10 +247,21 @@ def render(limit):
         rel, sug, scls = scope_hint(reason)
         scope_html = (f"<span class=rel>{rel}</span><br><span class={scls}>{html.escape(sug)}</span>"
                       if sug else f"<span class=d>{rel.title()}</span>")
-        lab, llang = pick(lang, {"de": lde, "en": len_, "sv": lsv})
-        dsc, dlang = pick(lang, {"de": dde, "en": den, "sv": dsv})
-        ltag = f" [{llang}]" if llang and llang != lang else ""
-        dtag = f" [{dlang}]" if dlang and dlang != lang else ""
+        # Anchor concept in the curated languages (item_lang), falling back to the
+        # de/en/sv `item` columns when the all-language cache isn't populated.
+        al = anchor_langs(it, qid) if have_il else []
+        if al:
+            anchor_html = "".join(
+                f"<div class=al><span class=alc>{disp}</span> <b>{html.escape(lab or '')}</b>"
+                + (f" <span class=d>{html.escape(ds)}</span>" if ds else "") + "</div>"
+                for disp, lab, ds in al)
+        else:
+            lab, llang = pick(lang, {"de": lde, "en": len_, "sv": lsv})
+            dsc, dlang = pick(lang, {"de": dde, "en": den, "sv": dsv})
+            ltag = f" [{llang}]" if llang and llang != lang else ""
+            dtag = f" [{dlang}]" if dlang and dlang != lang else ""
+            anchor_html = (f"<b>{html.escape(lab)}</b>{ltag}"
+                           f"<br><span class=d>{html.escape(dsc)}{dtag}</span>")
         gl, glang = lexeme_gloss(wd, lid, lang)
         gtag = f" [{glang}]" if glang and glang != lang else ""
         gloss_html = f"“{html.escape(gl)}”{gtag}" if gl else "<i>(no sense gloss)</i>"
@@ -240,8 +275,8 @@ def render(limit):
             f"<tr><td class=lg>{html.escape(lang)}</td>"
             f"<td class=lm><a href='https://www.wikidata.org/wiki/Lexeme:{lid}' target=_blank>"
             f"{html.escape(lemma)}</a><br><span class=d>{gloss_html}</span></td>"
-            f"<td><a href='https://www.wikidata.org/wiki/{qid}' target=_blank>{qid}</a><br>"
-            f"<b>{html.escape(lab)}</b>{ltag}<br><span class=d>{html.escape(dsc)}{dtag}</span></td>"
+            f"<td><a href='https://www.wikidata.org/wiki/{qid}' target=_blank>{qid}</a>"
+            f"{anchor_html}</td>"
             f"<td>{scope_html}</td>"
             f"<td class=d>{html.escape(reason or '')}</td>"
             f"<td>{form}</td></tr>")
@@ -251,7 +286,8 @@ table{{border-collapse:collapse;width:100%}} td,th{{border-bottom:1px solid #e3e
 .lg{{color:#888;text-transform:uppercase;font-size:.8rem}} .lm{{font-weight:600}} .d{{color:#666;font-size:.86rem}}
 button{{font-size:.85rem;padding:3px 8px;cursor:pointer;border:1px solid #ccc;border-radius:4px;background:#fafafa}}
 .ok{{color:#197a19}} .no{{color:#b00}} .hold{{color:#a60}} a{{color:#36c;text-decoration:none}}
-.rel{{font-weight:600;font-size:.78rem;letter-spacing:.02em}}</style>
+.rel{{font-weight:600;font-size:.78rem;letter-spacing:.02em}}
+.al{{margin:1px 0}} .alc{{display:inline-block;min-width:1.5rem;color:#999;font-size:.72rem;text-transform:uppercase}}</style>
 <h2>P5137 review queue</h2><p class=d>{head} — showing up to {limit} pending</p>
 <table><tr><th>lang</th><th>lemma → Lexeme<br>(its CC0 sense gloss)</th><th>anchor concept (CC0)</th><th>scope</th><th>verifier reason</th><th></th></tr>
 {chr(10).join(trs) or '<tr><td colspan=6>nothing pending 🎉</td></tr>'}</table>"""

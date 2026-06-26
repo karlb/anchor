@@ -22,7 +22,8 @@ import re
 import ab_concept as ab
 import config
 
-ARMS = {"base": "base", "+labels+descs": "descs", "+alllangs": "alllangs", "+alllangs-guided": "guided"}
+ARMS = {"base": "base", "+multi": "multi"}   # cache arm name -> short column name
+COLS = ("base", "multi")
 gold = {(r["lid"], r["qid"]): r for r in csv.DictReader(open("notes/problematic_cases.csv"))}
 
 
@@ -47,23 +48,30 @@ with open(config.DATA + "/ab_concept_cache.jsonl") as f:
             votes[(ARMS[e["arm"]], k)][ab.predicted_action(e["verdict"], e["reason"])] += 1
 pred = {ak: resolve(c) for ak, c in votes.items()}
 
+# A gold case is only scored for an arm once that arm has cached verdicts for it (so a
+# half-run cache doesn't silently score uncovered cases as wrong). Coverage is reported.
 print(f"scoring {len(gold)} gold cases (live from cache; sample-tie -> defer)\n")
-print(f"{'arm':<10}{'in-set':>9}{'false-keep':>12}{'false-drop':>12}{'defers':>9}")
-for col in ("base", "descs", "alllangs", "guided"):
-    inset = fk = fd = defers = 0
+print(f"{'arm':<10}{'in-set':>9}{'false-keep':>12}{'false-drop':>12}{'defers':>9}{'covered':>9}")
+for col in COLS:
+    inset = fk = fd = defers = n = 0
     for k, r in gold.items():
-        acc = acceptable(r)
-        p = pred[(col, k)]
+        if (col, k) not in pred:
+            continue                       # arm not yet verified for this case
+        n += 1
+        acc, p = acceptable(r), pred[(col, k)]
         inset += p in acc
         fk += (p == "keep" and "keep" not in acc)
         fd += (p == "reject" and "reject" not in acc)
         defers += (p == "defer")
-    print(f"{col:<10}{inset/len(gold):>8.0%}{fk:>12}{fd:>12}{defers:>9}")
+    rate = f"{inset / n:.0%}" if n else "-"
+    print(f"{col:<10}{rate:>9}{fk:>12}{fd:>12}{defers:>9}{n:>6}/{len(gold)}")
 
 print("\n--- dangerous errors by arm (false-keep / false-drop) ---")
-for col in ("base", "descs", "alllangs", "guided"):
+for col in COLS:
     bad = []
     for k, r in gold.items():
+        if (col, k) not in pred:
+            continue
         acc, p = acceptable(r), pred[(col, k)]
         if p == "keep" and "keep" not in acc:
             bad.append(f"FALSE-KEEP {r['lang']}:{r['lemma']} (gold {r['proposed_correct']})")

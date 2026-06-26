@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Build the problematic-cases reference set from existing caches (no LLM calls).
 
-A case is 'problematic' if the four arms (base / +descs / +alllangs / +alllangs-guided)
-do not all agree on the action, OR the majority arm disagrees with the human log. For
-each we dump every signal we have so we can agree the CORRECT output by hand, then later
-score approaches against it. Pure reads: ab cache + verify cache + decisions + items DB.
+A case is kept in the gold if it has a hand-curated PROPOSED verdict (so the locked set is
+never silently dropped), OR it is newly 'problematic' — the base / +multi arms disagree on
+the action, or an arm disagrees with the human log — so contested cases keep surfacing for
+curation. For each we dump every signal we have so we can agree the CORRECT output by hand,
+then score approaches against it. Pure reads: ab cache + verify cache + decisions + items DB.
 """
 import csv
 import sqlite3
@@ -14,9 +15,8 @@ import config
 import verify
 import ab_concept as ab
 
-ARMS = ["base", "+labels+descs", "+alllangs", "+alllangs-guided"]
-SHORT = {"base": "base", "+labels+descs": "descs", "+alllangs": "alllangs",
-         "+alllangs-guided": "guided"}
+ARMS = ["base", "+multi"]
+SHORT = {"base": "base", "+multi": "multi"}
 
 rows, truth = ab.load_eval_rows(suspect=True)
 keys = {(r[0], r[3]): r for r in rows}
@@ -35,12 +35,12 @@ for (arm, k), c in votes.items():
 it = sqlite3.connect(config.ITEMS)
 gmap = verify.load_glosses([k[0] for k in keys])
 
-# full multilingual anchor evidence — every language's label+desc from the all-langs probe
-WIDE = sqlite3.connect(config.DATA + "/ab_alllangs.sqlite3")
+# full multilingual anchor evidence — every language's label+desc from the unified
+# all-language CC0 cache (item_lang, fetch_anchor_langs.py).
 PRIORITY = ["en", "de", "sv", "fr", "es", "it", "nl", "pt", "pl", "ru", "ja", "zh"]
 wide = collections.defaultdict(dict)
-for qid, lang, label, desc in WIDE.execute(
-        "SELECT qid, lang, label, desc FROM item_label_all"):
+for qid, lang, label, desc in it.execute(
+        "SELECT qid, lang, label, desc FROM item_lang"):
     wide[qid][lang] = (label, desc)
 
 
@@ -82,6 +82,13 @@ PROPOSED = {
     "Q1714828": ("keep", "huntsman (hunts with weapons per gloss)=hunter; NARROWER/EQUAL; {keep,defer}"),
     "Q1429491": ("keep", "riverbed=bed of a river; anchor=stream bed (general channel bottom) — NARROWER/EQUAL; {keep,defer}"),
     "Q846664": ("keep", "Habicht=goshawk/large Accipiter (per gloss); anchor=hawk (family Accipitridae) — NARROWER; {keep,defer}"),
+    # --- Type-1 'label-artifact BROADER': base flags BROADER off ONE narrow label, but the
+    # concept read across its multilingual descriptions is really EQUAL to the lexeme. These
+    # are the cases +multi should correct (BROADER->keep); human approved each. ---
+    "Q1622272": ("keep", "högskolelärare=higher-ed teacher; de Hochschullehrer/en 'university or college'/no 'universitet eller høgskole'/nl/eo all broad higher-ed = lexeme; only sv label 'universitetslärare' is narrow — EQUAL; {keep,defer}"),
+    "Q1554231": ("keep", "resurs=usable asset; en/da 'source/supply from which benefit is produced' = lexeme; de/sv 'economic' is the narrow label only — EQUAL; {keep,defer}"),
+    "Q1762621": ("keep", "leverantör=supplier; de 'Lieferant: jemand der Waren/Dienstleistungen liefert' = lexeme (anyone who delivers); en/sv frame commercial vendor — EQUAL; {keep,defer}"),
+    "Q11199149": ("keep", "blygsamhet=unassuming modesty; de/nl 'Bescheidenheit/bescheidenheid' = general modesty = lexeme; en 'dress modesty' is the narrow outlier that drove BROADER — EQUAL; {keep,defer}"),
     # --- BROADER / NARROWER / LATERAL / contested -> defer (send to human) ---
     "Q44619": ("defer", "dread=intense/anticipatory fear — narrower; {defer,keep}"),
     "Q21004260": ("defer", "efterforskning (find facts/persons) narrower than inquiry (knowledge process); {defer}"),
@@ -119,40 +126,47 @@ PROPOSED = {
     "Q218005": ("reject", "amount=general quantity; anchor=sum (mathematical addition of a sequence) — different; {reject,defer}"),
 }
 
-out = []
+# The GOLD is exactly the hand-curated set (cases with a PROPOSED verdict) — so it stays a
+# stable, fully-labelled reference that scores cleanly. Cases that newly look problematic
+# (arms disagree / disagree with human) but have NO curated verdict are merely LISTED as
+# candidates to curate next, not written into the gold with an empty acceptable-set.
+out, to_curate = [], []
 for k, row in keys.items():
     lid, qid = k
     actions = {a: pred[a].get(k) for a in ARMS}
     vals = [v for v in actions.values() if v]
     h = truth[k]
-    arms_disagree = len(set(vals)) > 1
-    arm_vs_human = any(v != h for v in vals)
-    if not (arms_disagree or arm_vs_human):
-        continue
     lemma, lang = row[2], row[1]
-    prop, rat = PROPOSED.get(qid, ("", ""))
+    if qid not in PROPOSED:
+        if len(set(vals)) > 1 or any(v != h for v in vals):
+            to_curate.append((lang, lemma, lid, qid, h, actions))
+        continue
+    prop, rat = PROPOSED[qid]
     out.append({
         "lid": lid, "qid": qid, "lang": lang, "lemma": lemma,
         "glosses_all": all_glosses(lid) or verify.pick_gloss(gmap, lid, lang),
         "anchor_langs": anchor_evidence(qid),
-        "human": h, "base": actions["base"] or "-",
-        "descs": actions["+labels+descs"] or "-",
-        "alllangs": actions["+alllangs"] or "-",
-        "guided": actions["+alllangs-guided"] or "-",
+        "human": h, "base": actions["base"] or "-", "multi": actions["+multi"] or "-",
         "proposed_correct": prop, "rationale": rat,
     })
 
 # disagreement breadth first (most contested at top)
-out.sort(key=lambda r: -len({r["human"], r["base"], r["descs"], r["alllangs"], r["guided"]}))
+out.sort(key=lambda r: -len({r["human"], r["base"], r["multi"]}))
 
 cols = ["lid", "qid", "lang", "lemma", "glosses_all", "anchor_langs",
-        "human", "base", "descs", "alllangs", "guided", "proposed_correct", "rationale"]
+        "human", "base", "multi", "proposed_correct", "rationale"]
 with open("notes/problematic_cases.csv", "w", newline="") as f:
     w = csv.DictWriter(f, fieldnames=cols)
     w.writeheader()
     w.writerows(out)
-print(f"wrote notes/problematic_cases.csv — {len(out)} problematic cases "
+print(f"wrote notes/problematic_cases.csv — {len(out)} curated gold cases "
       f"(of {len(keys)} suspect pairs), full multilingual anchor evidence inline")
+if to_curate:
+    print(f"\n{len(to_curate)} NEW problematic cases without a curated verdict "
+          f"(candidates to add to PROPOSED — NOT in the gold):")
+    for lang, lemma, lid, qid, h, actions in to_curate:
+        print(f"  {lang} {lemma:<22} {lid} {qid}  human={h}  "
+              f"base={actions['base'] or '-'} multi={actions['+multi'] or '-'}")
 
 # full multilingual dump of the cases I flagged as debatable, so we can settle them now
 DEBATABLE = ["Q50803918", "Q2684232", "Q290691", "Q1369832"]
@@ -163,7 +177,7 @@ for qid in DEBATABLE:
         continue
     print("\n" + "=" * 78)
     print(f"{r['lang']}:{r['lemma']}  ({r['lid']} / {qid})   human={r['human']}  "
-          f"arms: base={r['base']} descs={r['descs']} all={r['alllangs']} guided={r['guided']}")
+          f"arms: base={r['base']} multi={r['multi']}")
     print(f"  GLOSS(es): {r['glosses_all']}")
     print(f"  proposed: {r['proposed_correct']}  ({r['rationale']})")
     print("  ANCHOR across languages:")
