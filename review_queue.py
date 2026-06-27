@@ -100,20 +100,28 @@ def pool():
 
 
 def counts():
-    """(status -> n) from the log, plus a computed 'pending'."""
+    """(status -> n) from the log, plus computed 'pending' (human-pending) and 'auto_deferred'."""
     decisions = load_decisions()
     c = collections.Counter(d["status"] for d in decisions.values())
-    c["pending"] = sum(1 for r in pool() if (r[0], r[1]) not in decisions)
+    ad = auto_defer_classes(decisions)
+    undecided = [r for r in pool() if (r[0], r[1]) not in decisions]
+    c["auto_deferred"] = sum(1 for r in undecided if rel_class(r[6]) in ad)
+    c["pending"] = len(undecided) - c["auto_deferred"]
     return c
 
 
 def status(args):
     print(f"decision log: {DECISIONS}")
     c = counts()
-    for s in ("pending", "approved", "deferred", "rejected", "written"):
-        print(f"  {s:<10} {c.get(s, 0):,}")
+    for s in ("pending", "auto_deferred", "approved", "deferred", "rejected", "written"):
+        print(f"  {s:<13} {c.get(s, 0):,}")
     decided = load_decisions()
+    ad = auto_defer_classes(decided)
+    if c.get("auto_deferred"):
+        print(f"  ↳ auto-deferred classes (≥85% not-written, hidden from review): "
+              f"{', '.join(sorted(ad))} — a better prompt/approach re-surfaces them")
     n_scope = sum(1 for r in pool() if (r[0], r[1]) not in decided
+                  and rel_class(r[6]) not in ad
                   and scope_hint(r[6])[1].startswith(("defer", "reject")))
     if n_scope:
         print(f"  ⚠ of pending, {n_scope:,} are broader/narrower/lateral scope mismatches "
@@ -249,6 +257,61 @@ def scope_hint(reason, gloss=None, anchor_desc=None):
     return rel, "defer? (scope mismatch)", "hold"
 
 
+# ---- data-gated auto-defer (enforcement) ------------------------------------
+# A relation CLASS whose decided history is >=85% "not written" (reject+defer) on a big enough
+# sample is one the human almost never approves — so we stop bothering the human with it: auto-defer
+# HIDES it from the pending queue WITHOUT logging a decision (user call 2026-06-27). This is
+# reversible BY CONSTRUCTION: the filter keys on the live verdict relation, so when a better prompt
+# re-verifies a pair into a different class it reappears in review on its own — no un-defer step. The
+# cost is the small fraction of these the human WOULD have approved (LATERAL ~7%); they sit unwritten
+# until a prompt/approach improvement re-surfaces them. The instrument calibrate.py reports the SAME
+# gate by importing these names, so the readiness table and the live filter can't drift apart.
+GATE_MIN_SAMPLES = 30
+AUTO_DEFER_NOWRITE = 0.85
+KNOWN_RELS = ("EQUAL", "BROADER", "NARROWER", "LATERAL", "INCOHERENT", "DIFFERENT")
+# class -> the action scope_hint suggests for it (which gate that class faces). Only a 'defer' class
+# can auto-defer; a 'keep'/'reject' class never does, even if its not-written rate is high.
+REL_ACTION = {
+    "EQUAL": "keep", "BROADER·convention": "keep", "NARROWER·convention": "keep",
+    "BROADER": "defer", "NARROWER": "defer", "LATERAL": "defer", "INCOHERENT": "defer",
+    "DIFFERENT": "reject",
+}
+
+
+def rel_class(reason):
+    """Bucket a verdict by its relation token, matching scope_hint's convention split.
+
+    Pre-REL free-text reasons group as '(legacy, pre-REL)' and never auto-defer."""
+    rel, suggestion, _ = scope_hint(reason)
+    if rel not in KNOWN_RELS:
+        return "(legacy, pre-REL)"
+    if rel in ("BROADER", "NARROWER") and "convention" in suggestion:
+        return rel + "·convention"
+    return rel
+
+
+def auto_defer_classes(decisions=None):
+    """{rel_class}: defer-classes the log proves are >=85% not-written on >=GATE_MIN_SAMPLES pairs.
+
+    These are hidden from the pending queue. Computed live from the decision log so it tracks the
+    data; currently only LATERAL clears it."""
+    if decisions is None:
+        decisions = load_decisions()
+    buckets = collections.defaultdict(collections.Counter)
+    for d in decisions.values():
+        st = (d.get("status") or "").strip()
+        if st in ("approved", "rejected", "deferred", "written"):
+            buckets[rel_class(d.get("reason"))][st] += 1
+    out = set()
+    for cls, c in buckets.items():
+        if REL_ACTION.get(cls) != "defer":
+            continue
+        n = c["approved"] + c["written"] + c["rejected"] + c["deferred"]
+        if n >= GATE_MIN_SAMPLES and (c["rejected"] + c["deferred"]) / n >= AUTO_DEFER_NOWRITE:
+            out.add(cls)
+    return out
+
+
 def lang_selector(lang_counts, active):
     """An 'all · de · en · sv' filter bar over the lemma's language (target_lang).
 
@@ -266,8 +329,11 @@ def lang_selector(lang_counts, active):
 
 def render(limit, lang_filter=None):
     decisions = load_decisions()
-    pending = [r for r in pool() if (r[0], r[1]) not in decisions]
-    # Selector counts are over the unfiltered pending set, so they don't change as you filter.
+    ad = auto_defer_classes(decisions)
+    undecided = [r for r in pool() if (r[0], r[1]) not in decisions]
+    auto_def = [r for r in undecided if rel_class(r[6]) in ad]
+    pending = [r for r in undecided if rel_class(r[6]) not in ad]
+    # Selector counts are over the unfiltered (human-)pending set, so they don't change as you filter.
     lang_counts = collections.Counter(r[3] for r in pending)
     rows = [r for r in pending if not lang_filter or r[3] == lang_filter]
     # Float scope mismatches to the top: defer-suggested first, then convention
@@ -281,6 +347,9 @@ def render(limit, lang_filter=None):
     c["pending"] = len(pending)
     n_scope = sum(1 for r in rows if scope_hint(r[6])[1].startswith(("defer", "reject")))
     head = " · ".join(f"{k}: {v}" for k, v in sorted(c.items())) or "empty"
+    if auto_def:
+        head += (f" · {len(auto_def)} auto-deferred "
+                 f"({', '.join(sorted(ad))} ≥85% not-written, hidden)")
     if n_scope:
         head += f" · ⚠ {n_scope} scope-mismatch"
     if lang_filter:
