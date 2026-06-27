@@ -54,10 +54,19 @@ def high_tier_where(cand_alias="c", it_alias="it"):
     return (
         f"{c}.homograph_n_lid = 1 AND NOT {c}.cross_pivot_conflict "
         f"AND {c}.support_clusters >= 2 AND {c}.target_n_senses = 1 "
-        f"AND EXISTS(SELECT 1 FROM {it}.item_type _t "
-        f"WHERE _t.qid = {c}.anchor_qid AND _t.prop = 'P31') "
-        f"AND NOT (" + exclusion_clause(c, it) + ")"
+        f"AND " + concrete_anchor_clause(c, it)
     )
+
+
+def concrete_anchor_clause(cand_alias="c", it_alias="it"):
+    """SQL fragment for the 'D' gate: the anchor is a concrete, in-scope concept — it
+    carries a P31 (a real instance-typed item, not a bare value) AND is not an
+    out-of-scope class. Shared by high_tier_where and verify.candidates so the
+    concrete-noun tier has ONE definition and they can't silently drift apart."""
+    c, it = cand_alias, it_alias
+    return (f"EXISTS(SELECT 1 FROM {it}.item_type _t "
+            f"WHERE _t.qid = {c}.anchor_qid AND _t.prop = 'P31') "
+            f"AND NOT (" + exclusion_clause(c, it) + ")")
 
 
 def exclusion_clause(cand_alias="c", it_alias="it"):

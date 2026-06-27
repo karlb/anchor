@@ -160,12 +160,10 @@ def candidates(args):
     if "B" in gate:
         where += " AND c.target_n_senses = 1"
     if "D" in gate:
-        # concrete anchor (has a P31) AND in-scope — the scope exclusion is part of
-        # the concrete-noun tier, so --gate ABD matches review_queue/export's High tier
-        # (it used to omit the exclusion and verify a slightly broader set).
-        where += (" AND EXISTS(SELECT 1 FROM it.item_type t "
-                  "WHERE t.qid = c.anchor_qid AND t.prop = 'P31')"
-                  " AND NOT " + gates.exclusion_clause("c", "it"))
+        # concrete anchor (has a P31) AND in-scope — the SAME 'D' gate
+        # (gates.concrete_anchor_clause) that high_tier_where / review_queue / export use,
+        # so --gate ABD matches their High tier and the two definitions can't drift apart.
+        where += " AND " + gates.concrete_anchor_clause("c", "it")
     rows = cn.execute(
         f"""
         SELECT c.target_lid, c.target_lang, c.target_lemma, c.anchor_qid, c.support_clusters,
