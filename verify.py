@@ -360,6 +360,13 @@ def main():
     for v, n in out.execute("SELECT verdict, count(*) FROM verdict GROUP BY verdict ORDER BY 2 DESC"):
         print(f"  {v:<12} {n:,}")
 
+    u = llm.usage_summary()
+    if u["calls"]:
+        print(f"\nclaude -p usage: {u['calls']:,} calls  "
+              f"in {u['input_tokens']:,} + {u['cache_read_input_tokens']:,} cached-read "
+              f"(+{u['cache_creation_input_tokens']:,} cache-write) / out {u['output_tokens']:,} tok"
+              f"  ~${u['cost_usd']:.2f}  (~${u['cost_usd'] / u['calls']:.4f}/call)")
+
     if args.csv:
         cols = ["target_lid", "anchor_qid", "target_lemma", "target_lang",
                 "verdict", "reason", "model"]
