@@ -14,7 +14,10 @@ import subprocess
 
 def batch_json(system, prompt, model, n, default, timeout=300):
     out = subprocess.run(
-        ["claude", "-p", "--output-format", "json", "--model", model, "--system-prompt", system],
+        # --disallowedTools "*" drops the ~17.6k-token tool-schema context from every call
+        # (this is a pure text->JSON task that uses no tools); measured ~98% less context/call.
+        ["claude", "-p", "--output-format", "json", "--model", model, "--system-prompt", system,
+         "--disallowedTools", "*"],
         input=prompt, capture_output=True, text=True, timeout=timeout)
     if out.returncode != 0:
         raise RuntimeError(out.stderr[:300])
