@@ -24,8 +24,8 @@ import ab_concept as ab
 import config
 import verify
 
-ARMS = {"base": "base", "+multi": "multi"}   # cache arm name -> short column name
-COLS = ("base", "multi")
+ARMS = {"base": "base", "+multi": "multi", "+nudge": "nudge"}   # cache arm name -> short column name
+COLS = ("base", "multi", "nudge")
 gold = {(r["lid"], r["qid"]): r for r in csv.DictReader(open("notes/problematic_cases.csv"))}
 
 # gloss + de/en/sv anchor descriptions per gold pair, for scope_hint's demonym→ethnic nudge

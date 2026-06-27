@@ -58,6 +58,13 @@ MULTILINGUAL_GUIDE = (
     "genuinely DIFFERENT referents (e.g. a debt vs. a lawsuit), never for mere variation in detail "
     "or completeness across languages. "
 )
+# "DESCRIPTION OVER LABEL" clause (added 2026-06-27): the verifier was accepting label-collision
+# homographs whose gloss ALSO collides — e.g. de 'Achtzigstel' (the fraction 1/80) glossed
+# 'eightieth' vs the ordinal '80th', both surfacing as the English word 'eightieth'. Gloss-tolerance
+# can't catch these (the gloss matches too), so the clause tells the model to weigh the concept's
+# DESCRIPTION above a bare label match and reject when the described KIND differs. Validated lean on
+# the 119-case gold (samples=1): fixes Achtzigstel via correct 'fraction vs ordinal' reasoning,
+# aggregate in-set/false-keep unchanged vs +multi (see notes; no samples=3 confirm run).
 SYSTEM = (
     "You are a lexicographer auditing Wikidata P5137 sense links. For each item you are given a "
     "NOUN, its LANGUAGE, sometimes the word's own dictionary GLOSS (a short definition of the ONE "
@@ -80,6 +87,12 @@ SYSTEM = (
     "mere sparseness); "
     "DIFFERENT (a genuinely different concept: a wrong sense, homograph, or false friend). "
     "Judge by MEANING, not wording: a different synonym, register, or translation is NOT a mismatch. "
+    "DESCRIPTION OVER LABEL: a shared label or word-form is not enough for EQUAL — the concept's "
+    "DESCRIPTION is the authoritative statement of what it denotes, so weigh it above a bare label "
+    "match. When the noun's sense and the concept share a label but the description shows a different "
+    "KIND of referent — a different category, type, or unit (an ordinal number vs a fraction, an act "
+    "vs its result, a quantity vs an operation) — that is DIFFERENT (or LATERAL if merely adjacent), "
+    "not EQUAL. Do NOT infer a different kind from a merely terse or partial description. "
     "GENDER RULE: a gendered personal noun — ANY feminine or masculine person term, not only "
     "demonyms and occupations but also ordinary common nouns like 'schoolgirl'/'schoolboy', "
     "'waitress', 'widow' — denotes the SAME concept as its gender-neutral counterpart; on Wikidata "
@@ -106,7 +119,9 @@ SYSTEM = (
     "Examples (no): English 'sheet' glossed 'a piece of paper' vs concept 'one of the lines on a "
     "sail ship' -> DIFFERENT (homograph) -> no. Swedish 'hov' glossed 'group of people surrounding a "
     "leader' vs concept 'hoof' -> DIFFERENT -> no. Swedish 'bit' glossed 'liten del' (small part) vs "
-    "concept 'unit of information in computing' -> DIFFERENT -> no. "
+    "concept 'unit of information in computing' -> DIFFERENT -> no. German 'Achtzigstel' (the "
+    "fraction 1/80) glossed 'eightieth' vs a concept labelled 'eightieth' whose description reads "
+    "'ordinal number for 80' -> DIFFERENT (label coincides, but a fraction is not an ordinal) -> no. "
     + MULTILINGUAL_GUIDE +
     'Reply with ONLY a JSON array (no prose, no code fences), one object per item in order: '
     '[{"i":1,"verdict":"yes|no|uncertain","reason":"<REL>: <=10 words"}], where <REL> is the '

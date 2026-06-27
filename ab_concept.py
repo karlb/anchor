@@ -29,6 +29,7 @@ trustworthy; just re-run when quota recovers. Delete the cache file to force a c
 """
 import argparse
 import collections
+import csv
 import json
 import os
 import sqlite3
@@ -46,6 +47,12 @@ import verify
 ARMS = {
     "base": {},
     "+multi": dict(langs=config.CONCEPT_LANGS_VERIFY),
+    # Nudge-validation arm: same wide format as +multi, but run AFTER the "description over label"
+    # nudge was added to verify.SYSTEM. The cached +multi verdicts are the PRE-nudge baseline (the
+    # ab cache is keyed by arm, not prompt, so they aren't re-run); +nudge is the post-nudge
+    # candidate. The gold retest (score_approaches) compares the two. Don't delete the cache or the
+    # baseline is lost. Run with --gold to keep the retest to the curated set.
+    "+nudge": dict(langs=config.CONCEPT_LANGS_VERIFY),
 }
 HUMAN = {"approved": "keep", "written": "keep", "rejected": "reject", "deferred": "defer"}
 # The scope/coherence relations: the cases where the concept boundary is contested and
@@ -175,6 +182,9 @@ def main():
     ap.add_argument("--suspect", action="store_true",
                     help="restrict eval set to scope/coherence cases (BROADER/NARROWER/"
                          "LATERAL/INCOHERENT) — where the concept format can actually matter")
+    ap.add_argument("--gold", action="store_true",
+                    help="restrict eval set to the curated gold pairs "
+                         "(notes/problematic_cases.csv) — the cheap retest set")
     ap.add_argument("--arms", default="", help="comma-list of arm names to run "
                     "(default base,+multi); e.g. 'base' to score base alone")
     args = ap.parse_args()
@@ -182,6 +192,10 @@ def main():
     arms = [(n, ARMS[n]) for n in sel if n in ARMS]
 
     rows, truth = load_eval_rows(suspect=args.suspect)
+    if args.gold:
+        gold_pairs = {(r["lid"], r["qid"])
+                      for r in csv.DictReader(open("notes/problematic_cases.csv"))}
+        rows = [r for r in rows if (r[0], r[3]) in gold_pairs]
     if args.limit:
         rows = rows[: args.limit]
     th = collections.Counter(truth[(r[0], r[3])] for r in rows)

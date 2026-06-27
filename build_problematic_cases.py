@@ -20,6 +20,17 @@ SHORT = {"base": "base", "+multi": "multi"}
 
 rows, truth = ab.load_eval_rows(suspect=True)
 keys = {(r[0], r[3]): r for r in rows}
+# A curated case need not be a scope/coherence ('suspect') pair: a label-collision false-keep —
+# an EQUAL homograph the verifier wrongly accepts, e.g. Achtzigstel (the fraction 1/80) vs the
+# ordinal '80th' — belongs in the gold too. We add such cases by an explicit (lid, qid) allowlist,
+# NOT by "any pair whose qid is in PROPOSED": PROPOSED is keyed by anchor qid alone, and on the full
+# eval set several lexemes can share one anchor, so a qid match would stamp unrelated lexemes with
+# the wrong curated verdict. (Each NON_SUSPECT qid must also have a PROPOSED entry, asserted below.)
+NON_SUSPECT = {("L610533", "Q28469790")}   # de Achtzigstel (1/80) vs the ordinal '80th'
+full_by_key = {(r[0], r[3]): r for r in ab.load_eval_rows(suspect=False)[0]}
+for k in NON_SUSPECT:
+    if k in full_by_key:
+        keys.setdefault(k, full_by_key[k])
 
 # per-arm majority-vote action from the ab cache
 votes = collections.defaultdict(collections.Counter)
@@ -124,6 +135,7 @@ PROPOSED = {
     "Q1552579": ("reject", "hantlangare=unskilled helper, not building-maintenance handyman (Wikt; corrected in log); {reject}"),
     "Q15942027": ("reject", "Wikt: hog=generic adult swine, NOT female; anchor=female pig (sow) — wrong referent; uniform false-keep; {reject}"),
     "Q218005": ("reject", "amount=general quantity; anchor=sum (mathematical addition of a sequence) — different; {reject,defer}"),
+    "Q28469790": ("reject", "Achtzigstel=the fraction 1/80; anchor=ordinal '80th' (every lang desc 'ordinal number for 80'); label 'eightieth' coincides but kind differs (fraction vs ordinal) — homograph; {reject,defer}"),
     # --- 56 newly-surfaced cases curated 2026-06-26 (split demonym convention: nationality
     # anchor -> keep, ethnic-group/folk anchor -> defer/reject). Grounded in gloss + the
     # curated multilingual anchor descriptions. ---
@@ -184,6 +196,8 @@ PROPOSED = {
     "Q1255864": ("keep", "skoj=fun/amusement (also prank); concept=fun (enjoyment) — core EQUAL; {keep,defer}"),
     "Q997267": ("keep", "skärmytsling=skirmish (sv label exact); minor military conflict; EQUAL; {keep,defer}"),
 }
+
+assert all(qid in PROPOSED for _, qid in NON_SUSPECT), "NON_SUSPECT qid lacks a PROPOSED verdict"
 
 # The GOLD is exactly the hand-curated set (cases with a PROPOSED verdict) — so it stays a
 # stable, fully-labelled reference that scores cleanly. Cases that newly look problematic
