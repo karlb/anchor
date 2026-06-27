@@ -22,8 +22,10 @@ bare lemma, and L's own Wikidata sense gloss (also CC0). No DBnary gloss is ever
 read (those are CC-BY-SA).
 
 Backend: the local ``claude`` CLI in print mode (reuses your existing auth, no
-API key). Each CLI call reloads ~19k tokens of agent context, so candidates are
-**batched** (default 8/call) to amortise that ~10×. Verdicts are cached in
+API key). ``llm.batch_json`` runs it with ``--disallowedTools "*"``, which drops the
+~17.6k-token tool-schema context the CLI otherwise reloads every call (this is a pure
+text->JSON task that needs no tools; measured ~19k -> ~0.3k/call). Candidates are still
+**batched** (default 8/call) to amortise the ~1.2k system prompt. Verdicts are cached in
 ``data/verify.sqlite3`` keyed by (target_lid, anchor_qid) — re-runs skip done work, but a
 changed prompt (tracked by its SHA1 fingerprint) auto-invalidates stale verdicts so they
 are re-verified rather than silently trusted.
