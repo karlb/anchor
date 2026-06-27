@@ -85,13 +85,14 @@ def main():
     decisions = rq.load_decisions()   # last event per (lid, anchor) wins
     cache = rq.load_verify_cache()    # the LIVE prompt's relation per pair (supersedes the
     #                                   frozen log reason, so pre-REL approvals bucket too)
+    ctx = rq.demonym_context([(k[0], k[1], d.get("target_lang")) for k, d in decisions.items()])
     buckets = collections.defaultdict(collections.Counter)
     rows_by_cls = collections.defaultdict(list)
     for k, d in decisions.items():
         st = (d.get("status") or "").strip()
         if st not in ("approved", "rejected", "deferred", "written"):
             continue
-        cls = rq.live_rel(k, d.get("reason"), cache)
+        cls = rq.live_rel(k, d.get("reason"), cache, ctx)
         if cls is None:               # the live verifier no longer says 'yes' — not write-eligible
             continue
         buckets[cls][st] += 1

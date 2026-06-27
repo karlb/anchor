@@ -103,9 +103,11 @@ def counts():
     """(status -> n) from the log, plus computed 'pending' (human-pending) and 'auto_deferred'."""
     decisions = load_decisions()
     c = collections.Counter(d["status"] for d in decisions.values())
-    ad = auto_defer_classes(decisions)
     undecided = [r for r in pool() if (r[0], r[1]) not in decisions]
-    c["auto_deferred"] = sum(1 for r in undecided if rel_class(r[6]) in ad)
+    ctx = demonym_context([(k[0], k[1], d.get("target_lang")) for k, d in decisions.items()]
+                          + [(r[0], r[1], r[3]) for r in undecided])
+    ad = auto_defer_classes(decisions, ctx)
+    c["auto_deferred"] = sum(1 for r in undecided if rel_of((r[0], r[1]), r[6], ctx) in ad)
     c["pending"] = len(undecided) - c["auto_deferred"]
     return c
 
@@ -116,13 +118,17 @@ def status(args):
     for s in ("pending", "auto_deferred", "approved", "deferred", "rejected", "written"):
         print(f"  {s:<13} {c.get(s, 0):,}")
     decided = load_decisions()
-    ad = auto_defer_classes(decided)
+    undecided = [r for r in pool() if (r[0], r[1]) not in decided]
+    ctx = demonym_context([(k[0], k[1], d.get("target_lang")) for k, d in decided.items()]
+                          + [(r[0], r[1], r[3]) for r in undecided])
+    ad = auto_defer_classes(decided, ctx)
     if c.get("auto_deferred"):
         print(f"  ↳ auto-deferred classes (≥85% not-written, hidden from review): "
               f"{', '.join(sorted(ad))} — a better prompt/approach re-surfaces them")
-    n_scope = sum(1 for r in pool() if (r[0], r[1]) not in decided
-                  and rel_class(r[6]) not in ad
-                  and scope_hint(r[6])[1].startswith(("defer", "reject")))
+    n_scope = sum(1 for r in undecided
+                  if rel_of((r[0], r[1]), r[6], ctx) not in ad
+                  and scope_hint(r[6], *ctx.get((r[0], r[1]), (None, None)))[1]
+                  .startswith(("defer", "reject")))
     if n_scope:
         print(f"  ⚠ of pending, {n_scope:,} are broader/narrower/lateral scope mismatches "
               "(review individually — likely defer/reject)")
@@ -136,7 +142,7 @@ def status(args):
     for k, dec in decided.items():
         if (dec.get("status") or "").strip() not in ("approved", "written", "rejected"):
             continue
-        rel = live_rel(k, dec.get("reason"), vcache)
+        rel = live_rel(k, dec.get("reason"), vcache, ctx)
         if not rel or REL_ACTION.get(rel) != "keep":
             continue
         keep_n += 1
@@ -279,21 +285,38 @@ KNOWN_RELS = ("EQUAL", "BROADER", "NARROWER", "LATERAL", "INCOHERENT", "DIFFEREN
 # can auto-defer; a 'keep'/'reject' class never does, even if its not-written rate is high.
 REL_ACTION = {
     "EQUAL": "keep", "BROADER·convention": "keep", "NARROWER·convention": "keep",
+    "demonym-ethnic": "defer",   # demonym lexeme vs an ethnic-group anchor: a contested keep → defer
     "BROADER": "defer", "NARROWER": "defer", "LATERAL": "defer", "INCOHERENT": "defer",
     "DIFFERENT": "reject",
 }
 
 
-def rel_class(reason):
-    """Bucket a verdict by its relation token, matching scope_hint's convention split.
+def rel_class(reason, gloss=None, anchor_desc=None):
+    """Bucket a verdict by its relation token, matching scope_hint's splits.
 
+    Pass gloss + anchor_desc so the demonym→ethnic-group nudge buckets as its own defer class
+    HERE too. scope_hint is the single classifier, but rel_class used to call it gloss-blind, so
+    the gloss-aware HTML queue and the gloss-blind replay paths (calibrate, auto-defer) drifted on
+    demonym pairs (litauer/norrman read EQUAL→keep in calibrate while the queue already deferred
+    them). Feeding the same inputs everywhere removes that drift. The nudge is one deterministic
+    'contested keep → defer' rule that OVERRIDES the verifier's EQUAL/BROADER guess, so all such
+    pairs collapse into a single 'demonym-ethnic' class regardless of the overridden relation.
     Pre-REL free-text reasons group as '(legacy, pre-REL)' and never auto-defer."""
-    rel, suggestion, _ = scope_hint(reason)
+    rel, suggestion, _ = scope_hint(reason, gloss, anchor_desc)
     if rel not in KNOWN_RELS:
         return "(legacy, pre-REL)"
+    if "demonym vs ethnic" in suggestion:          # demonym→ethnic-group nudge → single defer class
+        return "demonym-ethnic"
     if rel in ("BROADER", "NARROWER") and "convention" in suggestion:
         return rel + "·convention"
     return rel
+
+
+def rel_of(key, reason, ctx=None):
+    """rel_class for a pair, pulling its (gloss, anchor_desc) from a demonym_context map so the
+    one gloss-aware classifier is reused at every call site."""
+    gloss, anchor_desc = (ctx or {}).get(key, (None, None))
+    return rel_class(reason, gloss, anchor_desc)
 
 
 def load_verify_cache(path=config.VERIFY):
@@ -307,35 +330,66 @@ def load_verify_cache(path=config.VERIFY):
     return out
 
 
-def live_rel(key, log_reason, cache):
+def demonym_context(pairs):
+    """{(lid, qid): (gloss, anchor_desc)} — the demonym→ethnic-group nudge's inputs (the lexeme's
+    CC0 sense gloss + the anchor's de/en/sv description), joined ONCE in two batched queries so
+    every relation-classification site can feed rel_of/rel_class identical data. Without this the
+    replay paths (calibrate, auto_defer) and the render filter classify gloss-blind and drift from
+    the gloss-aware HTML queue. `pairs`: iterable of (lid, qid, lang)."""
+    pairs = [p for p in pairs if p[0] and p[1]]
+    if not pairs:
+        return {}
+    lids = {p[0] for p in pairs}
+    qids = {p[1] for p in pairs}
+    wd = sqlite3.connect(config.WIKIDATA)
+    glosses = collections.defaultdict(dict)
+    for lid, lg, g in wd.execute(
+            "SELECT lid, lang, gloss FROM sense_gloss WHERE lid IN (%s)"
+            % ",".join("?" * len(lids)), list(lids)):
+        glosses[lid][lg] = g
+    wd.close()
+    it = sqlite3.connect(config.ITEMS)
+    descs = {q: " | ".join(d for d in (de, en, sv) if d) for q, de, en, sv in it.execute(
+        "SELECT qid, desc_de, desc_en, desc_sv FROM item WHERE qid IN (%s)"
+        % ",".join("?" * len(qids)), list(qids))}
+    it.close()
+    return {(lid, qid): (pick(lang, glosses.get(lid, {}))[0], descs.get(qid, ""))
+            for lid, qid, lang in pairs}
+
+
+def live_rel(key, log_reason, cache, ctx=None):
     """Relation to bucket a decided pair by, preferring the LIVE verify cache (the current
     prompt's rating of the pair) over the frozen decision-log reason — so pairs reviewed
     before the relation taxonomy was emitted still bucket correctly instead of piling into
     '(legacy, pre-REL)'. The human verdict judges the (lemma, anchor) pair itself, not the
-    prompt, so pairing it with the live relation is sound. Returns None when the cache now
-    rates the pair NOT 'yes' (the verifier would reject it — not write-eligible, so it must
-    not inform the keep/defer/reject gates)."""
+    prompt, so pairing it with the live relation is sound. ctx (from demonym_context) supplies
+    the gloss + anchor_desc so the demonym→ethnic defer is applied here exactly as in the render
+    queue — same classifier, same inputs. Returns None when the cache now rates the pair NOT 'yes'
+    (the verifier would reject it — not write-eligible, so it must not inform the keep/defer/reject
+    gates)."""
     hit = cache.get(key)
     if hit is not None:
         verdict, reason = hit
         if verdict != "yes":
             return None
-        return rel_class(reason)
-    return rel_class(log_reason)
+        return rel_of(key, reason, ctx)
+    return rel_of(key, log_reason, ctx)
 
 
-def auto_defer_classes(decisions=None):
+def auto_defer_classes(decisions=None, ctx=None):
     """{rel_class}: defer-classes the log proves are >=85% not-written on >=GATE_MIN_SAMPLES pairs.
 
     These are hidden from the pending queue. Computed live from the decision log so it tracks the
-    data; currently only LATERAL clears it."""
+    data; currently only LATERAL clears it. ctx (from demonym_context) keeps the bucketing
+    gloss-aware, so a demonym→ethnic class can become a candidate on its own rather than hiding
+    inside EQUAL."""
     if decisions is None:
         decisions = load_decisions()
     buckets = collections.defaultdict(collections.Counter)
-    for d in decisions.values():
+    for key, d in decisions.items():
         st = (d.get("status") or "").strip()
         if st in ("approved", "rejected", "deferred", "written"):
-            buckets[rel_class(d.get("reason"))][st] += 1
+            buckets[rel_of(key, d.get("reason"), ctx)][st] += 1
     out = set()
     for cls, c in buckets.items():
         if REL_ACTION.get(cls) != "defer":
@@ -363,23 +417,26 @@ def lang_selector(lang_counts, active):
 
 def render(limit, lang_filter=None):
     decisions = load_decisions()
-    ad = auto_defer_classes(decisions)
     undecided = [r for r in pool() if (r[0], r[1]) not in decisions]
-    auto_def = [r for r in undecided if rel_class(r[6]) in ad]
-    pending = [r for r in undecided if rel_class(r[6]) not in ad]
+    ctx = demonym_context([(k[0], k[1], d.get("target_lang")) for k, d in decisions.items()]
+                          + [(r[0], r[1], r[3]) for r in undecided])
+    ad = auto_defer_classes(decisions, ctx)
+    auto_def = [r for r in undecided if rel_of((r[0], r[1]), r[6], ctx) in ad]
+    pending = [r for r in undecided if rel_of((r[0], r[1]), r[6], ctx) not in ad]
     # Selector counts are over the unfiltered (human-)pending set, so they don't change as you filter.
     lang_counts = collections.Counter(r[3] for r in pending)
     rows = [r for r in pending if not lang_filter or r[3] == lang_filter]
     # Float scope mismatches to the top: defer-suggested first, then convention
     # broader/narrower, then clean EQUAL — so a scope case is never pushed past `limit`.
     rows.sort(key=lambda r: ((lambda s: 0 if s.startswith(("defer", "reject")) else 1 if s else 2)
-                             (scope_hint(r[6])[1]), r[3], r[2]))
+                             (scope_hint(r[6], *ctx.get((r[0], r[1]), (None, None)))[1]), r[3], r[2]))
     wd = sqlite3.connect(config.WIKIDATA)
     it = sqlite3.connect(config.ITEMS)
     have_il = has_item_lang(it)
     c = collections.Counter(d["status"] for d in decisions.values())
     c["pending"] = len(pending)
-    n_scope = sum(1 for r in rows if scope_hint(r[6])[1].startswith(("defer", "reject")))
+    n_scope = sum(1 for r in rows if scope_hint(r[6], *ctx.get((r[0], r[1]), (None, None)))[1]
+                  .startswith(("defer", "reject")))
     head = " · ".join(f"{k}: {v}" for k, v in sorted(c.items())) or "empty"
     if auto_def:
         head += (f" · {len(auto_def)} auto-deferred "
