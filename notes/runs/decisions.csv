@@ -398,3 +398,4 @@ ts,target_lid,anchor_qid,target_lemma,target_lang,target_n_senses,verdict,reason
 2026-06-27 18:29:22,L47752,Q1358789,åldring,sv,1,yes,NARROWER: very old person is more specific than elderly/senior,sonnet,deferred,local,
 2026-06-27 18:30:11,L52375,Q99717065,gambier,sv,1,yes,EQUAL: person från Gambia = citizen/resident of The Gambia,sonnet,approved,local,
 2026-06-27 18:31:08,L33473,Q121842,fransyska,sv,1,yes,"EQUAL: feminine form, gender recorded separately; same French-people concept",sonnet,approved,local,
+2026-06-27 19:46:35,L60268,Q12359071,anarkist,sv,1,yes,"re-adjudicated 2026-06-27 (drift triage, was approved): deferred — lexeme sense gloss doesn't fit the lexeme; re-verifier now DIFFERENT",sonnet,deferred,recheck,
