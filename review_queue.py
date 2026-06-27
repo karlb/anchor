@@ -376,20 +376,30 @@ def live_rel(key, log_reason, cache, ctx=None):
     return rel_of(key, log_reason, ctx)
 
 
-def auto_defer_classes(decisions=None, ctx=None):
+def auto_defer_classes(decisions=None, ctx=None, cache=None):
     """{rel_class}: defer-classes the log proves are >=85% not-written on >=GATE_MIN_SAMPLES pairs.
 
-    These are hidden from the pending queue. Computed live from the decision log so it tracks the
-    data; currently only LATERAL clears it. ctx (from demonym_context) keeps the bucketing
-    gloss-aware, so a demonym→ethnic class can become a candidate on its own rather than hiding
-    inside EQUAL."""
+    These are hidden from the pending queue. Buckets each decided pair by its LIVE verify-cache
+    relation (live_rel) — the SAME basis calibrate uses — so the gate that HIDES pairs and the
+    readiness table that justifies it can't drift apart: a prompt re-verify that moves a pair's
+    relation moves it in both at once. (Bucketing by the frozen log reason silently diverged once
+    a re-verify changed the live relations — e.g. NARROWER read 90% not-written frozen but 73%
+    live.) A pair the cache now rates not-'yes' drops out (not write-eligible, not a defer-class
+    member). ctx (from demonym_context) keeps it gloss-aware so a demonym→ethnic pair buckets as
+    its own class rather than hiding inside EQUAL."""
     if decisions is None:
         decisions = load_decisions()
+    if cache is None:
+        cache = load_verify_cache()
     buckets = collections.defaultdict(collections.Counter)
     for key, d in decisions.items():
         st = (d.get("status") or "").strip()
-        if st in ("approved", "rejected", "deferred", "written"):
-            buckets[rel_of(key, d.get("reason"), ctx)][st] += 1
+        if st not in ("approved", "rejected", "deferred", "written"):
+            continue
+        cls = live_rel(key, d.get("reason"), cache, ctx)
+        if cls is None:                 # verifier no longer says 'yes' — not a defer-class member
+            continue
+        buckets[cls][st] += 1
     out = set()
     for cls, c in buckets.items():
         if REL_ACTION.get(cls) != "defer":
