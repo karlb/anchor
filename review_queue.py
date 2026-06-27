@@ -126,25 +126,31 @@ def status(args):
     if n_scope:
         print(f"  ⚠ of pending, {n_scope:,} are broader/narrower/lateral scope mismatches "
               "(review individually — likely defer/reject)")
-    # Every decided row was a verifier-'yes' candidate (the pool is verdict='yes'),
-    # so the human verdict on it directly measures verifier-'yes' precision on the
-    # real (fresh) write stream — the number held-out precision can only approximate.
-    confirmed = c.get("approved", 0) + c.get("written", 0)
-    decided = confirmed + c.get("rejected", 0)
-    if decided:
-        print(f"  verifier-'yes' precision (human-confirmed): {confirmed}/{decided} = "
-              f"{100.0 * confirmed / decided:.1f}%")
+    # Precision on the WRITE lane: of decided pairs the LIVE verifier rates 'keep' (EQUAL /
+    # convention — the only relations that are written), how many the human confirmed. The
+    # blended verifier-'yes' rate is misleading — it counts BROADER/NARROWER/LATERAL
+    # rejections, which are SCOPE triage the verifier doesn't judge and which never reach a
+    # write. Bucketed by the LIVE cache relation (live_rel) so pre-REL approvals still count.
+    vcache = load_verify_cache()
+    keep_ok = keep_n = 0
+    for k, dec in decided.items():
+        if (dec.get("status") or "").strip() not in ("approved", "written", "rejected"):
+            continue
+        rel = live_rel(k, dec.get("reason"), vcache)
+        if not rel or REL_ACTION.get(rel) != "keep":
+            continue
+        keep_n += 1
+        keep_ok += (dec.get("status") or "").strip() in ("approved", "written")
+    if keep_n:
+        print(f"  verifier-keep precision (write lane, EQUAL/convention): {keep_ok}/{keep_n} = "
+              f"{100.0 * keep_ok / keep_n:.1f}%  — scope mismatches are triaged, not written; "
+              f"see calibrate.py for the per-relation table")
     # Drift: the log snapshots the verifier verdict at decision time, but the cache can change
     # later (e.g. a prompt-version rebuild). Surface decided pairs whose CURRENT cache verdict
     # differs from what was reviewed — informational only (writes are log-driven, not cache-driven).
-    if os.path.exists(config.VERIFY):
-        decisions = load_decisions()
-        cn = sqlite3.connect(config.VERIFY)
-        cache = {(a, b): v for a, b, v in
-                 cn.execute("SELECT target_lid, anchor_qid, verdict FROM verdict")}
-        cn.close()
-        drift = [d["target_lemma"] for (lid, qid), d in decisions.items()
-                 if (lid, qid) in cache and d.get("verdict") and cache[(lid, qid)] != d["verdict"]]
+    if vcache:
+        drift = [d["target_lemma"] for k, d in decided.items()
+                 if k in vcache and d.get("verdict") and vcache[k][0] != d["verdict"]]
         if drift:
             shown = ", ".join(sorted(drift)[:6]) + ("…" if len(drift) > 6 else "")
             print(f"  ⚠ {len(drift)} decided pair(s) now disagree with the verify cache "
@@ -288,6 +294,34 @@ def rel_class(reason):
     if rel in ("BROADER", "NARROWER") and "convention" in suggestion:
         return rel + "·convention"
     return rel
+
+
+def load_verify_cache(path=config.VERIFY):
+    """{(target_lid, anchor_qid): (verdict, reason)} from the live verify cache."""
+    if not os.path.exists(path):
+        return {}
+    cn = sqlite3.connect(path)
+    out = {(lid, qid): (verd, reason) for lid, qid, verd, reason in
+           cn.execute("SELECT target_lid, anchor_qid, verdict, reason FROM verdict")}
+    cn.close()
+    return out
+
+
+def live_rel(key, log_reason, cache):
+    """Relation to bucket a decided pair by, preferring the LIVE verify cache (the current
+    prompt's rating of the pair) over the frozen decision-log reason — so pairs reviewed
+    before the relation taxonomy was emitted still bucket correctly instead of piling into
+    '(legacy, pre-REL)'. The human verdict judges the (lemma, anchor) pair itself, not the
+    prompt, so pairing it with the live relation is sound. Returns None when the cache now
+    rates the pair NOT 'yes' (the verifier would reject it — not write-eligible, so it must
+    not inform the keep/defer/reject gates)."""
+    hit = cache.get(key)
+    if hit is not None:
+        verdict, reason = hit
+        if verdict != "yes":
+            return None
+        return rel_class(reason)
+    return rel_class(log_reason)
 
 
 def auto_defer_classes(decisions=None):

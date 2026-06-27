@@ -32,10 +32,10 @@ write) but AGAINST the approve floor (a defer is not a confirmation).
 import collections
 
 import review_queue as rq
-from review_queue import rel_class, REL_ACTION as ACTION   # single-sourced taxonomy + auto-defer gate
+from review_queue import REL_ACTION as ACTION   # single-sourced taxonomy + auto-defer gate
 
 # The auto-approve / auto-hide floors below are calibrate-only (the instrument). The auto-defer gate
-# (MIN_SAMPLES, NOWRITE_AUTO) and the relation taxonomy (rel_class, ACTION) are imported from
+# (MIN_SAMPLES, NOWRITE_AUTO) and the relation taxonomy (rq.live_rel / ACTION) are imported from
 # review_queue — the live pending-filter there enforces the SAME gate, so they can't drift apart.
 MIN_SAMPLES = rq.GATE_MIN_SAMPLES
 NOWRITE_AUTO = rq.AUTO_DEFER_NOWRITE   # (reject+defer)/decided >= this -> auto-defer (reversible)
@@ -83,15 +83,20 @@ def _fmt(d):
 
 def main():
     decisions = rq.load_decisions()   # last event per (lid, anchor) wins
+    cache = rq.load_verify_cache()    # the LIVE prompt's relation per pair (supersedes the
+    #                                   frozen log reason, so pre-REL approvals bucket too)
     buckets = collections.defaultdict(collections.Counter)
     rows_by_cls = collections.defaultdict(list)
-    for d in decisions.values():
+    for k, d in decisions.items():
         st = (d.get("status") or "").strip()
         if st not in ("approved", "rejected", "deferred", "written"):
             continue
-        cls = rel_class(d.get("reason"))
+        cls = rq.live_rel(k, d.get("reason"), cache)
+        if cls is None:               # the live verifier no longer says 'yes' — not write-eligible
+            continue
         buckets[cls][st] += 1
-        rows_by_cls[cls].append(d)
+        # show the live rating (the basis we bucketed on) in the contradiction list, not the frozen one
+        rows_by_cls[cls].append({**d, "reason": cache.get(k, (None, d.get("reason")))[1]})
 
     print(f"decision log: {rq.DECISIONS}")
     print(f"{'class':<20}{'gate':>8}{'n':>5}{'appr':>6}{'rej':>5}{'defer':>6}   readiness")
@@ -107,7 +112,7 @@ def main():
     # Surface exactly the band the gates tolerate: a keep-rated pair the human REJECTED
     # is a wrong write auto-approve would make; a reject-rated pair the human KEPT is a
     # good link auto-hide would silently drop. Listed so they can be eyeballed, never
-    # bulk-trusted. (Legacy/pre-REL pairs aren't a current-prompt rating, so excluded.)
+    # bulk-trusted. (Bucketed by the live cache relation, so pre-REL pairs are included.)
     keep_rej = [d for cls, rows in rows_by_cls.items() if ACTION.get(cls) == "keep"
                 for d in rows if (d.get("status") or "").strip() == "rejected"]
     reject_kept = [d for cls, rows in rows_by_cls.items() if ACTION.get(cls) == "reject"
