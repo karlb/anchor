@@ -40,6 +40,8 @@ PORT = 8731
 # a scope call against several languages — a demonym vs its ethnic-group concept, say —
 # often reads differently across them. The data is the all-language CC0 cache (item_lang,
 # fetch_anchor_langs.py); if it is absent the UI falls back to the de/en/sv `item` columns.
+# The same fetch also caches aliases (item_alias); the UI surfaces a NEUTRAL hint when the
+# lemma exactly matches one of the anchor's 'also known as' names; absent → no hint shown.
 
 # Append-only log columns. Beyond the (lid, anchor) key and the decision itself,
 # we snapshot what the reviewer saw (lemma, verdict, reason, model) so each line
@@ -200,6 +202,27 @@ def anchor_langs(it, qid):
     entry = {lg: (lab, ds) for lg, lab, ds in
              it.execute("SELECT lang, label, desc FROM item_lang WHERE qid=?", [qid])}
     return config.resolve_concept_langs(entry, config.CONCEPT_LANGS_DISPLAY)
+
+
+def has_item_alias(it):
+    """Whether the anchor alias cache (fetch_anchor_langs.py) is populated."""
+    return bool(it.execute("SELECT name FROM sqlite_master "
+                           "WHERE type='table' AND name='item_alias'").fetchone())
+
+
+def alias_match(it, qid, lang, lemma):
+    """The concept's target-language alias equal to the lemma, if any (case-insensitive); '' else.
+
+    A hit means Wikidata officially lists the lemma as one of Q's 'also known as' names (its
+    aliases EXCLUDE the label, so this is a non-label name). Shown as NEUTRAL reviewer context,
+    never acted on: on the gold an exact alias match is ~50/50 keep-vs-reject-acceptable —
+    genuine extra evidence the reviewer weighs against the scope relation, not an auto-keep.
+    Data is the item_alias cache (fetch_anchor_langs.py)."""
+    row = it.execute("SELECT aliases FROM item_alias WHERE qid=? AND lang=?", [qid, lang]).fetchone()
+    if not row or not row[0]:
+        return ""
+    want = (lemma or "").strip().lower()
+    return next((a for a in row[0].split("; ") if a.strip().lower() == want), "")
 
 
 # ---- scope triage -----------------------------------------------------------
@@ -443,6 +466,7 @@ def render(limit, lang_filter=None):
     wd = sqlite3.connect(config.WIKIDATA)
     it = sqlite3.connect(config.ITEMS)
     have_il = has_item_lang(it)
+    have_al = has_item_alias(it)
     c = collections.Counter(d["status"] for d in decisions.values())
     c["pending"] = len(pending)
     n_scope = sum(1 for r in rows if scope_hint(r[6], *ctx.get((r[0], r[1]), (None, None)))[1]
@@ -478,6 +502,13 @@ def render(limit, lang_filter=None):
             dtag = f" [{dlang}]" if dlang and dlang != lang else ""
             anchor_html = (f"<b>{html.escape(lab)}</b>{ltag}"
                            f"<br><span class=d>{html.escape(dsc)}{dtag}</span>")
+        # NEUTRAL evidence: Wikidata officially lists the lemma as one of this item's 'also
+        # known as' names. Not a verdict — weigh it against the scope relation (alias + EQUAL/
+        # convention → likely keep; alias + a real scope gap → still defer/reject).
+        aka = alias_match(it, qid, lang, lemma) if have_al else ""
+        if aka:
+            anchor_html += (f"<div class=akahit>“{html.escape(aka)}” is a listed "
+                            "“also known as” of this item</div>")
         gtag = f" [{glang}]" if glang and glang != lang else ""
         gloss_html = f"“{html.escape(gl)}”{gtag}" if gl else "<i>(no sense gloss)</i>"
         form = (f"<form method=post action=/act style='display:inline'>"
@@ -504,6 +535,7 @@ button{{font-size:.85rem;padding:3px 8px;cursor:pointer;border:1px solid #ccc;bo
 .ok{{color:#197a19}} .no{{color:#b00}} .hold{{color:#a60}} a{{color:#36c;text-decoration:none}}
 .rel{{font-weight:600;font-size:.78rem;letter-spacing:.02em}}
 .al{{margin:1px 0}} .alc{{display:inline-block;min-width:1.5rem;color:#999;font-size:.72rem;text-transform:uppercase}}
+.akahit{{margin-top:3px;color:#36c;font-size:.78rem}}
 .bar{{margin:.4rem 0 1rem}} .lsel{{padding:1px 4px;border-radius:3px}} .lsel.sel{{background:#eef;font-weight:700;color:#000}}</style>
 <h2>P5137 review queue</h2><p class=d>{head} — showing up to {limit} pending</p>
 {lang_selector(lang_counts, lang_filter)}
