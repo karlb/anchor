@@ -202,8 +202,11 @@ def submit(opener, csrf, lid, data, summary):
     return res.get("entity", {}).get("lastrevid")
 
 
-def write_edits(edits):
-    """Resolve each sense live, safety-check, submit, record the revid in the queue."""
+def write_edits(edits, max_per_min):
+    """Resolve each sense live, safety-check, submit, record the revid in the queue.
+
+    Submissions are paced to at most `max_per_min` edits/minute (0 = no cap), the
+    per-minute rate limit the bot policy requires editing tools to support."""
     user, pw = os.environ.get("WIKI_USER"), os.environ.get("WIKI_PASS")
     if not (user and pw):
         raise SystemExit("--write needs WIKI_USER / WIKI_PASS (Special:BotPasswords) env vars")
@@ -219,8 +222,11 @@ def write_edits(edits):
     batch_id = "%012x" % random.randrange(2**48)
     summary = f"{SUMMARY} ([[:toolforge:editgroups/b/{TOOL}/{batch_id}|details]])"
     group_url = f"https://editgroups.toolforge.org/b/{TOOL}/{batch_id}/"
+    interval = 60.0 / max_per_min if max_per_min > 0 else 0.0
     print(f"editgroups batch {TOOL}/{batch_id} → {group_url}")
+    print(f"throttle: {'≤%d edits/min' % max_per_min if interval else 'none'}")
     written = 0
+    last_edit = 0.0  # monotonic time of the last submitted edit, for pacing
     for lid, data in edits:
         sense = data["senses"][0]
         anchor = sense["claims"]["P5137"][0]["mainsnak"]["datavalue"]["value"]["id"]
@@ -234,7 +240,12 @@ def write_edits(edits):
                     print(f"  skip {lid}: sense already has P5137 {p5137} (never override)")
                     continue
                 sense["id"] = sid
+            if interval and last_edit:  # pace only between actual submissions
+                wait = interval - (time.monotonic() - last_edit)
+                if wait > 0:
+                    time.sleep(wait)
             revid = submit(opener, csrf, lid, data, summary)
+            last_edit = time.monotonic()
         except Exception as e:  # noqa: BLE001 — one bad edit shouldn't abort the batch
             print(f"  FAIL {lid} → {anchor}: {e}"); continue
         d = decisions.get((lid, anchor), {})
@@ -264,6 +275,8 @@ def main():
     ap.add_argument("--preview", action="store_true",
                     help="read verifier-'yes' rows directly (inspect before any approval)")
     ap.add_argument("--limit", type=int, default=10)
+    ap.add_argument("--max-edits-per-min", type=int, default=30,
+                    help="cap submission rate (0 = no cap); default 30")
     ap.add_argument("--include-senseless", action="store_true",
                     help="also build sense-creation edits (gloss from CC0 label)")
     args = ap.parse_args()
@@ -293,7 +306,7 @@ def main():
 
     if args.preview:
         raise SystemExit("refusing to --write in --preview mode: write only human-approved rows")
-    write_edits(edits)
+    write_edits(edits, args.max_edits_per_min)
 
 
 if __name__ == "__main__":
