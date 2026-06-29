@@ -31,8 +31,8 @@ latest-lexemes.json.gz ─load_lexemes.py──▶ wikidata.sqlite3 ─┘      
                                                                                         ├─ measure_lift.py (verifier-lift eval)
                                                                                         ├─ export_review.py ─▶ data/review.html
                                                                                         ├─ review_queue.py ─▶ notes/runs/decisions.csv (human approve/reject log)
-                                                                                        ├─ gender.py ─▶ gender.sqlite3 (LLM semantic gender → P10339)
-                                                                                        └─ write.py ─▶ wbeditentity: P5137 + P10339 (gated on approval)
+                                                                                        ├─ gender.py ─▶ gender.sqlite3 (LLM semantic gender → P10339; phase 2, not in v1 write path)
+                                                                                        └─ write.py ─▶ wbeditentity: P5137 only (gated on approval)
 ```
 
 **Build the candidate stream:**
@@ -62,12 +62,16 @@ latest-lexemes.json.gz ─load_lexemes.py──▶ wikidata.sqlite3 ─┘      
    (the authorization gate). Decisions are an append-only, git-committed log at
    `notes/runs/decisions.csv` (the single source of truth — there is no review DB; "pending" is
    computed as the verifier-'yes' pool minus what the log covers).
-9. **`gender.py`** — LLM semantic-gender tagger (CC0: bare lemma only) over approved candidates;
-   supplies the **P10339** value for the two-part gendered-lexeme convention (P5137 → the
-   gender-neutral concept, the word's sex recorded separately). Cached in `gender.sqlite3`.
-10. **`write.py`** — builds the `wbeditentity` payload (**P5137** + mandatory P887/P813 reference,
-   plus **P10339** from `gender.py` when the anchor concept is gender-neutral), reads only approved
-   rows from that log, appends a `written` event with the revid, and defaults to `--dry-run`.
+9. **`gender.py`** *(phase 2 — not wired into the v1 write path)* — LLM semantic-gender tagger
+   (CC0: bare lemma only) over approved candidates; supplies the **P10339** value for the
+   two-part gendered-lexeme convention (P5137 → the gender-neutral concept, the word's sex
+   recorded separately). A gendered form denotes the *same* concept as its neutral counterpart
+   (an EQUAL link, valid and constraint-clean without the qualifier), so v1 writes the P5137 link
+   alone and leaves P10339 as an additive phase-2 enrichment — not a v1 precondition. Cached in
+   `gender.sqlite3`.
+10. **`write.py`** — builds the `wbeditentity` payload (**P5137** + mandatory P887/P813 reference),
+   reads only approved rows from that log, appends a `written` event with the revid, and defaults
+   to `--dry-run`.
 
 **QA tooling:** **`audit_decisions.py`** surfaces human/verifier disagreements and runs an optional
 CC0 gloss-contradiction audit (`--gloss`); **`validate_prompt.py`** checks a verifier-prompt change
@@ -97,12 +101,12 @@ uv run fetch_items.py
 uv run verify.py --gate ABD --all --model sonnet
 uv run measure_lift.py --gate ABD --sample 350 --model sonnet
 
-# 6. review, then tag gender + write  (decisions logged to notes/runs/decisions.csv — source of truth)
+# 6. review, then write  (decisions logged to notes/runs/decisions.csv — source of truth)
 uv run export_review.py                 # data/review.html
 uv run review_queue.py serve            # http://localhost:8731  approve/reject/defer
 uv run review_queue.py status           # pending (computed) / approved / deferred / rejected / written
-uv run gender.py --all --model sonnet   # P10339 semantic gender for approved lexemes
 uv run write.py --dry-run               # print payloads for approved rows (submits nothing)
+# gender.py (P10339, two-part gendered-lexeme convention) is phase 2 — not part of the v1 write path
 
 # 7. go live (assisted edits on your account; no autoconfirmed needed for statement-adds)
 #    create a Special:BotPasswords credential, then:

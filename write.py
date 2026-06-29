@@ -27,7 +27,6 @@ import datetime
 import http.cookiejar
 import json
 import os
-import re
 import sqlite3
 import urllib.parse
 import urllib.request
@@ -44,16 +43,6 @@ SUMMARY = ("Add [[Property:P5137]] (item for this sense) inferred from translati
 # P887 "based on heuristic" value: the purpose-made item "inferred from translation"
 # (created 2026-06 on the operator account; P31 -> heuristic Q201413, constraint-clean).
 HEURISTIC_ITEM = "Q140308675"
-
-# Semantic gender (P10339) values, for the two-part convention: a gendered lexeme links
-# via P5137 to the gender-NEUTRAL concept and records its sex here (gender.py supplies the
-# female/male/neutral call). We only add P10339 when the anchor concept is itself neutral —
-# if the anchor is already sex-specific (e.g. "heroine", "house husband"), P10339 is redundant.
-SEMGENDER = {"female": "Q6581072", "male": "Q6581097"}
-# whole-word markers that the anchor's own CC0 text is sex-specific (English label/desc).
-SEXMARK = re.compile(
-    r"\b(female|woman|women|man|men|male|husband|wife|consort|heroine|actress|empress|"
-    r"princess|widow|widower)\b", re.I)
 
 
 def entity_snak(prop, qid):
@@ -78,14 +67,6 @@ def build_statement(anchor_qid, today):
     }
 
 
-def gender_claim(gender):
-    """P10339 (semantic gender) claim. Left unreferenced: the sex of a demonym/occupation
-    word is a self-evident lexical fact (unlike the inferred P5137 link), and unreferenced
-    gender/grammatical statements are the Wikidata norm."""
-    return {"mainsnak": entity_snak("P10339", SEMGENDER[gender]),
-            "type": "statement", "rank": "normal"}
-
-
 def anchor_label(qid, lang):
     """CC0 label for a would-be new sense's gloss (target lang, fallback en)."""
     it = sqlite3.connect(config.ITEMS)
@@ -93,34 +74,6 @@ def anchor_label(qid, lang):
                    [qid]).fetchone()
     it.close()
     return (r[0] or r[1]) if r else None
-
-
-_GENDER = None
-
-
-def gender_of(lid):
-    """Cached semantic gender ('female'/'male'/...) for a lexeme, or None (gender.py output)."""
-    global _GENDER
-    if _GENDER is None:
-        _GENDER = {}
-        if os.path.exists(config.GENDER):
-            g = sqlite3.connect(config.GENDER)
-            _GENDER = {r[0]: r[1] for r in g.execute("SELECT target_lid, gender FROM gender")}
-            g.close()
-    return _GENDER.get(lid)
-
-
-def anchor_is_sex_specific(qid):
-    """True if the anchor concept is sex-specific (then P10339 is redundant — skip it).
-    SEXMARK is English, so judge the English label+desc. If the item has NO English text to
-    vet, return True (conservative — never add P10339 onto an un-vettable anchor)."""
-    it = sqlite3.connect(config.ITEMS)
-    r = it.execute("SELECT label_en, desc_en FROM item WHERE qid=? AND NOT missing",
-                   [qid]).fetchone()
-    it.close()
-    if not r or not (r[0] or r[1]):
-        return True
-    return bool(SEXMARK.search(" ".join(x for x in r if x)))
 
 
 def build_edit(row, today, include_senseless):
@@ -131,29 +84,17 @@ def build_edit(row, today, include_senseless):
     sense, which needs a gloss — seeded from the anchor's own CC0 label."""
     lid, qid, lemma, lang, n_senses = row
     claim = build_statement(qid, today)
-    # Convention: a gendered lexeme also records semantic gender (P10339) — but only when the
-    # anchor concept is gender-neutral (a sex-specific anchor already carries the sex).
-    g = gender_of(lid)
-    p10339 = ([gender_claim(g)] if g in SEMGENDER and not anchor_is_sex_specific(qid)
-              else None)
-    gtag = f" + P10339={g}" if p10339 else ""
-
-    def claims():
-        c = {"P5137": [claim]}
-        if p10339:
-            c["P10339"] = p10339
-        return c
 
     if n_senses == 1:
-        sense = {"id": f"<{lid}-S? resolved live>", "claims": claims()}
-        return {"senses": [sense]}, "add to existing sense" + gtag
+        sense = {"id": f"<{lid}-S? resolved live>", "claims": {"P5137": [claim]}}
+        return {"senses": [sense]}, "add to existing sense"
     if include_senseless:
         gloss = anchor_label(qid, lang)
         if not gloss:  # no CC0 anchor label -> never fall back to the headword (degenerate)
             return None, "skipped: senseless, no CC0 anchor label (no gloss source)"
         sense = {"add": "", "glosses": {lang: {"language": lang, "value": gloss}},
-                 "claims": claims()}
-        return {"senses": [sense]}, f"CREATE sense (gloss = CC0 anchor label: {gloss!r})" + gtag
+                 "claims": {"P5137": [claim]}}
+        return {"senses": [sense]}, f"CREATE sense (gloss = CC0 anchor label: {gloss!r})"
     return None, "skipped: senseless (needs gloss policy; use --include-senseless)"
 
 
@@ -251,8 +192,6 @@ def write_edits(edits):
                     print(f"  skip {lid}: sense already has P5137 {p5137} (never override)")
                     continue
                 sense["id"] = sid
-                if "P10339" in existing and "P10339" in sense["claims"]:
-                    del sense["claims"]["P10339"]  # already has semantic gender (incl. novalue); don't dup
             revid = submit(opener, csrf, lid, data)
         except Exception as e:  # noqa: BLE001 — one bad edit shouldn't abort the batch
             print(f"  FAIL {lid} → {anchor}: {e}"); continue
