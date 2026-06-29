@@ -29,6 +29,8 @@ import json
 import os
 import random
 import sqlite3
+import time
+import urllib.error
 import urllib.parse
 import urllib.request
 
@@ -118,16 +120,47 @@ def load_rows(args):
 
 # ---- Action API submission (stdlib only) -----------------------------------
 
+MAXLAG_RETRIES = 6  # back-off attempts on maxlag / 429 / 503 before giving up
+
+
 def _api(opener, params, post=False):
+    """One Action API call, honouring maxlag back-off (API:Etiquette).
+
+    A maxlag rejection (JSON `error.code=maxlag`, or an infrastructure 429/503
+    with Retry-After) happens *before* the edit is applied, so retrying a POST
+    is safe. A bare network failure on a POST is NOT retried — we can't tell if
+    the edit landed and must not risk a duplicate."""
     params = {**params, "format": "json", "formatversion": "2"}
-    if post:
-        req = urllib.request.Request(API, data=urllib.parse.urlencode(params).encode(),
-                                     headers={"User-Agent": USER_AGENT})
-    else:
-        req = urllib.request.Request(API + "?" + urllib.parse.urlencode(params),
-                                     headers={"User-Agent": USER_AGENT})
-    with opener.open(req, timeout=30) as r:
-        return json.loads(r.read().decode())
+    backoff = 1.0
+    for attempt in range(MAXLAG_RETRIES):
+        if post:
+            req = urllib.request.Request(API, data=urllib.parse.urlencode(params).encode(),
+                                         headers={"User-Agent": USER_AGENT})
+        else:
+            req = urllib.request.Request(API + "?" + urllib.parse.urlencode(params),
+                                         headers={"User-Agent": USER_AGENT})
+        last = attempt == MAXLAG_RETRIES - 1
+        try:
+            with opener.open(req, timeout=30) as r:
+                data = json.loads(r.read().decode())
+        except urllib.error.HTTPError as e:
+            if e.code in (429, 503) and not last:  # server-side reject, pre-edit: back off
+                time.sleep(min(float(e.headers.get("Retry-After", backoff)), 30))
+                backoff *= 2
+                continue
+            raise
+        except urllib.error.URLError:
+            if post or last:  # don't silently re-POST a possibly-applied edit
+                raise
+            time.sleep(min(backoff, 30))
+            backoff *= 2
+            continue
+        if data.get("error", {}).get("code") == "maxlag" and not last:
+            time.sleep(min(float(data["error"].get("lag", backoff)) or backoff, 30))
+            backoff *= 2
+            continue
+        return data
+    raise RuntimeError(f"maxlag back-off: gave up after {MAXLAG_RETRIES} attempts")
 
 
 def login(opener, user, pw):
