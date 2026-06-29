@@ -27,6 +27,7 @@ import datetime
 import http.cookiejar
 import json
 import os
+import random
 import sqlite3
 import urllib.parse
 import urllib.request
@@ -39,6 +40,7 @@ USER_AGENT = ("anchor-p5137-pilot/0.1 (https://www.wikidata.org/; karl42@gmail.c
              "python-urllib")
 SUMMARY = ("Add [[Property:P5137]] (item for this sense) inferred from translation, "
            "ref [[Q140308675]] — LLM-verified, human-approved assisted edit")
+TOOL = "CB"  # EditGroups "custom bot" id (self-service, no registration); batch id is per-run
 
 # P887 "based on heuristic" value: the purpose-made item "inferred from translation"
 # (created 2026-06 on the operator account; P31 -> heuristic Q201413, constraint-clean).
@@ -158,9 +160,9 @@ def resolve_sense(opener, lid):
     return s["id"], existing
 
 
-def submit(opener, csrf, lid, data):
+def submit(opener, csrf, lid, data, summary):
     res = _api(opener, {"action": "wbeditentity", "id": lid, "data": json.dumps(data),
-                        "summary": SUMMARY, "token": csrf, "maxlag": "5", "bot": "0"},
+                        "summary": summary, "token": csrf, "maxlag": "5", "bot": "0"},
                post=True)
     if "error" in res:
         raise RuntimeError(res["error"].get("info", str(res["error"])))
@@ -178,6 +180,13 @@ def write_edits(edits):
         urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))
     csrf = login(opener, user, pw)
     decisions = load_decisions()  # to carry the audited fields onto the 'written' event
+    # One EditGroups batch per run: every edit shares this id, so the whole run is one
+    # auditable, one-click-revertible group on editgroups.toolforge.org. Padded to 12 hex
+    # digits to stay inside EditGroups' 4–32 lowercase-hex range for any random value.
+    batch_id = "%012x" % random.randrange(2**48)
+    summary = f"{SUMMARY} ([[:toolforge:editgroups/b/{TOOL}/{batch_id}|details]])"
+    group_url = f"https://editgroups.toolforge.org/b/{TOOL}/{batch_id}/"
+    print(f"editgroups batch {TOOL}/{batch_id} → {group_url}")
     written = 0
     for lid, data in edits:
         sense = data["senses"][0]
@@ -192,7 +201,7 @@ def write_edits(edits):
                     print(f"  skip {lid}: sense already has P5137 {p5137} (never override)")
                     continue
                 sense["id"] = sid
-            revid = submit(opener, csrf, lid, data)
+            revid = submit(opener, csrf, lid, data, summary)
         except Exception as e:  # noqa: BLE001 — one bad edit shouldn't abort the batch
             print(f"  FAIL {lid} → {anchor}: {e}"); continue
         d = decisions.get((lid, anchor), {})
@@ -201,13 +210,16 @@ def write_edits(edits):
             "target_lemma": d.get("target_lemma", ""), "target_lang": d.get("target_lang", ""),
             "target_n_senses": d.get("target_n_senses", ""), "verdict": d.get("verdict", ""),
             "reason": d.get("reason", ""), "model": d.get("model", ""),
-            "status": "written", "reviewer": "write.py", "revid": str(revid),
+            "status": "written", "reviewer": f"write.py b/{TOOL}/{batch_id}",
+            "revid": str(revid),
         })
         written += 1
         print(f"  wrote {lid} → {anchor}  (rev {revid})")
         print(f"    https://www.wikidata.org/wiki/Lexeme:{lid}")
         print(f"    https://www.wikidata.org/wiki/Special:Diff/{revid}")
     print(f"\n{written}/{len(edits)} submitted.")
+    if written:
+        print(f"editgroups batch → {group_url}")
 
 
 def main():
