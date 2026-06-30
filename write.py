@@ -74,10 +74,22 @@ def build_statement(anchor_qid, today):
 def anchor_label(qid, lang):
     """CC0 label for a would-be new sense's gloss (target lang, fallback en)."""
     it = sqlite3.connect(config.ITEMS)
-    r = it.execute(f"SELECT label_{lang}, label_en FROM item WHERE qid=? AND NOT missing",
-                   [qid]).fetchone()
+    # The wide `item` table only has de/en/sv columns; for any other target language
+    # (fr/no) read its own-language label from the all-language item_lang cache, then
+    # fall back to the en column. (Senseless-target writing is a gated phase-2 path.)
+    own = None
+    if lang in ("de", "en", "sv"):
+        r = it.execute(f"SELECT label_{lang} FROM item WHERE qid=? AND NOT missing",
+                       [qid]).fetchone()
+        own = r[0] if r else None
+    elif it.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='item_lang'"
+                    ).fetchone():
+        r = it.execute("SELECT label FROM item_lang WHERE qid=? AND lang=?",
+                       [qid, lang]).fetchone()
+        own = r[0] if r else None
+    en = it.execute("SELECT label_en FROM item WHERE qid=? AND NOT missing", [qid]).fetchone()
     it.close()
-    return (r[0] or r[1]) if r else None
+    return own or (en[0] if en else None)
 
 
 def build_edit(row, today, include_senseless):

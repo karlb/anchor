@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build sense-grounded translation clusters for the de/en/sv P5137 pilot.
+"""Build sense-grounded translation clusters for the de/en/sv/fr/no P5137 pilot.
 
 A *cluster* is anchored on a single pivot sense ``(lexentry, sense_num)`` taken
 from one pilot language, plus that sense's direct translations into the other
@@ -25,11 +25,11 @@ import sqlite3
 
 import config
 
-PILOT = ("de", "en", "sv")
+PILOT = ("de", "en", "sv", "fr", "no")
 
 
 def extract_edges(conn):
-    """Pull the de/en/sv pilot subset of all_trans into a small indexed table."""
+    """Pull the pilot-language subset of all_trans into a small indexed table."""
     conn.execute("ATTACH DATABASE ? AS infer", [config.INFER])
     conn.executescript(
         """
@@ -163,26 +163,28 @@ def main():
     conn.isolation_level = None
 
     n_edges = extract_edges(conn)
-    print(f"edges (de/en/sv pilot subset): {n_edges:,}")
+    print(f"edges ({'/'.join(PILOT)} pilot subset): {n_edges:,}")
 
     for lang, n in load_nouns(conn):
         print(f"  nouns[{lang}]: {n:,}")
 
     build_clusters(conn)
-    total, three, noun3 = conn.execute(
+    # A cluster needs >=2 pilot languages to ever yield a candidate (an anchor member
+    # plus a target member); reaching all PILOT langs is rare and not required.
+    total, multi, multinoun = conn.execute(
         """
         SELECT
           count(*),
-          sum(n_langs = 3),
-          sum(n_langs = 3 AND EXISTS (
+          sum(n_langs >= 2),
+          sum(n_langs >= 2 AND EXISTS (
               SELECT 1 FROM noun WHERE noun.lang = cluster.pivot_lang
                                    AND noun.lemma = cluster.pivot_lemma))
         FROM cluster
         """
     ).fetchone()
     print(f"clusters (pivot senses): {total:,}")
-    print(f"  spanning all 3 langs: {three:,}")
-    print(f"  ...with a noun pivot: {noun3:,}")
+    print(f"  spanning >=2 langs: {multi:,}")
+    print(f"  ...with a noun pivot: {multinoun:,}")
 
     naive, shared = measure_stitching(conn)
     stitched = naive - shared

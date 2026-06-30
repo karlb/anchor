@@ -32,7 +32,8 @@ import llm
 from review_queue import load_decisions
 
 CONFIRMED = ("approved", "written")  # human said the verifier-'yes' was correct
-LANGNAME = {"de": "German", "en": "English", "sv": "Swedish"}
+LANGNAME = {"de": "German", "en": "English", "sv": "Swedish",
+            "fr": "French", "no": "Norwegian"}
 
 # --gloss audit: the verifier sees only the lemma, so it can't tell which sense a
 # monosemous lexeme holds. The lexeme's OWN CC0 Wikidata gloss can — when it plainly

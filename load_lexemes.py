@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Stream the Wikidata lexeme dump into SQLite, filtered to the de/en/sv pilot.
+"""Stream the Wikidata lexeme dump into SQLite, filtered to the de/en/sv/fr/no pilot.
 
 Consumes ``latest-lexemes.json.gz`` (the weekly Wikidata lexeme dump: a JSON
-array with one lexeme entity per line). We keep only German/English/Swedish
-lexemes and extract bare facts: L-id, language, lexical category, every lemma
-representation, and each sense's P5137 ("item for this sense") target Q-id.
+array with one lexeme entity per line). We keep only German/English/Swedish/
+French/Norwegian-Bokmål lexemes and extract bare facts: L-id, language, lexical
+category, every lemma representation, and each sense's P5137 ("item for this
+sense") target Q-id.
 
 License: Wikidata's own data is CC0, including sense glosses (``senses[].glosses``),
 so we DO store them — they let a reviewer see the lexeme's own sense and let us audit
@@ -24,8 +25,11 @@ import sqlite3
 
 import config
 
-# Wikidata language item -> pilot 2-letter code.
-LANG_QID = {"Q188": "de", "Q1860": "en", "Q9027": "sv"}
+# Wikidata language item -> pilot 2-letter code. Norwegian Bokmaal (Q25167, lemma tag
+# "nb") maps to our "no" so it joins the WikDict/DBnary clusters, whose `no` is sourced
+# from the Bokmaal Wiktionary; Nynorsk (Q25164) has no matching DBnary dictionary here
+# and is left out. (QIDs verified against the dump: de/en/sv/fr/nb dominate their tags.)
+LANG_QID = {"Q188": "de", "Q1860": "en", "Q9027": "sv", "Q150": "fr", "Q25167": "no"}
 NOUN_QID = "Q1084"
 
 SCHEMA = """
@@ -167,7 +171,7 @@ def main():
     if not os.path.exists(args.dump):
         raise SystemExit(f"dump not found: {args.dump}\nDownload latest-lexemes.json.gz and pass --dump.")
     stats = load(args.dump, args.out)
-    print(f"kept lexemes (de/en/sv): {stats['lexemes']:,}")
+    print(f"kept lexemes (de/en/sv/fr/no): {stats['lexemes']:,}")
     for lang, n in stats["per_lang"]:
         print(f"  {lang}: {n:,}")
     print(f"nouns (Q1084): {stats['nouns']:,}")

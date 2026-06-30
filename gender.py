@@ -43,7 +43,8 @@ SYSTEM = (
     '[{"i":1,"gender":"female|male|neutral"}].'
 )
 
-LANGNAME = {"de": "German", "en": "English", "sv": "Swedish"}
+LANGNAME = {"de": "German", "en": "English", "sv": "Swedish",
+            "fr": "French", "no": "Norwegian"}
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS gender(

@@ -134,7 +134,8 @@ SYSTEM = (
 # invalidates verdicts cached under an older prompt (they are re-verified, not trusted).
 PROMPT_VER = hashlib.sha1(SYSTEM.encode()).hexdigest()[:8]
 
-LANGNAME = {"de": "German", "en": "English", "sv": "Swedish"}
+LANGNAME = {"de": "German", "en": "English", "sv": "Swedish",
+            "fr": "French", "no": "Norwegian"}
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS verdict(
@@ -224,18 +225,21 @@ def fmt_concept(row, labels_all=False, descs_all=False, langs=None, il_map=None)
             desc = " | ".join(f"{d}: {ds}" for d, _l, ds in res if ds) or "(no description)"
             return qid, lab, desc
         labels_all = descs_all = True   # no item_lang coverage -> widen de/en/sv instead
+    # Only de/en/sv anchor labels live in the wide `item` table; a target lang outside
+    # that set (fr/no) simply has no own-language column here, so use .get and fall back
+    # to en/de/sv. (The +multi path above already supplies fr/no from item_lang.)
     labels = {"de": lde, "en": len_, "sv": lsv}
     descs = {"de": dde, "en": den, "sv": dsv}
     order = list(dict.fromkeys([lang, "en", "de", "sv"]))   # target-language first
     if labels_all:
-        lab = " / ".join(dict.fromkeys(labels[c] for c in order if labels[c]))
+        lab = " / ".join(dict.fromkeys(labels[c] for c in order if labels.get(c)))
     else:
-        lab = " / ".join(dict.fromkeys(x for x in ([labels[lang], len_] if lang != "en" else [len_]) if x))
+        lab = " / ".join(dict.fromkeys(x for x in ([labels.get(lang), len_] if lang != "en" else [len_]) if x))
     lab = lab or "(no label)"
     if descs_all:
-        desc = " | ".join(f"{c}: {descs[c]}" for c in order if descs[c])
+        desc = " | ".join(f"{c}: {descs[c]}" for c in order if descs.get(c))
     else:
-        desc = descs[lang] or den or dde or dsv
+        desc = descs.get(lang) or den or dde or dsv
     desc = desc or "(no description)"
     return qid, lab, desc
 
