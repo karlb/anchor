@@ -18,8 +18,10 @@ extra dependency, and it posts the exact JSON shown in --dry-run. Edits are NOT
 bot-flagged (assisted editing on the operator account). Pilot writes MONOSEMOUS targets
 only (add to the existing sense); senseless targets need a gloss policy (--include-senseless).
 
-Before each live edit the live lexeme is re-fetched: it must still have exactly one sense,
-and that sense must NOT already carry a P5137 (never override existing data) — else skip.
+Before each live edit the live lexeme is re-fetched: a monosemous target must still have
+exactly one sense, and that sense must NOT already carry a P5137 (never override existing
+data); a sense-creation target must not already have ANY sense carrying this P5137 (a
+previous run may have created it but died before its 'written' event was logged) — else skip.
 """
 
 import argparse
@@ -187,22 +189,29 @@ def login(opener, user, pw):
     return ct["query"]["tokens"]["csrftoken"]
 
 
+def live_senses(opener, lid):
+    """Re-fetch the live lexeme; return its senses."""
+    return _api(opener, {"action": "wbgetentities", "ids": lid})["entities"][lid].get("senses", [])
+
+
+def p5137_targets(sense):
+    """The anchor qids of a live sense's existing P5137 claims."""
+    out = set()
+    for c in sense.get("claims", {}).get("P5137", []):
+        try:
+            out.add(c["mainsnak"]["datavalue"]["value"]["id"])
+        except (KeyError, TypeError):
+            pass
+    return out
+
+
 def resolve_sense(opener, lid):
-    """Re-fetch the live lexeme. Return (sense_id, {prop: {value qids}}) of existing claims.
+    """Re-fetch the live lexeme. Return (sense_id, existing P5137 target qids).
     Raises if the lexeme no longer has exactly one sense."""
-    ent = _api(opener, {"action": "wbgetentities", "ids": lid})["entities"][lid]
-    senses = ent.get("senses", [])
+    senses = live_senses(opener, lid)
     if len(senses) != 1:
         raise ValueError(f"{lid} now has {len(senses)} senses (expected 1)")
-    s = senses[0]
-    existing = {}
-    for prop, claims in s.get("claims", {}).items():
-        for c in claims:
-            try:
-                existing.setdefault(prop, set()).add(c["mainsnak"]["datavalue"]["value"]["id"])
-            except (KeyError, TypeError):
-                existing.setdefault(prop, set())
-    return s["id"], existing
+    return senses[0]["id"], p5137_targets(senses[0])
 
 
 def submit(opener, csrf, lid, data, summary):
@@ -244,14 +253,18 @@ def write_edits(edits, max_per_min):
         anchor = sense["claims"]["P5137"][0]["mainsnak"]["datavalue"]["value"]["id"]
         try:
             if "id" in sense:  # monosemous: resolve the live sense id + guard
-                sid, existing = resolve_sense(opener, lid)
-                p5137 = existing.get("P5137", set())
+                sid, p5137 = resolve_sense(opener, lid)
                 if anchor in p5137:
                     print(f"  skip {lid}: already has P5137 → {anchor}"); continue
                 if p5137:
                     print(f"  skip {lid}: sense already has P5137 {p5137} (never override)")
                     continue
                 sense["id"] = sid
+            else:
+                # sense-creation: if ANY live sense already carries this P5137, a previous
+                # run already created it (e.g. killed before its 'written' event was logged)
+                if any(anchor in p5137_targets(s) for s in live_senses(opener, lid)):
+                    print(f"  skip {lid}: a sense already has P5137 → {anchor}"); continue
             if interval and last_edit:  # pace only between actual submissions
                 wait = interval - (time.monotonic() - last_edit)
                 if wait > 0:
