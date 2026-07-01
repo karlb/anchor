@@ -72,6 +72,11 @@ def http_get(params):
                 time.sleep(min(wait, 30))
                 backoff *= 2
                 continue
+            if isinstance(data, dict) and "error" in data:
+                # any other API error: fail loudly — the response has no 'entities', so
+                # returning it would make callers permanently cache the whole batch as
+                # missing (item) or fetched-with-no-labels (item_lang/item_alias)
+                raise RuntimeError(f"API error: {data['error']}")
             return data
         except urllib.error.HTTPError as e:
             if e.code in (429, 503):
