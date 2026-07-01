@@ -11,7 +11,6 @@ decisions + items DB.
 """
 import csv
 import sqlite3
-import json
 import collections
 import config
 import verify
@@ -171,14 +170,16 @@ assert not missing, f"curated pairs absent from the eval set: {missing}"
 # 'to_curate' still scans the suspect set for newly-contested pairs that have no curated verdict.
 susp_keys = {(r[0], r[3]) for r in ab.load_eval_rows(suspect=True)[0]}
 
-# per-arm majority-vote action from the ab cache, for every pair we emit or merely list
+# per-arm majority-vote action from the ab cache, for every pair we emit or merely list.
+# Vote from the DEDUPED cache (last event per (arm, sample, lid, qid) wins, matching
+# ab_concept.load_cache): a resumed run re-appends whole batches to the jsonl, and
+# counting raw lines double-counts those pairs — enough to flip a majority.
 watch = set(gold_keys) | susp_keys
 votes = collections.defaultdict(collections.Counter)
-for line in open("data/ab_concept_cache.jsonl"):
-    e = json.loads(line)
-    k = (e["lid"], e["qid"])
-    if k in watch and e["arm"] in ARMS:
-        votes[(e["arm"], k)][ab.predicted_action(e["verdict"], e["reason"])] += 1
+for (arm, _s, lid, qid), (verdict, reason) in ab.load_cache().items():
+    k = (lid, qid)
+    if k in watch and arm in ARMS:
+        votes[(arm, k)][ab.predicted_action(verdict, reason)] += 1
 pred = collections.defaultdict(dict)
 for (arm, k), c in votes.items():
     pred[arm][k] = c.most_common(1)[0][0]

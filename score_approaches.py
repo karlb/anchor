@@ -20,7 +20,6 @@ Metrics per arm:
 """
 import collections
 import csv
-import json
 import re
 import sqlite3
 
@@ -57,16 +56,17 @@ def resolve(counter):
     return top[0][0]
 
 
+# vote from the DEDUPED cache (last event per (arm, sample, lid, qid) wins, matching
+# ab_concept.load_cache) — a resumed run re-appends whole batches to the jsonl, and
+# counting raw lines double-counts those pairs, enough to flip a majority
 votes = collections.defaultdict(collections.Counter)
-with open(config.DATA + "/ab_concept_cache.jsonl") as f:
-    for line in f:
-        e = json.loads(line)
-        k = (e["lid"], e["qid"])
-        if k in gold and e["arm"] in ARMS:
-            act = ab.predicted_action(e["verdict"], e["reason"],
-                                      verify.pick_gloss(gmap, e["lid"], gold[k]["lang"]),
-                                      adesc.get(e["qid"]))
-            votes[(ARMS[e["arm"]], k)][act] += 1
+for (arm, _s, lid, qid), (verdict, reason) in ab.load_cache().items():
+    k = (lid, qid)
+    if k in gold and arm in ARMS:
+        act = ab.predicted_action(verdict, reason,
+                                  verify.pick_gloss(gmap, lid, gold[k]["lang"]),
+                                  adesc.get(qid))
+        votes[(ARMS[arm], k)][act] += 1
 pred = {ak: resolve(c) for ak, c in votes.items()}
 
 # A gold case is only scored for an arm once that arm has cached verdicts for it (so a
