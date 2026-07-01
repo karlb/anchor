@@ -5,8 +5,9 @@ Each verifier/tagger builds a numbered prompt ("Items:\\n1. ...\\n2. ...") and a
 prompt asking for a JSON array reply ``[{"i":1, ...}, ...]``. This runs the local CLI in
 print mode (reusing existing auth, no API key), strips an optional ``` code fence, parses
 the array, and returns it reindexed to 1..n — filling a copy of ``default`` for any item the
-model omitted. Raises RuntimeError on a non-zero exit so a caller can treat a failed batch
-as transient (log it, mark the items as errors, continue) rather than crash the whole run.
+model omitted. Raises RuntimeError on a non-zero exit or an unlabeled reply so a caller can
+treat a failed batch as transient (log it, mark the items as errors, continue) rather than
+crash the whole run.
 """
 import json
 import subprocess
@@ -46,5 +47,17 @@ def batch_json(system, prompt, model, n, default, timeout=300):
     result = resp["result"].strip()
     if result.startswith("```"):
         result = result.split("\n", 1)[1].rsplit("```", 1)[0]
-    by_i = {v.get("i"): v for v in json.loads(result)}
+    parsed = json.loads(result)
+    # Reindex by the model's own "i" labels (tolerating "3" for 3), NEVER by position — a
+    # dropped/merged item would silently shift later verdicts onto the wrong pairs. A reply
+    # with no usable labels raises: callers already treat a raised batch as transient
+    # (before, all n items were silently recorded as parse_error verdicts).
+    by_i = {}
+    for v in parsed:
+        try:
+            by_i[int(v.get("i"))] = v
+        except (TypeError, ValueError):
+            pass
+    if parsed and not by_i:
+        raise RuntimeError("model reply has no usable 'i' indices")
     return [by_i.get(i, dict(default)) for i in range(1, n + 1)]
