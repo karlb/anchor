@@ -37,11 +37,9 @@ import urllib.parse
 import urllib.request
 
 import config
+from fetch_items import API, USER_AGENT  # one copy of the endpoint + contact User-Agent
 from review_queue import append_decision, load_decisions, now, pool
 
-API = "https://www.wikidata.org/w/api.php"
-USER_AGENT = ("anchor-p5137-pilot/0.1 (https://www.wikidata.org/; karl42@gmail.com) "
-             "python-urllib")
 SUMMARY = ("Add [[Property:P5137]] (item for this sense) inferred from translation, "
            "ref [[Q140308675]] — LLM-verified, human-approved assisted edit")
 TOOL = "CB"  # EditGroups "custom bot" id (self-service, no registration); batch id is per-run
