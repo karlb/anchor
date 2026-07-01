@@ -175,17 +175,24 @@ susp_keys = {(r[0], r[3]) for r in ab.load_eval_rows(suspect=True)[0]}
 # ab_concept.load_cache): a resumed run re-appends whole batches to the jsonl, and
 # counting raw lines double-counts those pairs — enough to flip a majority.
 watch = set(gold_keys) | susp_keys
+gmap = verify.load_glosses({lid for lid, _ in watch})
 votes = collections.defaultdict(collections.Counter)
 for (arm, _s, lid, qid), (verdict, reason) in ab.load_cache().items():
     k = (lid, qid)
-    if k in watch and arm in ARMS:
-        votes[(arm, k)][ab.predicted_action(verdict, reason)] += 1
+    if k not in watch or arm not in ARMS:
+        continue
+    # same inputs as ab_concept.run_arm: the gloss + de/en/sv anchor descs enable the
+    # demonym→ethnic-group nudge — called gloss-blind, demonym pairs record 'keep'
+    # where the real pipeline defers
+    row = full_by_key.get(k)
+    gloss = verify.pick_gloss(gmap, lid, row[1]) if row else None
+    anchor_desc = " | ".join(d for d in row[8:11] if d) if row else None
+    votes[(arm, k)][ab.predicted_action(verdict, reason, gloss, anchor_desc)] += 1
 pred = collections.defaultdict(dict)
 for (arm, k), c in votes.items():
     pred[arm][k] = c.most_common(1)[0][0]
 
 it = sqlite3.connect(config.ITEMS)
-gmap = verify.load_glosses([lid for lid, _ in gold_keys])
 
 # full multilingual anchor evidence — every language's label+desc from the unified
 # all-language CC0 cache (item_lang, fetch_anchor_langs.py).
