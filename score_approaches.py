@@ -8,10 +8,14 @@ logic (not the snapshot columns in the CSV). Sample votes are majority-voted; a 
 plus an ACCEPTABLE-OUTPUT SET parsed from the {..} in its rationale (defer is a valid triage
 action, never an error).
 
+Cases whose gold is itself 'defer' (proposed_correct == 'defer') are excluded from the
+false-keep / false-drop tallies: we defer because a human can't reliably judge the pair, so
+we can't say the verifier's keep or reject is wrong (in-set still credits landing on defer).
+
 Metrics per arm:
   in-set     prediction in the acceptable set                    (higher better)
-  false-keep predicted 'keep' but 'keep' not acceptable           (worst: would write a bad link)
-  false-drop predicted 'reject' but 'reject' not acceptable       (drops a good/uncertain link)
+  false-keep predicted 'keep' but 'keep' not acceptable, non-defer gold   (worst: writes a bad link)
+  false-drop predicted 'reject' but 'reject' not acceptable, non-defer gold  (drops a good link)
   defers     predicted 'defer'                                    (review burden — fine if needed)
 """
 import collections
@@ -76,9 +80,10 @@ for col in COLS:
             continue                       # arm not yet verified for this case
         n += 1
         acc, p = acceptable(r), pred[(col, k)]
+        gold_defer = r["proposed_correct"] == "defer"   # human can't judge -> keep/reject can't be "wrong"
         inset += p in acc
-        fk += (p == "keep" and "keep" not in acc)
-        fd += (p == "reject" and "reject" not in acc)
+        fk += (not gold_defer and p == "keep" and "keep" not in acc)
+        fd += (not gold_defer and p == "reject" and "reject" not in acc)
         defers += (p == "defer")
     rate = f"{inset / n:.0%}" if n else "-"
     print(f"{col:<10}{rate:>9}{fk:>12}{fd:>12}{defers:>9}{n:>6}/{len(gold)}")
@@ -89,6 +94,8 @@ for col in COLS:
     for k, r in gold.items():
         if (col, k) not in pred:
             continue
+        if r["proposed_correct"] == "defer":
+            continue                       # unjudgeable gold -> not a dangerous error
         acc, p = acceptable(r), pred[(col, k)]
         if p == "keep" and "keep" not in acc:
             bad.append(f"FALSE-KEEP {r['lang']}:{r['lemma']} (gold {r['proposed_correct']})")
