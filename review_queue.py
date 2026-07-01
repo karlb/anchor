@@ -574,10 +574,12 @@ class Handler(BaseHTTPRequestHandler):
             row = next((r for r in pool() if r[0] == lid and r[1] == qid), None)
             decided = load_decisions()
             if row and (lid, qid) not in decided:  # ignore replays / stale double-clicks
-                (l, q, lemma, lang, ns, v, reason, model, *_rest) = row
+                # row_lang, NOT lang: `lang` is the reviewer's active filter (hidden form
+                # field) and must survive to the redirect below
+                (l, q, lemma, row_lang, ns, v, reason, model, *_rest) = row
                 append_decision({
                     "ts": now(), "target_lid": l, "anchor_qid": q,
-                    "target_lemma": lemma, "target_lang": lang, "target_n_senses": ns,
+                    "target_lemma": lemma, "target_lang": row_lang, "target_n_senses": ns,
                     "verdict": v, "reason": reason, "model": model,
                     "status": action, "reviewer": "local", "revid": "",
                 })
