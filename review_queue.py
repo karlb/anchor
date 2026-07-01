@@ -247,7 +247,11 @@ _CONVENTION = ("collective", "demonym", "citizen", "resident", "ethnic",
 # NATIONALITY anchor ('citizens/residents of X') stays a keep. The discriminator is whether
 # the anchor's own description carries an ethnic-group marker (vs only a citizen/resident one).
 # Validated on the 118-case gold: turns +multi's only safety weakness into a strict win.
-_DEMONYM_GLOSS = ("person from", "person från", "person aus", "person av")
+# Gloss patterns per pilot language, grounded in the actual sense_gloss phrasing:
+# en/sv/de 'person from/från/aus X', nb 'person fra X',
+# fr 'habitant(e) ou originaire de X' / 'personne|citoyenne ou résident(e) de X'.
+_DEMONYM_GLOSS = ("person from", "person från", "person aus", "person av",
+                  "person fra", "ou originaire", "ou résident")
 _ETHNIC_ANCHOR = ("ethnic group", "etnisk grupp", "etnisk gruppe", "ethnic", "ethnie",
                   "ethnique", "slavic", "folkgrupp", "folkeslag", "people native",
                   "indigenous to", "kaukasisk folk", "südkaukasisches volk")
