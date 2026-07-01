@@ -101,14 +101,24 @@ def pool():
     return rows
 
 
-def counts():
-    """(status -> n) from the log, plus computed 'pending' (human-pending) and 'auto_deferred'."""
+def pending_view():
+    """The shared review pipeline, computed ONCE per invocation: (decisions, undecided,
+    ctx, auto-defer classes, verify cache). counts/status/render all consume this — it
+    is a 3-DB join plus a full log replay and a verify-cache scan, so each caller runs
+    it once and the call sites can't drift apart."""
     decisions = load_decisions()
-    c = collections.Counter(d["status"] for d in decisions.values())
+    vcache = load_verify_cache()
     undecided = [r for r in pool() if (r[0], r[1]) not in decisions]
     ctx = demonym_context([(k[0], k[1], d.get("target_lang")) for k, d in decisions.items()]
                           + [(r[0], r[1], r[3]) for r in undecided])
-    ad = auto_defer_classes(decisions, ctx)
+    ad = auto_defer_classes(decisions, ctx, vcache)
+    return decisions, undecided, ctx, ad, vcache
+
+
+def counts(view=None):
+    """(status -> n) from the log, plus computed 'pending' (human-pending) and 'auto_deferred'."""
+    decisions, undecided, ctx, ad, _ = view or pending_view()
+    c = collections.Counter(d["status"] for d in decisions.values())
     c["auto_deferred"] = sum(1 for r in undecided if rel_of((r[0], r[1]), r[6], ctx) in ad)
     c["pending"] = len(undecided) - c["auto_deferred"]
     return c
@@ -116,14 +126,11 @@ def counts():
 
 def status(args):
     print(f"decision log: {DECISIONS}")
-    c = counts()
+    view = pending_view()
+    decided, undecided, ctx, ad, vcache = view
+    c = counts(view)
     for s in ("pending", "auto_deferred", "approved", "deferred", "rejected", "written"):
         print(f"  {s:<13} {c.get(s, 0):,}")
-    decided = load_decisions()
-    undecided = [r for r in pool() if (r[0], r[1]) not in decided]
-    ctx = demonym_context([(k[0], k[1], d.get("target_lang")) for k, d in decided.items()]
-                          + [(r[0], r[1], r[3]) for r in undecided])
-    ad = auto_defer_classes(decided, ctx)
     if c.get("auto_deferred"):
         print(f"  ↳ auto-deferred classes (≥85% not-written, hidden from review): "
               f"{', '.join(sorted(ad))} — a better prompt/approach re-surfaces them")
@@ -139,7 +146,6 @@ def status(args):
     # blended verifier-'yes' rate is misleading — it counts BROADER/NARROWER/LATERAL
     # rejections, which are SCOPE triage the verifier doesn't judge and which never reach a
     # write. Bucketed by the LIVE cache relation (live_rel) so pre-REL approvals still count.
-    vcache = load_verify_cache()
     keep_ok = keep_n = 0
     for k, dec in decided.items():
         if (dec.get("status") or "").strip() not in ("approved", "written", "rejected"):
@@ -453,11 +459,7 @@ def lang_selector(lang_counts, active):
 
 
 def render(limit, lang_filter=None):
-    decisions = load_decisions()
-    undecided = [r for r in pool() if (r[0], r[1]) not in decisions]
-    ctx = demonym_context([(k[0], k[1], d.get("target_lang")) for k, d in decisions.items()]
-                          + [(r[0], r[1], r[3]) for r in undecided])
-    ad = auto_defer_classes(decisions, ctx)
+    decisions, undecided, ctx, ad, _ = pending_view()
     auto_def = [r for r in undecided if rel_of((r[0], r[1]), r[6], ctx) in ad]
     pending = [r for r in undecided if rel_of((r[0], r[1]), r[6], ctx) not in ad]
     # Selector counts are over the unfiltered (human-)pending set, so they don't change as you filter.
