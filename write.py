@@ -140,10 +140,10 @@ MAXLAG_RETRIES = 6  # back-off attempts on maxlag / 429 / 503 before giving up
 def _api(opener, params, post=False):
     """One Action API call, honouring maxlag back-off (API:Etiquette).
 
-    A maxlag rejection (JSON `error.code=maxlag`, or an infrastructure 429/503
-    with Retry-After) happens *before* the edit is applied, so retrying a POST
-    is safe. A bare network failure on a POST is NOT retried — we can't tell if
-    the edit landed and must not risk a duplicate."""
+    A maxlag rejection (JSON `error.code=maxlag`) or a 429 happens *before* the
+    edit is applied, so retrying a POST is safe. A 503 or a bare network failure
+    on a POST is NOT retried — an intermediary can return either after the edit
+    already landed, and we must not risk a duplicate."""
     params = {**params, "format": "json", "formatversion": "2"}
     backoff = 1.0
     for attempt in range(MAXLAG_RETRIES):
@@ -158,7 +158,10 @@ def _api(opener, params, post=False):
             with opener.open(req, timeout=30) as r:
                 data = json.loads(r.read().decode())
         except urllib.error.HTTPError as e:
-            if e.code in (429, 503) and not last:  # server-side reject, pre-edit: back off
+            # 429 is a pre-processing reject, safe to retry even for a POST. A 503 is
+            # not: an intermediary can emit it after MediaWiki already applied the
+            # edit, so re-POSTing risks a duplicate — same rule as URLError below.
+            if (e.code == 429 or (e.code == 503 and not post)) and not last:
                 time.sleep(min(float(e.headers.get("Retry-After", backoff)), 30))
                 backoff *= 2
                 continue
