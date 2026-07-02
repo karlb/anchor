@@ -7,7 +7,8 @@ gold no matter how the verifier later classifies it. Membership used to ride on 
 rebuild — keying by (lid, qid) closes that latent data-loss bug. For each case we dump every
 signal we have (gloss, full multilingual anchor, human log, per-arm action) so we can agree the
 CORRECT output by hand, then score approaches against it. Pure reads: ab cache + verify cache +
-decisions + items DB.
+decisions + items DB. The rebuild runs only as a script; importing the module is side-effect-free
+(PROPOSED is importable data).
 """
 import csv
 import sqlite3
@@ -158,124 +159,130 @@ PROPOSED = {
     ("L1525043", "Q997267"): ("keep", "skärmytsling=skirmish (sv label exact); minor military conflict; EQUAL; {keep,defer}"),
 }
 
-# All curated pairs come from the FULL eval set — NOT the 'suspect' scope/coherence subset, which
-# rides on the live verify cache and drifts. Membership is exactly PROPOSED, so the gold is a
-# stable, fully-labelled reference no matter how the verifier later classifies a pair.
-rows_full, truth = ab.load_eval_rows(suspect=False)
-full_by_key = {(r[0], r[3]): r for r in rows_full}
-gold_keys = list(PROPOSED)
-missing = [k for k in gold_keys if k not in full_by_key]
-assert not missing, f"curated pairs absent from the eval set: {missing}"
 
-# 'to_curate' still scans the suspect set for newly-contested pairs that have no curated verdict.
-susp_keys = {(r[0], r[3]) for r in ab.load_eval_rows(suspect=True)[0]}
+def main():
+    # All curated pairs come from the FULL eval set — NOT the 'suspect' scope/coherence subset, which
+    # rides on the live verify cache and drifts. Membership is exactly PROPOSED, so the gold is a
+    # stable, fully-labelled reference no matter how the verifier later classifies a pair.
+    rows_full, truth = ab.load_eval_rows(suspect=False)
+    full_by_key = {(r[0], r[3]): r for r in rows_full}
+    gold_keys = list(PROPOSED)
+    missing = [k for k in gold_keys if k not in full_by_key]
+    assert not missing, f"curated pairs absent from the eval set: {missing}"
 
-# per-arm majority-vote action from the ab cache, for every pair we emit or merely list.
-# Vote from the DEDUPED cache (last event per (arm, sample, lid, qid) wins, matching
-# ab_concept.load_cache): a resumed run re-appends whole batches to the jsonl, and
-# counting raw lines double-counts those pairs — enough to flip a majority.
-watch = set(gold_keys) | susp_keys
-gmap = verify.load_glosses({lid for lid, _ in watch})
-votes = collections.defaultdict(collections.Counter)
-for (arm, _s, lid, qid), (verdict, reason) in ab.load_cache().items():
-    k = (lid, qid)
-    if k not in watch or arm not in ARMS:
-        continue
-    # same inputs as ab_concept.run_arm: the gloss + de/en/sv anchor descs enable the
-    # demonym→ethnic-group nudge — called gloss-blind, demonym pairs record 'keep'
-    # where the real pipeline defers
-    row = full_by_key.get(k)
-    gloss = verify.pick_gloss(gmap, lid, row[1]) if row else None
-    anchor_desc = " | ".join(d for d in row[8:11] if d) if row else None
-    votes[(arm, k)][ab.predicted_action(verdict, reason, gloss, anchor_desc)] += 1
-pred = collections.defaultdict(dict)
-for (arm, k), c in votes.items():
-    pred[arm][k] = c.most_common(1)[0][0]
+    # 'to_curate' still scans the suspect set for newly-contested pairs that have no curated verdict.
+    susp_keys = {(r[0], r[3]) for r in ab.load_eval_rows(suspect=True)[0]}
 
-it = sqlite3.connect(config.ITEMS)
+    # per-arm majority-vote action from the ab cache, for every pair we emit or merely list.
+    # Vote from the DEDUPED cache (last event per (arm, sample, lid, qid) wins, matching
+    # ab_concept.load_cache): a resumed run re-appends whole batches to the jsonl, and
+    # counting raw lines double-counts those pairs — enough to flip a majority.
+    watch = set(gold_keys) | susp_keys
+    gmap = verify.load_glosses({lid for lid, _ in watch})
+    votes = collections.defaultdict(collections.Counter)
+    for (arm, _s, lid, qid), (verdict, reason) in ab.load_cache().items():
+        k = (lid, qid)
+        if k not in watch or arm not in ARMS:
+            continue
+        # same inputs as ab_concept.run_arm: the gloss + de/en/sv anchor descs enable the
+        # demonym→ethnic-group nudge — called gloss-blind, demonym pairs record 'keep'
+        # where the real pipeline defers
+        row = full_by_key.get(k)
+        gloss = verify.pick_gloss(gmap, lid, row[1]) if row else None
+        anchor_desc = " | ".join(d for d in row[8:11] if d) if row else None
+        votes[(arm, k)][ab.predicted_action(verdict, reason, gloss, anchor_desc)] += 1
+    pred = collections.defaultdict(dict)
+    for (arm, k), c in votes.items():
+        pred[arm][k] = c.most_common(1)[0][0]
 
-# full multilingual anchor evidence — every language's label+desc from the unified
-# all-language CC0 cache (item_lang, fetch_anchor_langs.py).
-PRIORITY = ["en", "de", "sv", "fr", "es", "it", "nl", "pt", "pl", "ru", "ja", "zh"]
-wide = collections.defaultdict(dict)
-for qid, lang, label, desc in it.execute(
-        "SELECT qid, lang, label, desc FROM item_lang"):
-    wide[qid][lang] = (label, desc)
+    it = sqlite3.connect(config.ITEMS)
 
-
-def anchor_evidence(qid):
-    """All languages that carry a description, quality-priority first, then alphabetical."""
-    ent = wide.get(qid, {})
-    langs = [l for l in ent if ent[l][1]]               # has a desc
-    langs.sort(key=lambda l: (PRIORITY.index(l) if l in PRIORITY else 99, l))
-    return " | ".join(f"{l}: {ent[l][0] or '?'} :: {ent[l][1]}" for l in langs)
+    # full multilingual anchor evidence — every language's label+desc from the unified
+    # all-language CC0 cache (item_lang, fetch_anchor_langs.py).
+    PRIORITY = ["en", "de", "sv", "fr", "es", "it", "nl", "pt", "pl", "ru", "ja", "zh"]
+    wide = collections.defaultdict(dict)
+    for qid, lang, label, desc in it.execute(
+            "SELECT qid, lang, label, desc FROM item_lang"):
+        wide[qid][lang] = (label, desc)
 
 
-def all_glosses(lid):
-    """Every language's gloss we have for the lexeme (lexeme-side multilingual evidence)."""
-    return " | ".join(f"{lg}: {g}" for lg, g in sorted(gmap.get(lid, {}).items()))
+    def anchor_evidence(qid):
+        """All languages that carry a description, quality-priority first, then alphabetical."""
+        ent = wide.get(qid, {})
+        langs = [l for l in ent if ent[l][1]]               # has a desc
+        langs.sort(key=lambda l: (PRIORITY.index(l) if l in PRIORITY else 99, l))
+        return " | ".join(f"{l}: {ent[l][0] or '?'} :: {ent[l][1]}" for l in langs)
 
 
-# emit the gold, iterating in eval-candidate order (deterministic + stable across rebuilds)
-out = []
-gold_set = set(gold_keys)
-for row in rows_full:
-    k = (row[0], row[3])
-    if k not in gold_set:
-        continue
-    lid, qid = k
-    actions = {a: pred[a].get(k) for a in ARMS}
-    prop, rat = PROPOSED[k]
-    out.append({
-        "lid": lid, "qid": qid, "lang": row[1], "lemma": row[2],
-        "glosses_all": all_glosses(lid) or verify.pick_gloss(gmap, lid, row[1]),
-        "anchor_langs": anchor_evidence(qid),
-        "human": truth[k], "base": actions["base"] or "-", "multi": actions["+multi"] or "-",
-        "proposed_correct": prop, "rationale": rat,
-    })
+    def all_glosses(lid):
+        """Every language's gloss we have for the lexeme (lexeme-side multilingual evidence)."""
+        return " | ".join(f"{lg}: {g}" for lg, g in sorted(gmap.get(lid, {}).items()))
 
-# disagreement breadth first (most contested at top)
-out.sort(key=lambda r: -len({r["human"], r["base"], r["multi"]}))
 
-cols = ["lid", "qid", "lang", "lemma", "glosses_all", "anchor_langs",
-        "human", "base", "multi", "proposed_correct", "rationale"]
-with open("notes/problematic_cases.csv", "w", newline="") as f:
-    w = csv.DictWriter(f, fieldnames=cols)
-    w.writeheader()
-    w.writerows(out)
-print(f"wrote notes/problematic_cases.csv — {len(out)} curated gold cases keyed by (lid, qid), "
-      f"full multilingual anchor evidence inline")
+    # emit the gold, iterating in eval-candidate order (deterministic + stable across rebuilds)
+    out = []
+    gold_set = set(gold_keys)
+    for row in rows_full:
+        k = (row[0], row[3])
+        if k not in gold_set:
+            continue
+        lid, qid = k
+        actions = {a: pred[a].get(k) for a in ARMS}
+        prop, rat = PROPOSED[k]
+        out.append({
+            "lid": lid, "qid": qid, "lang": row[1], "lemma": row[2],
+            "glosses_all": all_glosses(lid) or verify.pick_gloss(gmap, lid, row[1]),
+            "anchor_langs": anchor_evidence(qid),
+            "human": truth[k], "base": actions["base"] or "-", "multi": actions["+multi"] or "-",
+            "proposed_correct": prop, "rationale": rat,
+        })
 
-# candidates to curate next: suspect pairs not yet in the gold whose arms disagree, or an arm
-# disagrees with the human log — so contested cases keep surfacing for curation (NOT in the gold).
-to_curate = []
-for k in sorted(susp_keys - set(gold_keys)):
-    row = full_by_key.get(k)
-    if not row:
-        continue
-    actions = {a: pred[a].get(k) for a in ARMS}
-    vals = [v for v in actions.values() if v]
-    if len(set(vals)) > 1 or any(v != truth[k] for v in vals):
-        to_curate.append((row[1], row[2], k[0], k[1], truth[k], actions))
-if to_curate:
-    print(f"\n{len(to_curate)} NEW problematic cases without a curated verdict "
-          f"(candidates to add to PROPOSED — NOT in the gold):")
-    for lang, lemma, lid, qid, h, actions in to_curate:
-        print(f"  {lang} {lemma:<22} {lid} {qid}  human={h}  "
-              f"base={actions['base'] or '-'} multi={actions['+multi'] or '-'}")
+    # disagreement breadth first (most contested at top)
+    out.sort(key=lambda r: -len({r["human"], r["base"], r["multi"]}))
 
-# full multilingual dump of the cases I flagged as debatable, so we can settle them now
-DEBATABLE = ["Q50803918", "Q2684232", "Q290691", "Q1369832"]
-byqid = {r["qid"]: r for r in out}
-for qid in DEBATABLE:
-    r = byqid.get(qid)
-    if not r:
-        continue
-    print("\n" + "=" * 78)
-    print(f"{r['lang']}:{r['lemma']}  ({r['lid']} / {qid})   human={r['human']}  "
-          f"arms: base={r['base']} multi={r['multi']}")
-    print(f"  GLOSS(es): {r['glosses_all']}")
-    print(f"  proposed: {r['proposed_correct']}  ({r['rationale']})")
-    print("  ANCHOR across languages:")
-    for part in r["anchor_langs"].split(" | "):
-        print(f"    {part}")
+    cols = ["lid", "qid", "lang", "lemma", "glosses_all", "anchor_langs",
+            "human", "base", "multi", "proposed_correct", "rationale"]
+    with open("notes/problematic_cases.csv", "w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=cols)
+        w.writeheader()
+        w.writerows(out)
+    print(f"wrote notes/problematic_cases.csv — {len(out)} curated gold cases keyed by (lid, qid), "
+          f"full multilingual anchor evidence inline")
+
+    # candidates to curate next: suspect pairs not yet in the gold whose arms disagree, or an arm
+    # disagrees with the human log — so contested cases keep surfacing for curation (NOT in the gold).
+    to_curate = []
+    for k in sorted(susp_keys - set(gold_keys)):
+        row = full_by_key.get(k)
+        if not row:
+            continue
+        actions = {a: pred[a].get(k) for a in ARMS}
+        vals = [v for v in actions.values() if v]
+        if len(set(vals)) > 1 or any(v != truth[k] for v in vals):
+            to_curate.append((row[1], row[2], k[0], k[1], truth[k], actions))
+    if to_curate:
+        print(f"\n{len(to_curate)} NEW problematic cases without a curated verdict "
+              f"(candidates to add to PROPOSED — NOT in the gold):")
+        for lang, lemma, lid, qid, h, actions in to_curate:
+            print(f"  {lang} {lemma:<22} {lid} {qid}  human={h}  "
+                  f"base={actions['base'] or '-'} multi={actions['+multi'] or '-'}")
+
+    # full multilingual dump of the cases I flagged as debatable, so we can settle them now
+    DEBATABLE = ["Q50803918", "Q2684232", "Q290691", "Q1369832"]
+    byqid = {r["qid"]: r for r in out}
+    for qid in DEBATABLE:
+        r = byqid.get(qid)
+        if not r:
+            continue
+        print("\n" + "=" * 78)
+        print(f"{r['lang']}:{r['lemma']}  ({r['lid']} / {qid})   human={r['human']}  "
+              f"arms: base={r['base']} multi={r['multi']}")
+        print(f"  GLOSS(es): {r['glosses_all']}")
+        print(f"  proposed: {r['proposed_correct']}  ({r['rationale']})")
+        print("  ANCHOR across languages:")
+        for part in r["anchor_langs"].split(" | "):
+            print(f"    {part}")
+
+
+if __name__ == "__main__":
+    main()
