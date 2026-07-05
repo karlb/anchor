@@ -125,8 +125,24 @@ regardless of scope, and it is the first concrete increment of the target archit
      rebuild added (else verify silently downgrades +multi→de/en/sv — now blocked by a
      fetch-coverage guard in `verify.py`, with `--allow-degraded` to override). 509 net-new
      graded (265 yes / 244 no); full ABD≥2 cache now 1,782 yes / 631 no / 3 uncertain.
-   - triage the 27 already-decided pairs the anchor cross-check now contradicts (9 written,
-     18 approved) via `recheck` rows.
+   - ~~triage the 27 already-decided pairs the anchor cross-check now contradicts (9 written,
+     18 approved) via `recheck` rows.~~ **— done 2026-07-05.** The contradicted set as it stood
+     at triage time was 34 currently-standing approved/written pairs (9 written, 25 approved;
+     the count grew past the roadmap's original 27 as more pairs were decided). All fell to
+     `conflicting_anchors`, and in every case the decided qid was itself one of the conflicting
+     anchors. First batch (commit 603f5de) handled the real changes: Habicht (BROADER →
+     re-point to goshawk, deferred), kossa (re-affirmed + cluster-pollution flag), and 9
+     ethnic-group demonyms (deferred per the demonym→ethnic convention). The remaining **33**
+     (kossa already done) were all **re-affirmed (keep)** — the verifier still rates every one
+     `yes`, and the abstentions are cross-language cluster pollution, not scope errors:
+     **16 nationality demonyms** ("citizens or residents of X", P31 human population — the
+     *codified/blessed* target, contrast the deferred ethnic-group ones; broken only by the
+     country's LANGUAGE homograph being stitched in, e.g. Brazilian Portuguese, Nepali/Thai/
+     Turkmen/Estonian language) and **17 non-demonym EQUAL links** broken by homograph /
+     near-synonym stitching (the roadmap's "over-conservative" bucket, e.g. Füchsin→fox via
+     female-animal cross-talk — kept under the gendered→neutral P10339 convention). No further
+     Wikidata re-points needed; the 9 live written edits all stand. `audit_decisions.py` now
+     reports **0 suspected false accepts**.
 3. **Match-and-extend** for polysemous and multi-item lexemes: run the existing
    gloss·tolerant verifier per (item, sense) pair — item-to-sense-gloss matching is
    the judgment it already performs (the homograph catches prove it); items matching
