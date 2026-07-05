@@ -302,6 +302,51 @@ def scope_hint(reason, gloss=None, anchor_desc=None):
     return rel, "defer? (scope mismatch)", "hold"
 
 
+# ---- polysemy-collapse advisory ---------------------------------------------
+# The verifier is keyed (target_lid, anchor_qid) — it never sees that the SOURCE headword is
+# polysemous. High-tier guarantees target_n_senses=1, so P5137 lands on the target's single WD
+# sense. When that sense is UNDIFFERENTIATED (gloss == the bare lemma/translation) and the
+# target-language WikDict headword splits into >=2 senses that collapse onto this same anchor (a
+# homograph leak in propagation), the anchor may over-specify the single sense. koncentration:
+# WikDict 01 'mental focus' + 02 '(chemistry)' both -> Q3686031, and L476208's only sense is
+# glossed just 'concentration'. NEUTRAL reviewer context (like alias_match) — the human weighs it;
+# we deliberately DON'T feed it to the verifier or auto-defer (would be noisy — the benign majority,
+# metonymy / species-vs-individual, is filtered out by the undifferentiated-gloss gate).
+_LANG3TO2 = {"swe": "sv", "fra": "fr", "deu": "de", "eng": "en", "nob": "no",
+             "nno": "no", "nor": "no", "nld": "nl", "dan": "da", "epo": "eo"}
+
+
+def polysemy_index(cand):
+    """{(target_lid, anchor_qid): {lang3_prefix: max_sense_count}} for source headwords whose
+    >=2 WikDict senses collapse onto a (target, anchor). candidate_raw is unindexed (83k rows),
+    so build this in ONE scan per render, not a lookup per row."""
+    idx = collections.defaultdict(dict)
+    for tlid, qid, lexentry, n in cand.execute(
+            "SELECT target_lid, anchor_qid, lexentry, COUNT(DISTINCT sense_num) "
+            "FROM candidate_raw GROUP BY target_lid, anchor_qid, lexentry "
+            "HAVING COUNT(DISTINCT sense_num) >= 2"):
+        pref = lexentry.split("/")[0]
+        d = idx[(tlid, qid)]
+        d[pref] = max(d.get(pref, 0), n)
+    return idx
+
+
+def undifferentiated_gloss(gloss, lemma):
+    """The target's single CC0 sense gloss can't disambiguate: empty, == the lemma, or a bare
+    1-2 word stub (the bare translation, e.g. 'concentration')."""
+    g = (gloss or "").strip()
+    return (not g) or g.lower() == (lemma or "").strip().lower() or len(g.split()) <= 2
+
+
+def polysemy_hint(idx, lid, qid, lang, lemma, gloss):
+    """n_source_senses when the over-specification signal fires: the TARGET-LANGUAGE source
+    headword is polysemous (>=2 senses collapse here) AND the target's single WD sense gloss is
+    undifferentiated; else 0. Neutral advisory — see section note."""
+    n = max((cnt for pref, cnt in idx.get((lid, qid), {}).items() if _LANG3TO2.get(pref) == lang),
+            default=0)
+    return n if n >= 2 and undifferentiated_gloss(gloss, lemma) else 0
+
+
 # ---- data-gated auto-defer (enforcement) ------------------------------------
 # A relation CLASS whose decided history is >=85% "not written" (reject+defer) on a big enough
 # sample is one the human almost never approves — so we stop bothering the human with it: auto-defer
@@ -465,30 +510,45 @@ def render(limit, lang_filter=None):
     # Selector counts are over the unfiltered (human-)pending set, so they don't change as you filter.
     lang_counts = collections.Counter(r[3] for r in pending)
     rows = [r for r in pending if not lang_filter or r[3] == lang_filter]
-    # Float scope mismatches to the top: defer-suggested first, then convention
-    # broader/narrower, then clean EQUAL — so a scope case is never pushed past `limit`.
-    rows.sort(key=lambda r: ((lambda s: 0 if s.startswith(("defer", "reject")) else 1 if s else 2)
-                             (scope_hint(r[6], *ctx.get((r[0], r[1]), (None, None)))[1]), r[3], r[2]))
     wd = sqlite3.connect(config.WIKIDATA)
     it = sqlite3.connect(config.ITEMS)
+    cand = sqlite3.connect(config.CANDIDATES)
     have_il = has_item_lang(it)
     have_al = has_item_alias(it)
+    # Target sense gloss + polysemy-collapse flag, computed once per row (poly index is one scan)
+    # and reused by both the sort below and the render loop.
+    poly_idx = polysemy_index(cand)
+    meta = {}
+    for r in rows:
+        gl, glang = lexeme_gloss(wd, r[0], r[3])
+        meta[(r[0], r[1])] = (gl, glang, polysemy_hint(poly_idx, r[0], r[1], r[3], r[2], gl))
+    # Float scope mismatches AND polysemy-collapse flags to the top: either concern first, then
+    # convention broader/narrower, then clean EQUAL — so neither is ever pushed past `limit`.
+    def _rank(r):
+        sug = scope_hint(r[6], *ctx.get((r[0], r[1]), (None, None)))[1]
+        if sug.startswith(("defer", "reject")) or meta[(r[0], r[1])][2]:
+            return 0
+        return 1 if sug else 2
+    rows.sort(key=lambda r: (_rank(r), r[3], r[2]))
     c = collections.Counter(d["status"] for d in decisions.values())
     c["pending"] = len(pending)
     n_scope = sum(1 for r in rows if scope_hint(r[6], *ctx.get((r[0], r[1]), (None, None)))[1]
                   .startswith(("defer", "reject")))
+    n_poly = sum(1 for r in rows if meta[(r[0], r[1])][2])
     head = " · ".join(f"{k}: {v}" for k, v in sorted(c.items())) or "empty"
     if auto_def:
         head += (f" · {len(auto_def)} auto-deferred "
                  f"({', '.join(sorted(ad))} ≥85% not-written, hidden)")
     if n_scope:
         head += f" · ⚠ {n_scope} scope-mismatch"
+    if n_poly:
+        head += f" · ⚠ {n_poly} polysemy-collapse"
     if lang_filter:
         head += f" · filtered to {html.escape(lang_filter)} ({len(rows)})"
     trs = []
     for (lid, qid, lemma, lang, _ns, _v, reason, _m,
          lde, len_, lsv, dde, den, dsv) in rows[:limit]:
-        gl, glang = lexeme_gloss(wd, lid, lang)
+        gl, glang, n_poly_row = meta[(lid, qid)]
         anchor_desc = " | ".join(d for d in (dde, den, dsv) if d)
         rel, sug, scls = scope_hint(reason, gl, anchor_desc)
         scope_html = (f"<span class=rel>{rel}</span><br><span class={scls}>{html.escape(sug)}</span>"
@@ -517,6 +577,10 @@ def render(limit, lang_filter=None):
                             "“also known as” of this item</div>")
         gtag = f" [{glang}]" if glang and glang != lang else ""
         gloss_html = f"“{html.escape(gl)}”{gtag}" if gl else "<i>(no sense gloss)</i>"
+        if n_poly_row:
+            gloss_html += (f"<div class=poly>⚠ source word is polysemous ({n_poly_row} WikDict "
+                           "senses collapse here) — this sense gloss is undifferentiated, so "
+                           "verify the anchor isn’t over-specifying it</div>")
         form = (f"<form method=post action=/act style='display:inline'>"
                 f"<input type=hidden name=lid value='{html.escape(lid)}'>"
                 f"<input type=hidden name=qid value='{html.escape(qid)}'>"
@@ -542,6 +606,7 @@ button{{font-size:.85rem;padding:3px 8px;cursor:pointer;border:1px solid #ccc;bo
 .rel{{font-weight:600;font-size:.78rem;letter-spacing:.02em}}
 .al{{margin:1px 0}} .alc{{display:inline-block;min-width:1.5rem;color:#999;font-size:.72rem;text-transform:uppercase}}
 .akahit{{margin-top:3px;color:#36c;font-size:.78rem}}
+.poly{{margin-top:3px;color:#a60;font-size:.78rem}}
 .bar{{margin:.4rem 0 1rem}} .lsel{{padding:1px 4px;border-radius:3px}} .lsel.sel{{background:#eef;font-weight:700;color:#000}}</style>
 <h2>P5137 review queue</h2><p class=d>{head} — showing up to {limit} pending</p>
 {lang_selector(lang_counts, lang_filter)}
