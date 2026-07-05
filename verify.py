@@ -202,6 +202,25 @@ def load_item_lang(qids):
     return out
 
 
+def unfetched_anchors(qids):
+    """Anchor qids fetch_anchor_langs.py has never processed (absent from item_lang_fetched).
+
+    Keyed on the fetch MARKER, not on item_lang having rows: an anchor can be legitimately
+    fetched-but-sparse (no CC0 labels in any language) and still belongs on fmt_concept's
+    graceful de/en/sv fallback. Only *un-fetched* anchors mean the fetch is stale relative to
+    the candidate pool — verifying them would silently downgrade +multi to the base format
+    (as happened after the all-language rebuild added anchors). The run guards on this."""
+    qids = set(qids)
+    if not qids:
+        return set()
+    cn = sqlite3.connect(config.ITEMS)
+    has = cn.execute("SELECT name FROM sqlite_master WHERE type='table' "
+                     "AND name='item_lang_fetched'").fetchone()
+    fetched = {r[0] for r in cn.execute("SELECT qid FROM item_lang_fetched")} if has else set()
+    cn.close()
+    return qids - fetched
+
+
 def fmt_concept(row, labels_all=False, descs_all=False, langs=None, il_map=None):
     """(qid, label, description) for the anchor concept, target-language first.
 
@@ -312,6 +331,9 @@ def main():
     ap.add_argument("--gate", default="", help="structural gate filter, e.g. ABD (the High tier)")
     ap.add_argument("--force", action="store_true", help="re-verify even cached candidates "
                     "(needed to apply a changed prompt/criterion; overwrites their verdicts)")
+    ap.add_argument("--allow-degraded", action="store_true", help="verify even when some "
+                    "anchors lack item_lang (the +multi concept) and would fall back to the "
+                    "de/en/sv base format — off by default so a stale fetch fails loud")
     ap.add_argument("--csv", default="", help="export the full verdict table to this CSV "
                     "on demand (the verdicts cache is data/verify.sqlite3)")
     args = ap.parse_args()
@@ -334,6 +356,16 @@ def main():
     rows = [r for r in candidates(args) if (r[0], r[3]) not in done and has_evidence(r)]
     if not args.all:
         rows = rows[: args.limit]
+    # Refuse to silently downgrade +multi -> de/en/sv: every anchor about to be graded must
+    # have been fetched by fetch_anchor_langs.py, or the fetch is stale vs the candidate pool.
+    unfetched = unfetched_anchors({r[3] for r in rows})
+    if unfetched and not args.allow_degraded:
+        ap.error(
+            f"{len(unfetched)} of {len({r[3] for r in rows}):,} anchors to verify are not in "
+            f"item_lang — verifying them would silently fall back from the +multi concept to "
+            f"the de/en/sv base format. Refresh the cache first:\n"
+            f"    uv run fetch_anchor_langs.py\n"
+            f"  (or pass --allow-degraded to grade on de/en/sv anyway, e.g. a smoke test).")
     gmap = load_glosses({r[0] for r in rows})
     il_map = load_item_lang({r[3] for r in rows})   # all-language concept (+multi format)
     n_cov = sum(1 for r in rows if r[3] in il_map)

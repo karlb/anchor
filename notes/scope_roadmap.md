@@ -108,12 +108,25 @@ regardless of scope, and it is the first concrete increment of the target archit
 1. **Phase 2 as planned** (`sense_creation_plan.md`: sample → measure → gate → ~10
    hand-approved edits → disclose), amended to lexeme-centric review/write.
 2. ~~**All-language cluster build**~~ **— done 2026-07-05**, plus all-language anchors (see
-   limitation 1 above). Still to do on the richer evidence: re-size gate A/support
-   thresholds (support now runs much higher — common concepts accrue 50–100+ clusters via
-   non-pilot pivots); re-verify the current 1,448-candidate monosemous High tier (the pool
-   both grew from clusters and was re-shaped by anchor disagreements, so cached verdicts no
-   longer cover it 1:1); and triage the 27 already-decided pairs the anchor cross-check now
-   contradicts (9 written, 18 approved) via `recheck` rows.
+   limitation 1 above). Still to do on the richer evidence:
+   - ~~re-size gate A/support thresholds~~ **— measured 2026-07-05, keep gate A at ≥2.**
+     The "support now runs much higher" premise holds only in the *raw* candidate table
+     (tail to 72 clusters); the B (monosemous target) + D (concrete anchor) gates strip
+     those mega-support concepts, so inside the ABD verify pool support tops out at 30 with
+     a thin tail and `support == 1` is still 65% of the pool (2,748 / 4,196). Support still
+     discriminates monotonically (human rejection 12% @≥1 → 10% @≥2 → 7% @≥3 → 5% @≥4), and
+     the sharpest cliff is exactly the current cut: the `support == 1` slice is 23%
+     human-rejected vs 14% at `support == 2`. Raising to ≥3 is a token-saver only
+     (unverified 492 → 173) that would drop 685 `support == 2` candidates humans keep ~4:1
+     — a bad recall trade in a human-gated pilot. If verify cost bites, cap the run
+     (`verify.py` already orders support DESC) rather than harden the gate.
+   - ~~re-verify the current 1,448-candidate monosemous High tier~~ **— done 2026-07-05.**
+     Prerequisite first: `fetch_anchor_langs.py` topped up item_lang for the 331 anchors the
+     rebuild added (else verify silently downgrades +multi→de/en/sv — now blocked by a
+     fetch-coverage guard in `verify.py`, with `--allow-degraded` to override). 509 net-new
+     graded (265 yes / 244 no); full ABD≥2 cache now 1,782 yes / 631 no / 3 uncertain.
+   - triage the 27 already-decided pairs the anchor cross-check now contradicts (9 written,
+     18 approved) via `recheck` rows.
 3. **Match-and-extend** for polysemous and multi-item lexemes: run the existing
    gloss·tolerant verifier per (item, sense) pair — item-to-sense-gloss matching is
    the judgment it already performs (the homograph catches prove it); items matching
