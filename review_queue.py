@@ -262,6 +262,12 @@ _DEMONYM_GLOSS = ("person from", "person från", "person aus", "person av",
 _ETHNIC_ANCHOR = ("ethnic group", "etnisk grupp", "etnisk gruppe", "ethnic", "ethnie",
                   "ethnique", "slavic", "folkgrupp", "folkeslag", "people native",
                   "indigenous to", "kaukasisk folk", "südkaukasisches volk")
+# The anchor_desc these markers scan is deliberately de/en/sv-narrow — NOT the verifier's
+# ~13-language +multi concept — and that is the RIGHT scope, not a leftover. A/B on the 118-case
+# gold (2026-07-05): widening anchor_desc to every item_lang language changes ZERO outcomes
+# (de/en/sv already carries the ethnic signal, so extra text adds no marker hits); and broadening
+# the markers to match other languages' etn-root terms REGRESSES — it over-fires on nationality
+# demonyms (luxemburgare: keep -> needless defer) while fixing no false-keep. So keep it narrow.
 
 
 def is_ethnic_demonym(gloss, anchor_desc):
