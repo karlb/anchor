@@ -80,9 +80,10 @@ def append_decision(rec, path=DECISIONS):
 
 def pool():
     """The reviewable set: verifier-'yes' High-tier candidates (clean ∩ A: >=2
-    anchors ∩ B: monosemous ∩ D: concrete/P31 ∩ in-scope), each with the anchor's
-    own CC0 label/description and the verdict's reason/model. 'pending' = this
-    minus whatever the decision log already covers."""
+    anchors ∩ B: monosemous ∩ D: concrete/P31 ∩ in-scope), each with the verdict's
+    reason/model and the anchor's CC0 de/en/sv descriptions (the scope-nudge input;
+    the displayed concept comes from item_lang). 'pending' = this minus whatever the
+    decision log already covers."""
     cn = sqlite3.connect(config.CANDIDATES)
     cn.execute("ATTACH DATABASE ? AS it", [config.ITEMS])
     cn.execute("ATTACH DATABASE ? AS vf", [config.VERIFY])
@@ -90,7 +91,7 @@ def pool():
         """
         SELECT c.target_lid, c.anchor_qid, c.target_lemma, c.target_lang,
                c.target_n_senses, v.verdict, v.reason, v.model,
-               i.label_de, i.label_en, i.label_sv, i.desc_de, i.desc_en, i.desc_sv
+               i.desc_de, i.desc_en, i.desc_sv
         FROM candidate c
         JOIN vf.verdict v ON v.target_lid = c.target_lid AND v.anchor_qid = c.anchor_qid
         JOIN it.item i ON i.qid = c.anchor_qid AND NOT i.missing
@@ -547,27 +548,19 @@ def render(limit, lang_filter=None):
         head += f" · filtered to {html.escape(lang_filter)} ({len(rows)})"
     trs = []
     for (lid, qid, lemma, lang, _ns, _v, reason, _m,
-         lde, len_, lsv, dde, den, dsv) in rows[:limit]:
+         dde, den, dsv) in rows[:limit]:
         gl, glang, n_poly_row = meta[(lid, qid)]
         anchor_desc = " | ".join(d for d in (dde, den, dsv) if d)
         rel, sug, scls = scope_hint(reason, gl, anchor_desc)
         scope_html = (f"<span class=rel>{rel}</span><br><span class={scls}>{html.escape(sug)}</span>"
                       if sug else f"<span class=d>{rel.title()}</span>")
-        # Anchor concept in the curated languages (item_lang), falling back to the
-        # de/en/sv `item` columns when the all-language cache isn't populated.
+        # Anchor concept in the curated languages (item_lang) — the ONLY concept source now
+        # (fetch_anchor_langs.py fills it for every anchor; verify enforces coverage).
         al = anchor_langs(it, qid) if have_il else []
-        if al:
-            anchor_html = "".join(
-                f"<div class=al><span class=alc>{disp}</span> <b>{html.escape(lab or '')}</b>"
-                + (f" <span class=d>{html.escape(ds)}</span>" if ds else "") + "</div>"
-                for disp, lab, ds in al)
-        else:
-            lab, llang = pick(lang, {"de": lde, "en": len_, "sv": lsv})
-            dsc, dlang = pick(lang, {"de": dde, "en": den, "sv": dsv})
-            ltag = f" [{llang}]" if llang and llang != lang else ""
-            dtag = f" [{dlang}]" if dlang and dlang != lang else ""
-            anchor_html = (f"<b>{html.escape(lab)}</b>{ltag}"
-                           f"<br><span class=d>{html.escape(dsc)}{dtag}</span>")
+        anchor_html = "".join(
+            f"<div class=al><span class=alc>{disp}</span> <b>{html.escape(lab or '')}</b>"
+            + (f" <span class=d>{html.escape(ds)}</span>" if ds else "") + "</div>"
+            for disp, lab, ds in al) or "<i>(no item_lang concept — run fetch_anchor_langs.py)</i>"
         # NEUTRAL evidence: Wikidata officially lists the lemma as one of this item's 'also
         # known as' names. Not a verdict — weigh it against the scope relation (alias + EQUAL/
         # convention → likely keep; alias + a real scope gap → still defer/reject).
