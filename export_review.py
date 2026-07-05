@@ -17,6 +17,7 @@ import sqlite3
 
 import config
 import gates
+import review_queue  # anchor_gloss: the one gloss policy, shared with the live review UI
 
 
 def main():
@@ -24,15 +25,19 @@ def main():
     ap.add_argument("--out", default=config.DATA + "/review.html")
     ap.add_argument("--all-clean", action="store_true",
                     help="export all clean candidates, not just the High tier")
+    ap.add_argument("--senseless", action="store_true",
+                    help="the senseless first-sense-creation tier (n_senses=0) instead of "
+                         "the monosemous High tier; shows the gloss each sense would be created with")
     args = ap.parse_args()
 
     conn = sqlite3.connect(":memory:")
     conn.execute("ATTACH DATABASE ? AS cn", [config.CANDIDATES])
     conn.execute("ATTACH DATABASE ? AS it", [config.ITEMS])
     conn.execute("ATTACH DATABASE ? AS vf", [config.VERIFY])
+    it_conn = sqlite3.connect(config.ITEMS)  # for the shared anchor_gloss preview
 
     where = ("c.homograph_n_lid=1 AND NOT c.cross_pivot_conflict" if args.all_clean
-             else gates.high_tier_where("c", "it"))
+             else gates.high_tier_where("c", "it", n_senses=0 if args.senseless else 1))
 
     rows = conn.execute(f"""
         SELECT c.target_lang, c.target_lemma, c.target_lid, c.anchor_qid, c.support_clusters,
@@ -69,6 +74,11 @@ def main():
         labels = {"de": lde, "en": len_, "sv": lsv}
         descs = {"de": dde, "en": den, "sv": dsv}
         anchor = cell(lang, labels, descs)
+        if args.senseless:  # preview the sense we'd CREATE (same policy as write.py / the live UI)
+            glosses = review_queue.anchor_gloss(it_conn, qid, lang)
+            preview = (" · ".join(f"[{g}] “{html.escape(t)}”" for g, t in glosses.items())
+                       if glosses else "<i>(no CC0 gloss source — would be skipped)</i>")
+            anchor += f"<div class=create>will CREATE sense — gloss: {preview}</div>"
         vclass = {"yes": "yes", "no": "no", "uncertain": "unc"}.get(verdict, "")
         vcell = f"<span class='v {vclass}'>{html.escape(verdict)}</span>" if verdict else ""
         rtxt = html.escape(reason or "")
@@ -83,8 +93,10 @@ def main():
             f"<td class=n>{support}</td>"
             f"<td>{vcell}<br><span class=d>{rtxt}</span></td></tr>")
 
-    title = ("High tier (clean ∩ ≥2 anchors ∩ monosemous ∩ concrete)"
-             if not args.all_clean else "All clean candidates")
+    title = ("All clean candidates" if args.all_clean else
+             "Senseless tier (clean ∩ ≥2 anchors ∩ senseless ∩ concrete) — first-sense creation"
+             if args.senseless else
+             "High tier (clean ∩ ≥2 anchors ∩ monosemous ∩ concrete)")
     doc = f"""<!doctype html><meta charset=utf-8>
 <title>P5137 candidates — {title}</title>
 <style>
@@ -96,6 +108,7 @@ def main():
  .lg{{color:#888;text-transform:uppercase;font-size:.8rem}}
  .lm{{font-weight:600}} .d{{color:#666;font-size:.86rem}} .n{{text-align:center}}
  .fl{{color:#aaa;font-size:.72rem;font-weight:400}}
+ .create{{color:#197a19;font-size:.82rem;margin-top:3px;font-weight:600}}
  .v{{font-weight:700;font-size:.8rem;text-transform:uppercase}}
  .yes{{color:#197a19}} .no{{color:#b00}} .unc{{color:#b8860b}}
  a{{color:#3366cc;text-decoration:none}} tr:hover{{background:#f6f9ff}}

@@ -35,6 +35,11 @@ import gates
 DECISIONS = config.DECISIONS
 PORT = 8731
 
+# Review mode: the monosemous write stream (n_senses=1) or the phase-2 senseless
+# sense-creation lane (n_senses=0). One process serves one mode; the HTTP Handler
+# (which can't take params) reads this, set by serve()/status() from --senseless.
+SENSELESS = False
+
 # The anchor languages shown in the review UI live in config.CONCEPT_LANGS_DISPLAY — the
 # SAME spec/resolver the verifier uses (the verifier just feeds a wider set). Cross-checking
 # a scope call against several languages — a demonym vs its ethnic-group concept, say —
@@ -78,12 +83,17 @@ def append_decision(rec, path=DECISIONS):
         w.writerow({c: rec.get(c, "") for c in LOG_COLS})
 
 
-def pool():
+def pool(senseless=None):
     """The reviewable set: verifier-'yes' High-tier candidates (clean ∩ A: >=2
-    anchors ∩ B: monosemous ∩ D: concrete/P31 ∩ in-scope), each with the verdict's
-    reason/model and the anchor's CC0 de/en/sv descriptions (the scope-nudge input;
-    the displayed concept comes from item_lang). 'pending' = this minus whatever the
-    decision log already covers."""
+    anchors ∩ B ∩ D: concrete/P31 ∩ in-scope), each with the verdict's reason/model and
+    the anchor's CC0 de/en/sv descriptions (the scope-nudge input; the displayed concept
+    comes from item_lang). 'pending' = this minus whatever the decision log already covers.
+
+    `senseless` picks the B gate: False → monosemous targets (n_senses=1, the write
+    stream); True → senseless targets (n_senses=0, the phase-2 sense-creation lane).
+    Defaults to the module SENSELESS mode so the HTTP Handler can call it param-free."""
+    if senseless is None:
+        senseless = SENSELESS
     cn = sqlite3.connect(config.CANDIDATES)
     cn.execute("ATTACH DATABASE ? AS it", [config.ITEMS])
     cn.execute("ATTACH DATABASE ? AS vf", [config.VERIFY])
@@ -95,21 +105,22 @@ def pool():
         FROM candidate c
         JOIN vf.verdict v ON v.target_lid = c.target_lid AND v.anchor_qid = c.anchor_qid
         JOIN it.item i ON i.qid = c.anchor_qid AND NOT i.missing
-        WHERE """ + gates.high_tier_where("c", "it") + """ AND v.verdict = 'yes'
+        WHERE """ + gates.high_tier_where("c", "it", n_senses=0 if senseless else 1)
+        + """ AND v.verdict = 'yes'
         ORDER BY c.target_lang, c.target_lemma
         """).fetchall()
     cn.close()
     return rows
 
 
-def pending_view():
+def pending_view(senseless=None):
     """The shared review pipeline, computed ONCE per invocation: (decisions, undecided,
     ctx, auto-defer classes, verify cache). counts/status/render all consume this — it
     is a 3-DB join plus a full log replay and a verify-cache scan, so each caller runs
     it once and the call sites can't drift apart."""
     decisions = load_decisions()
     vcache = load_verify_cache()
-    undecided = [r for r in pool() if (r[0], r[1]) not in decisions]
+    undecided = [r for r in pool(senseless) if (r[0], r[1]) not in decisions]
     ctx = demonym_context([(k[0], k[1], d.get("target_lang")) for k, d in decisions.items()]
                           + [(r[0], r[1], r[3]) for r in undecided])
     ad = auto_defer_classes(decisions, ctx, vcache)
@@ -126,8 +137,11 @@ def counts(view=None):
 
 
 def status(args):
-    print(f"decision log: {DECISIONS}")
-    view = pending_view()
+    global SENSELESS
+    SENSELESS = getattr(args, "senseless", False)
+    print(f"decision log: {DECISIONS}"
+          + ("   [MODE: senseless — first-sense creation]" if SENSELESS else ""))
+    view = pending_view(SENSELESS)
     decided, undecided, ctx, ad, vcache = view
     c = counts(view)
     for s in ("pending", "auto_deferred", "approved", "deferred", "rejected", "written"):
@@ -209,6 +223,45 @@ def anchor_langs(it, qid):
     entry = {lg: (lab, ds) for lg, lab, ds in
              it.execute("SELECT lang, label, desc FROM item_lang WHERE qid=?", [qid])}
     return config.resolve_concept_langs(entry, config.CONCEPT_LANGS_DISPLAY)
+
+
+def anchor_cc0(it, qid, lang):
+    """(label, desc) for the anchor Q in `lang` — from the all-language item_lang cache
+    when populated, else the de/en/sv `item` columns. Either field may be None/empty."""
+    if has_item_lang(it):
+        r = it.execute("SELECT label, desc FROM item_lang WHERE qid=? AND lang=?",
+                       [qid, lang]).fetchone()
+        if r:
+            return r[0], r[1]
+    if lang in ("de", "en", "sv"):
+        r = it.execute(f"SELECT label_{lang}, desc_{lang} FROM item "
+                       "WHERE qid=? AND NOT missing", [qid]).fetchone()
+        if r:
+            return r[0], r[1]
+    return None, None
+
+
+def anchor_gloss(it, qid, lang):
+    """Glosses {gloss_lang: text} for a would-be new (senseless-target) sense, per the
+    decided policy (sense_creation_plan.md): the anchor's CC0 DESCRIPTION, falling back to
+    its LABEL only when no description exists in that language; empty dict = skip the
+    candidate (no usable CC0 text). Keyed by the language the text is ACTUALLY in — the
+    fix for the old bug where an en-fallback string was written under a `de`/`fr` key — and,
+    when the target language isn't en, an extra en gloss so a non-target-language patroller
+    can still read the created sense. CC0 only; a DBnary gloss is never read. This is the
+    single source of the gloss text: the review UI previews exactly what write.py will
+    write, both calling here."""
+    out = {}
+    lab, desc = anchor_cc0(it, qid, lang)
+    text = desc or lab                      # description-primary, label fallback (same language)
+    if text:
+        out[lang] = text
+    if lang != "en":
+        elab, edesc = anchor_cc0(it, qid, "en")
+        etext = edesc or elab
+        if etext and etext not in out.values():
+            out["en"] = etext
+    return out
 
 
 def has_item_alias(it):
@@ -510,12 +563,19 @@ def lang_selector(lang_counts, active):
     return "<p class=bar>lemma language: " + " · ".join(links) + "</p>"
 
 
-def render(limit, lang_filter=None):
-    decisions, undecided, ctx, ad, _ = pending_view()
+def render(limit, lang_filter=None, senseless=None):
+    if senseless is None:
+        senseless = SENSELESS
+    decisions, undecided, ctx, ad, _ = pending_view(senseless)
     auto_def = [r for r in undecided if rel_of((r[0], r[1]), r[6], ctx) in ad]
     pending = [r for r in undecided if rel_of((r[0], r[1]), r[6], ctx) not in ad]
     # Selector counts are over the unfiltered (human-)pending set, so they don't change as you filter.
     lang_counts = collections.Counter(r[3] for r in pending)
+    # Lexeme-centric review (senseless lane, scope_roadmap amendment): a senseless lexeme can
+    # have 2–4 candidate items → 2–4 senses we'd create. Count candidate items per lexeme over
+    # the FULL pending set so the flag/grouping is stable under language filtering, and sort
+    # same-lexeme rows adjacent so the reviewer approves/prunes the inventory as a set, not blind.
+    lid_counts = collections.Counter(r[0] for r in pending)
     rows = [r for r in pending if not lang_filter or r[3] == lang_filter]
     wd = sqlite3.connect(config.WIKIDATA)
     it = sqlite3.connect(config.ITEMS)
@@ -536,13 +596,17 @@ def render(limit, lang_filter=None):
         if sug.startswith(("defer", "reject")) or meta[(r[0], r[1])][2]:
             return 0
         return 1 if sug else 2
-    rows.sort(key=lambda r: (_rank(r), r[3], r[2]))
+    # lid, qid tie-breakers keep a lexeme's several candidate senses adjacent (lexeme-centric).
+    rows.sort(key=lambda r: (_rank(r), r[3], r[2], r[0], r[1]))
     c = collections.Counter(d["status"] for d in decisions.values())
     c["pending"] = len(pending)
     n_scope = sum(1 for r in rows if scope_hint(r[6], *ctx.get((r[0], r[1]), (None, None)))[1]
                   .startswith(("defer", "reject")))
     n_poly = sum(1 for r in rows if meta[(r[0], r[1])][2])
+    n_multi = sum(1 for r in rows if lid_counts[r[0]] > 1)  # rows on a multi-candidate lexeme
     head = " · ".join(f"{k}: {v}" for k, v in sorted(c.items())) or "empty"
+    if senseless:
+        head = "MODE: senseless (creating first sense) · " + head
     if auto_def:
         head += (f" · {len(auto_def)} auto-deferred "
                  f"({', '.join(sorted(ad))} ≥85% not-written, hidden)")
@@ -550,6 +614,8 @@ def render(limit, lang_filter=None):
         head += f" · ⚠ {n_scope} scope-mismatch"
     if n_poly:
         head += f" · ⚠ {n_poly} polysemy-collapse"
+    if senseless and n_multi:
+        head += f" · ⚠ {n_multi} on multi-candidate lexemes (review as a set)"
     if lang_filter:
         head += f" · filtered to {html.escape(lang_filter)} ({len(rows)})"
     trs = []
@@ -574,10 +640,31 @@ def render(limit, lang_filter=None):
         if aka:
             anchor_html += (f"<div class=akahit>“{html.escape(aka)}” is a listed "
                             "“also known as” of this item</div>")
-        gtag = f" [{glang}]" if glang and glang != lang else ""
-        gloss_html = f"“{html.escape(gl)}”{gtag}" if gl else "<i>(no sense gloss)</i>"
+        if senseless:
+            # No existing sense to show — preview the sense we would CREATE (approval covers
+            # this gloss text, not just the link), using the exact policy write.py will apply.
+            glosses = anchor_gloss(it, qid, lang)
+            if glosses:
+                primary_lang = lang if lang in glosses else next(iter(glosses))
+                parts = [f"[{g}] “{html.escape(t)}”" for g, t in
+                         sorted(glosses.items(), key=lambda kv: kv[0] != primary_lang)]
+                gloss_html = ("<span class=create>will CREATE sense</span><br>gloss: "
+                              + " · ".join(parts))
+            else:
+                gloss_html = ("<span class=create>will CREATE sense</span> "
+                              "<i>(no CC0 gloss source — would be skipped)</i>")
+            if lid_counts[lid] > 1:
+                gloss_html += (f"<div class=multi>⚠ this lexeme has {lid_counts[lid]} candidate "
+                               "senses in the queue — approve/prune them as one inventory</div>")
+        else:
+            gtag = f" [{glang}]" if glang and glang != lang else ""
+            gloss_html = f"“{html.escape(gl)}”{gtag}" if gl else "<i>(no sense gloss)</i>"
         if n_poly_row:
             gloss_html += (f"<div class=poly>⚠ source word is polysemous ({n_poly_row} WikDict "
+                           "senses collapse here) — creating S1 from a minor sense risks a "
+                           "wrong first sense; check this is the dominant meaning</div>"
+                           if senseless else
+                           f"<div class=poly>⚠ source word is polysemous ({n_poly_row} WikDict "
                            "senses collapse here) — this sense gloss is undifferentiated, so "
                            "verify the anchor isn’t over-specifying it</div>")
         form = (f"<form method=post action=/act style='display:inline'>"
@@ -606,10 +693,11 @@ button{{font-size:.85rem;padding:3px 8px;cursor:pointer;border:1px solid #ccc;bo
 .al{{margin:1px 0}} .alc{{display:inline-block;min-width:1.5rem;color:#999;font-size:.72rem;text-transform:uppercase}}
 .akahit{{margin-top:3px;color:#36c;font-size:.78rem}}
 .poly{{margin-top:3px;color:#a60;font-size:.78rem}}
+.create{{color:#197a19;font-weight:600;font-size:.82rem}} .multi{{margin-top:3px;color:#a60;font-size:.78rem}}
 .bar{{margin:.4rem 0 1rem}} .lsel{{padding:1px 4px;border-radius:3px}} .lsel.sel{{background:#eef;font-weight:700;color:#000}}</style>
-<h2>P5137 review queue</h2><p class=d>{head} — showing up to {limit} pending</p>
+<h2>P5137 review queue{" — senseless (creating first sense)" if senseless else ""}</h2><p class=d>{head} — showing up to {limit} pending</p>
 {lang_selector(lang_counts, lang_filter)}
-<table><tr><th>lang</th><th>lemma → Lexeme<br>(its CC0 sense gloss)</th><th>anchor concept (CC0)</th><th>scope</th><th>verifier reason</th><th></th></tr>
+<table><tr><th>lang</th><th>lemma → Lexeme<br>{"(sense to CREATE)" if senseless else "(its CC0 sense gloss)"}</th><th>anchor concept (CC0)</th><th>scope</th><th>verifier reason</th><th></th></tr>
 {chr(10).join(trs) or '<tr><td colspan=6>nothing pending 🎉</td></tr>'}</table>"""
 
 
@@ -658,13 +746,17 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def serve(args):
-    n = len(pool())
+    global SENSELESS
+    SENSELESS = getattr(args, "senseless", False)
+    n = len(pool(SENSELESS))
     if not n:
-        print("no verifier-'yes' High-tier candidates — run verify.py --gate ABD first")
+        gate = "AD --senseless-only" if SENSELESS else "ABD"
+        print(f"no verifier-'yes' High-tier candidates — run verify.py --gate {gate} first")
         return
     c = counts()
+    mode = "  [MODE: senseless — first-sense creation]" if SENSELESS else ""
     print(f"review UI on http://localhost:{PORT}  ({c.get('pending', 0):,} pending of "
-          f"{n:,} candidates) — Ctrl-C to stop")
+          f"{n:,} candidates){mode} — Ctrl-C to stop")
     HTTPServer(("127.0.0.1", PORT), Handler).serve_forever()
 
 
@@ -672,7 +764,10 @@ def main():
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="cmd", required=True)
     for name in ("serve", "status"):
-        sub.add_parser(name)
+        p = sub.add_parser(name)
+        p.add_argument("--senseless", action="store_true",
+                       help="review the senseless first-sense-creation lane (n_senses=0) "
+                            "instead of the monosemous write stream")
     args = ap.parse_args()
     {"serve": serve, "status": status}[args.cmd](args)
 

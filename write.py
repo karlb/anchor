@@ -20,11 +20,18 @@ only (add to the existing sense); senseless targets need a gloss policy (--inclu
 
 Before each live edit the live lexeme is re-fetched: a monosemous target must still have
 exactly one sense, and that sense must NOT already carry a P5137 (never override existing
-data); a sense-creation target must not already have ANY sense carrying this P5137 (a
-previous run may have created it but died before its 'written' event was logged) — else skip.
+data); a sense-creation target must still be senseless (zero live senses) — if any sense
+appeared since the dump (a prior run, or real senses) we skip and leave it for manual review,
+since a semantically-duplicate sense is a hazard the P5137-only check can't see.
+
+Senseless (--include-senseless) writes are lexeme-centric: all approved items for one lexeme
+are grouped into a single edit creating one sense each, so a multi-item lexeme's inventory is
+written as one human-approved unit. The gloss follows the decided policy (description-primary,
+label fallback, skip if neither), keyed by the language of the text — see review_queue.anchor_gloss.
 """
 
 import argparse
+import collections
 import datetime
 import http.cookiejar
 import json
@@ -38,7 +45,7 @@ import urllib.request
 
 import config
 from fetch_items import API, USER_AGENT  # one copy of the endpoint + contact User-Agent
-from review_queue import append_decision, load_decisions, now, pool
+from review_queue import anchor_gloss, append_decision, load_decisions, now, pool
 
 SUMMARY = ("Add [[Property:P5137]] (item for this sense) inferred from translation, "
            "ref [[Q140308675]] — LLM-verified, human-approved assisted edit")
@@ -71,33 +78,14 @@ def build_statement(anchor_qid, today):
     }
 
 
-def anchor_label(qid, lang):
-    """CC0 label for a would-be new sense's gloss (target lang, fallback en)."""
-    it = sqlite3.connect(config.ITEMS)
-    # The wide `item` table only has de/en/sv columns; for any other target language
-    # (fr/no) read its own-language label from the all-language item_lang cache, then
-    # fall back to the en column. (Senseless-target writing is a gated phase-2 path.)
-    own = None
-    if lang in ("de", "en", "sv"):
-        r = it.execute(f"SELECT label_{lang} FROM item WHERE qid=? AND NOT missing",
-                       [qid]).fetchone()
-        own = r[0] if r else None
-    elif it.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='item_lang'"
-                    ).fetchone():
-        r = it.execute("SELECT label FROM item_lang WHERE qid=? AND lang=?",
-                       [qid, lang]).fetchone()
-        own = r[0] if r else None
-    en = it.execute("SELECT label_en FROM item WHERE qid=? AND NOT missing", [qid]).fetchone()
-    it.close()
-    return own or (en[0] if en else None)
-
-
 def build_edit(row, today, include_senseless):
     """Return (wbeditentity_data, note) for one approved candidate.
 
     Monosemous: add the claim to the lexeme's single existing sense (its S-id is
-    resolved against the live lexeme at write time). Senseless: must create a
-    sense, which needs a gloss — seeded from the anchor's own CC0 label."""
+    resolved against the live lexeme at write time). Senseless: create a sense whose
+    gloss follows the decided policy — the anchor's CC0 description (label fallback,
+    skip if neither), keyed by the language the text is in, plus an en gloss for
+    legibility (review_queue.anchor_gloss, the SAME text the review UI previewed)."""
     lid, qid, lemma, lang, n_senses = row
     claim = build_statement(qid, today)
 
@@ -105,12 +93,17 @@ def build_edit(row, today, include_senseless):
         sense = {"id": f"<{lid}-S? resolved live>", "claims": {"P5137": [claim]}}
         return {"senses": [sense]}, "add to existing sense"
     if include_senseless:
-        gloss = anchor_label(qid, lang)
-        if not gloss:  # no CC0 anchor label -> never fall back to the headword (degenerate)
-            return None, "skipped: senseless, no CC0 anchor label (no gloss source)"
-        sense = {"add": "", "glosses": {lang: {"language": lang, "value": gloss}},
+        it = sqlite3.connect(config.ITEMS)
+        glosses = anchor_gloss(it, qid, lang)  # {gloss_lang: text}, description-primary
+        it.close()
+        if not glosses:  # no CC0 desc/label -> never fall back to the headword (degenerate)
+            return None, "skipped: senseless, no CC0 anchor description/label (no gloss source)"
+        sense = {"add": "",
+                 "glosses": {g: {"language": g, "value": t} for g, t in glosses.items()},
                  "claims": {"P5137": [claim]}}
-        return {"senses": [sense]}, f"CREATE sense (gloss = CC0 anchor label: {gloss!r})"
+        primary = glosses.get(lang) or next(iter(glosses.values()))
+        extra = " +en" if "en" in glosses and lang != "en" else ""
+        return {"senses": [sense]}, f"CREATE sense (gloss[{lang}]{extra}: {primary!r})"
     return None, "skipped: senseless (needs gloss policy; use --include-senseless)"
 
 
@@ -122,12 +115,24 @@ def load_rows(args):
     the decision log (the single source of truth); 'approved' is the current
     replayed status, so anything later written/rejected is naturally excluded."""
     if args.preview:
-        return [r[:5] for r in pool()[: args.limit]]
-    rows = [(d["target_lid"], d["anchor_qid"], d["target_lemma"], d["target_lang"],
-             int(d["target_n_senses"]))
-            for d in load_decisions().values() if d["status"] == "approved"]
-    rows.sort(key=lambda r: (r[3], r[2]))
-    return rows[: args.limit]
+        # senseless preview when --include-senseless, else the monosemous write stream
+        rows = [r[:5] for r in pool(senseless=args.include_senseless)]
+    else:
+        rows = [(d["target_lid"], d["anchor_qid"], d["target_lemma"], d["target_lang"],
+                 int(d["target_n_senses"]))
+                for d in load_decisions().values() if d["status"] == "approved"]
+    rows.sort(key=lambda r: (r[3], r[2], r[0], r[1]))
+    # Limit by LEXEME, not row, keeping a lexeme's full inventory together: a split multi-item
+    # senseless lexeme would create some senses, then the "no longer senseless" guard would
+    # skip the rest forever. Monosemous lexemes are one row each, so this equals a row limit.
+    out, seen = [], set()
+    for r in rows:
+        if r[0] not in seen:
+            if len(seen) >= args.limit:
+                break
+            seen.add(r[0])
+        out.append(r)
+    return out
 
 
 # ---- Action API submission (stdlib only) -----------------------------------
@@ -250,22 +255,31 @@ def write_edits(edits, max_per_min):
     written = 0
     last_edit = 0.0  # monotonic time of the last submitted edit, for pacing
     for lid, data in edits:
-        sense = data["senses"][0]
-        anchor = sense["claims"]["P5137"][0]["mainsnak"]["datavalue"]["value"]["id"]
+        senses = data["senses"]
+        # One lexeme's edit is uniformly monosemous (one sense, {"id": ...}) or sense-creation
+        # (one or more {"add": ...} senses grouped lexeme-wise). Every sense carries its anchor.
+        is_create = "add" in senses[0]
+        anchors = [s["claims"]["P5137"][0]["mainsnak"]["datavalue"]["value"]["id"] for s in senses]
         try:
-            if "id" in sense:  # monosemous: resolve the live sense id + guard
+            if not is_create:  # monosemous: resolve the live sense id + guard
+                anchor = anchors[0]
                 sid, p5137 = resolve_sense(opener, lid)
                 if anchor in p5137:
                     print(f"  skip {lid}: already has P5137 → {anchor}"); continue
                 if p5137:
                     print(f"  skip {lid}: sense already has P5137 {p5137} (never override)")
                     continue
-                sense["id"] = sid
+                senses[0]["id"] = sid
             else:
-                # sense-creation: if ANY live sense already carries this P5137, a previous
-                # run already created it (e.g. killed before its 'written' event was logged)
-                if any(anchor in p5137_targets(s) for s in live_senses(opener, lid)):
-                    print(f"  skip {lid}: a sense already has P5137 → {anchor}"); continue
+                # sense-creation: only ever CREATE a first sense on a still-senseless lexeme.
+                # If the live lexeme has ANY sense now (a prior run created it and died before
+                # logging, OR real senses appeared since the dump), skip — adding one risks a
+                # semantic duplicate the P5137-only check can't see. Manual reconcile instead.
+                live = live_senses(opener, lid)
+                if live:
+                    print(f"  skip {lid}: no longer senseless ({len(live)} live sense(s)) — "
+                          f"manual review (semantic-duplicate hazard) → {anchors}")
+                    continue
             if interval and last_edit:  # pace only between actual submissions
                 wait = interval - (time.monotonic() - last_edit)
                 if wait > 0:
@@ -273,21 +287,23 @@ def write_edits(edits, max_per_min):
             revid = submit(opener, csrf, lid, data, summary)
             last_edit = time.monotonic()
         except Exception as e:  # noqa: BLE001 — one bad edit shouldn't abort the batch
-            print(f"  FAIL {lid} → {anchor}: {e}"); continue
-        d = decisions.get((lid, anchor), {})
-        append_decision({
-            "ts": now(), "target_lid": lid, "anchor_qid": anchor,
-            "target_lemma": d.get("target_lemma", ""), "target_lang": d.get("target_lang", ""),
-            "target_n_senses": d.get("target_n_senses", ""), "verdict": d.get("verdict", ""),
-            "reason": d.get("reason", ""), "model": d.get("model", ""),
-            "status": "written", "reviewer": f"write.py b/{TOOL}/{batch_id}",
-            "revid": str(revid),
-        })
+            print(f"  FAIL {lid} → {anchors}: {e}"); continue
+        # One submit = one revid, but the decision log is keyed (lid, qid): log each anchor.
+        for anchor in anchors:
+            d = decisions.get((lid, anchor), {})
+            append_decision({
+                "ts": now(), "target_lid": lid, "anchor_qid": anchor,
+                "target_lemma": d.get("target_lemma", ""), "target_lang": d.get("target_lang", ""),
+                "target_n_senses": d.get("target_n_senses", ""), "verdict": d.get("verdict", ""),
+                "reason": d.get("reason", ""), "model": d.get("model", ""),
+                "status": "written", "reviewer": f"write.py b/{TOOL}/{batch_id}",
+                "revid": str(revid),
+            })
+            print(f"  wrote {lid} → {anchor}  (rev {revid})")
         written += 1
-        print(f"  wrote {lid} → {anchor}  (rev {revid})")
         print(f"    https://www.wikidata.org/wiki/Lexeme:{lid}")
         print(f"    https://www.wikidata.org/wiki/Special:Diff/{revid}")
-    print(f"\n{written}/{len(edits)} submitted.")
+    print(f"\n{written}/{len(edits)} lexeme edit(s) submitted.")
     if written:
         print(f"editgroups batch → {group_url}")
 
@@ -304,7 +320,8 @@ def main():
     ap.add_argument("--max-edits-per-min", type=int, default=30,
                     help="cap submission rate (0 = no cap); default 30")
     ap.add_argument("--include-senseless", action="store_true",
-                    help="also build sense-creation edits (gloss from CC0 label)")
+                    help="also build sense-creation edits (gloss = CC0 description, label "
+                         "fallback; one grouped edit per lexeme)")
     args = ap.parse_args()
 
     today = datetime.date.today().isoformat()
@@ -313,19 +330,29 @@ def main():
     print(f"{len(rows)} {src} candidate(s); mode={'WRITE' if args.write else 'dry-run'}; "
           f"reference=P887({HEURISTIC_ITEM})+P813({today})\n")
 
-    edits = []
+    # Build one sense per candidate row, then GROUP by lexeme (lexeme-centric, scope_roadmap
+    # amendment): a senseless lexeme with 2–4 approved items becomes ONE wbeditentity creating
+    # 2–4 senses, so near-synonym duplicates are caught in one human-approved inventory rather
+    # than written blind pair-by-pair. Monosemous lexemes appear once, so grouping is a no-op there.
+    by_lid = collections.OrderedDict()
     for row in rows:
         data, note = build_edit(row, today, args.include_senseless)
         lid, qid, lemma, lang = row[0], row[1], row[2], row[3]
         print(f"# {lang} {lemma!r}  Lexeme:{lid} → {qid}   [{note}]")
         if data is None:
             continue
+        by_lid.setdefault(lid, {"senses": []})["senses"].extend(data["senses"])
+    edits = [(lid, {"senses": e["senses"]}) for lid, e in by_lid.items()]
+
+    for lid, data in edits:
+        n = len(data["senses"])
+        if n > 1:
+            print(f"# Lexeme:{lid} — {n} senses grouped into one lexeme edit (lexeme-centric)")
         print(json.dumps(data, ensure_ascii=False, indent=2))
         print()
-        edits.append((lid, data))
 
     if not args.write:
-        print(f"dry-run: {len(edits)} edit(s) built, none submitted.")
+        print(f"dry-run: {len(edits)} lexeme edit(s) built, none submitted.")
         if HEURISTIC_ITEM.startswith("Q-TODO"):
             print("NOTE: P887 heuristic item is a placeholder — pin HEURISTIC_ITEM before writing.")
         return

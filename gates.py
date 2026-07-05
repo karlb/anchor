@@ -42,18 +42,22 @@ EXCLUDE_P31 = set(_MAKESENSE_P31.split()) | set(_ABSTRACT_P31.split())
 EXCLUDE_P279 = set(_MAKESENSE_P279.split()) | set(_ABSTRACT_P279.split())
 
 
-def high_tier_where(cand_alias="c", it_alias="it"):
+def high_tier_where(cand_alias="c", it_alias="it", n_senses=1):
     """The canonical High-tier predicate as one SQL fragment, so verify / review /
     export / write all agree on what "High tier" means (they used to diverge — the
     scope exclusion was applied in some consumers but not others).
 
     = clean (unambiguous match ∩ no cross-pivot conflict) ∩ A (>=2 agreeing anchors)
-      ∩ B (monosemous target) ∩ D (concrete anchor with a P31) ∩ in-scope.
+      ∩ B (target sense count == n_senses) ∩ D (concrete anchor with a P31) ∩ in-scope.
+    `n_senses` selects the tier's target: 1 = monosemous (the pilot write stream, add
+    P5137 to the one existing sense); 0 = senseless (phase-2 sense-creation lane). ONE
+    definition, parameterized, so the two tiers can't silently drift (that bug once
+    existed — a hard-coded `= 1` here blocked senseless rows from every consumer).
     Assumes candidate alias `cand_alias` and the items DB attached as `it_alias`."""
     c, it = cand_alias, it_alias
     return (
         f"{c}.homograph_n_lid = 1 AND NOT {c}.cross_pivot_conflict "
-        f"AND {c}.support_clusters >= 2 AND {c}.target_n_senses = 1 "
+        f"AND {c}.support_clusters >= 2 AND {c}.target_n_senses = {int(n_senses)} "
         f"AND " + concrete_anchor_clause(c, it)
     )
 
