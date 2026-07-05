@@ -38,6 +38,15 @@ The High tier is ~7,400 candidate statements across de/en/sv; applying the measu
 
 But the verifier rate is deliberately ''not'' the safety mechanism. In the pilot and the proposed trial, '''every edit is individually confirmed by a human against the anchor's CC0 description before it is written''' — so output precision is governed by that per-edit review, not by the verifier's statistical hit-rate. The 95.9% / 95.7% figures are reported for transparency (how good the verifier-accepted stream is), to show the human is checking a stream that is already mostly correct rather than rubber-stamping noise. 2-of-3 verifier voting could push the verifier-only rate higher, but given the per-edit human gate it is optional, not load-bearing.
 
+=== External context: automated sense-linking is hard (why the human gate matters) ===
+
+To situate the verifier — and to explain why the '''human gate''', not the verifier's statistical hit-rate, is the safety mechanism — automated word-sense linking is an open, hard problem:
+
+* State-of-the-art WSD reaches only ~80 F1 on the standard English all-words benchmark and '''collapses on hard / out-of-distribution instances''': a gold-trained system scores 0.0, and even a 685-billion-parameter LLM manages only ~50 F1 on the HardEN set — instances that no prior system disambiguated correctly ([https://aclanthology.org/2025.emnlp-main.45/ Ming, Zhong & Li, EMNLP 2025]).
+* When the "candidate senses are given" assumption is dropped and a system must both find the spans ''and'' link them end-to-end (closer to this setting), the best reported result is ~76 F1 ([https://aclanthology.org/2024.findings-acl.851/ Bejgu et al., Findings of ACL 2024]).
+
+The verifier is therefore deliberately '''not''' run unsupervised. The pipeline (a) restricts to high-confidence, concrete-referent candidates; (b) classifies the sense↔item relation on a graded '''EQUAL / BROADER / NARROWER / LATERAL''' scale — the ontological-proximity scoring that recent surveys recommend over exact sense-match ([https://doi.org/10.3390/e28020236 Simos & Makris, ''Entropy'' 2026]); and (c) writes only '''human-confirmed EQUAL''' links. Using an LLM to filter candidate sense-links is itself an established technique in recent WSD-corpus construction (LLM-as-judge). None of these numbers is a like-for-like precision baseline for our stream — different inventory (WordNet vs Wikidata items), task (disambiguate every token vs verify one filtered link), and metric (exact-match F1 vs graded precision under a human gate) — they are cited as ''context'' for why the gate is load-bearing, not as a bar we claim to clear.
+
 === What gets ''declined'' (reviewer discipline) ===
 
 P5137 asserts the sense ''denotes that exact concept'', so the bar is equality, not similarity. Worked rules I apply (and which a reviewer can audit):
