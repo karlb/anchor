@@ -638,3 +638,95 @@ ts,target_lid,anchor_qid,target_lemma,target_lang,target_n_senses,verdict,reason
 2026-07-05 10:16:49,L242756,Q829909,besittning,sv,1,yes,EQUAL: control over a thing matches legal possession,sonnet,approved,local,
 2026-07-05 10:16:53,L1412313,Q4394121,beslutsamhet,sv,1,yes,EQUAL: decisiveness personality trait,sonnet,approved,local,
 2026-07-05 10:16:56,L1518461,Q100251705,bhutanes,sv,1,yes,EQUAL: nationality demonym matches blessed citizens-of-X concept,sonnet,approved,local,
+2026-07-05 10:40:03,L1558854,Q107090995,björnhona,sv,1,yes,EQUAL: female bear matches she-bear,sonnet,approved,local,
+2026-07-05 10:40:15,L32638,Q169336,blandning,sv,1,yes,EQUAL: mixture of combined parts matches mixture concept,sonnet,approved,local,
+2026-07-05 10:40:18,L52381,Q873625,brasilian,sv,1,yes,"EQUAL: national demonym, codified blessed target",sonnet,approved,local,
+2026-07-05 10:40:21,L246207,Q873625,brasilianare,sv,1,yes,"EQUAL: nationality demonym, blessed target",sonnet,approved,local,
+2026-07-05 10:40:25,L240156,Q61356432,brödskiva,sv,1,yes,EQUAL: bread slice matches exactly,sonnet,approved,local,
+2026-07-05 10:40:30,L1160759,Q2383053,digression,sv,1,yes,EQUAL: temporary shift of subject in narrative,sonnet,approved,local,
+2026-07-05 10:40:37,L1418477,Q1409751,elddop,sv,1,yes,EQUAL: ordeal/baptism by fire match,sonnet,approved,local,
+2026-07-05 10:41:32,L1495536,Q256401,förtret,sv,1,yes,EQUAL: annoyance/irritation matches förtret,sonnet,approved,local,
+2026-07-05 10:41:41,L475922,Q848944,handelsfartyg,sv,1,yes,EQUAL: merchant ship/vessel same concept,sonnet,approved,local,
+2026-07-05 10:41:46,L243314,Q268930,hjärnhinna,sv,1,yes,EQUAL: membrane around brain = meninges,sonnet,approved,local,
+2026-07-05 10:41:49,L33391,Q862086,indier,sv,1,yes,EQUAL: national demonym matches citizens/residents of India,sonnet,approved,local,
+2026-07-05 10:41:53,L1508344,Q99766936,ivorian,sv,1,yes,"EQUAL: national demonym, blessed target",sonnet,approved,local,
+2026-07-05 10:41:58,L1083564,Q42385,kakaoträd,sv,1,yes,EQUAL: cacao tree species matches,sonnet,approved,local,
+2026-07-05 10:42:01,L1414157,Q100249818,kamerunare,sv,1,yes,"EQUAL: national demonym, blessed nationality target",sonnet,approved,local,
+2026-07-05 10:42:02,L1414879,Q100249818,kamerunier,sv,1,yes,"EQUAL: national demonym, citizens of Cameroon",sonnet,approved,local,
+2026-07-05 10:42:05,L1414971,Q97135168,komorier,sv,1,yes,"EQUAL: national demonym, citizens of Comoros",sonnet,approved,local,
+2026-07-05 10:44:12,L33216,Q2304859,furste,sv,1,yes,EQUAL: furste = sovereign monarch ruler,sonnet,approved,local,
+2026-07-05 10:44:32,L247076,Q6343726,landsman,sv,1,yes,EQUAL: person from same homeland matches compatriot,sonnet,approved,local,
+2026-07-05 10:44:48,L241565,Q29714270,list,sv,1,yes,EQUAL: 'list' (cunning/craftiness) matches concept 'slughet/cunning',sonnet,approved,local,
+2026-07-05 10:44:57,L1506590,Q1456974,lydnad,sv,1,yes,EQUAL: act of obeying = obedience,sonnet,approved,local,
+2026-07-05 10:45:13,L1405419,Q11190,läkarvetenskap,sv,1,yes,EQUAL: medical science = medicine,sonnet,approved,local,
+2026-07-05 10:45:16,L46454,Q36253,längd,sv,1,yes,EQUAL: length as measurable physical extent,sonnet,approved,local,
+2026-07-05 10:45:24,L32328,Q37226,lärarinna,sv,1,yes,EQUAL: feminine teacher = gender-neutral teacher concept (gender rule),sonnet,approved,local,
+2026-07-05 10:45:33,L32382,Q26899865,läsare,sv,1,yes,EQUAL: reader person who reads matches,sonnet,approved,local,
+2026-07-05 10:45:36,L493535,Q26899865,läsarinna,sv,1,yes,"EQUAL: female reader, gender recorded separately",sonnet,approved,local,
+2026-07-05 10:45:55,L1420088,Q167131,långfinger,sv,1,yes,EQUAL: middle/longest finger = third finger of human hand,sonnet,approved,local,
+2026-07-05 10:46:00,L63677,Q703534,löntagare,sv,1,yes,EQUAL: wage earner equals employee concept,sonnet,approved,local,
+2026-07-05 10:46:21,L33601,Q115707279,mal,sv,1,yes,EQUAL: 'mal' = catfish; concept is catfish (ray-finned fish with barbels),sonnet,approved,local,
+2026-07-05 10:49:05,L588193,Q19840401,malaysier,sv,1,yes,EQUAL: person from Malaysia = citizens of Malaysia,sonnet,approved,local,
+2026-07-05 10:49:10,L1414937,Q1286876,maltes,sv,1,yes,EQUAL: 'person från Malta' matches citizens/residents of Malta,sonnet,approved,local,
+2026-07-05 10:49:15,L47109,Q1483709,markägare,sv,1,yes,EQUAL: landowner matches person owning land,sonnet,approved,local,
+2026-07-05 10:49:23,L38282,Q15735983,medförfattare,sv,1,yes,EQUAL: co-writing a text and being listed as co-author denote the same role,sonnet,approved,local,
+2026-07-05 10:49:31,L1525038,Q80149,melankoliker,sv,1,yes,EQUAL: melancholic person matches person prone to sadness/melancholy temperament,sonnet,approved,local,
+2026-07-05 10:49:37,L245983,Q127956,mikro,sv,1,yes,EQUAL: mikrovågsugn gloss matches microwave oven concept exactly,sonnet,approved,local,
+2026-07-05 10:49:40,L593235,Q496696,mjölkpulver,sv,1,yes,EQUAL: dried milk in powder form = dehydrated milk/milk powder,sonnet,approved,local,
+2026-07-05 10:49:44,L1018782,Q23065481,mobilitet,sv,1,yes,EQUAL: gloss=property of being movable; concept=ability to move,sonnet,approved,local,
+2026-07-05 10:49:46,L58488,Q100440056,moldavier,sv,1,yes,EQUAL: person from Moldova matches citizens/residents of Moldova,sonnet,approved,local,
+2026-07-05 10:49:47,L241112,Q2039972,monegask,sv,1,yes,EQUAL: singular demonym 'person from Monaco' matches Monegasques concept,sonnet,approved,local,
+2026-07-05 10:49:52,L1519592,Q45787133,motorcykelförare,sv,1,yes,EQUAL: gloss and concept description are identical,sonnet,approved,local,
+2026-07-05 10:50:21,L1097557,Q394,mätteknik,sv,1,yes,"EQUAL: metrology = science of measurement, exact match",sonnet,approved,local,
+2026-07-05 10:50:23,L1404569,Q931260,mörderska,sv,1,yes,EQUAL: feminine form 'mörderska' = 'mördare'; gender recorded separately,sonnet,approved,local,
+2026-07-05 10:50:26,L58489,Q97696014,namibier,sv,1,yes,EQUAL: person from Namibia = citizens/residents of Namibia,sonnet,approved,local,
+2026-07-05 10:50:29,L244374,Q200569,nederländare,sv,1,yes,EQUAL: person from Netherlands = citizens/residents of Netherlands,sonnet,approved,local,
+2026-07-05 10:50:42,L498525,Q1814990,nej,sv,1,yes,EQUAL: 'nej' is exactly the negation particle 'no' described,sonnet,approved,local,
+2026-07-05 10:50:48,L242690,Q4317274,nepales,sv,1,yes,EQUAL: person from Nepal matches Nepalis/citizens of Nepal,sonnet,approved,local,
+2026-07-05 10:50:56,L589821,Q659,nord,sv,1,yes,EQUAL: cardinal direction pointing away from south pole = north,sonnet,approved,local,
+2026-07-05 10:51:06,L55344,Q19267375,närhet,sv,1,yes,EQUAL: närhet and proximity denote the same state of nearness,sonnet,approved,local,
+2026-07-05 10:51:11,L32391,Q7363,näsa,sv,1,yes,EQUAL: nose organ matches concept,sonnet,approved,local,
+2026-07-05 10:51:33,L1093011,Q10301920,obeslutsamhet,sv,1,yes,EQUAL: 'state of being indecisive' matches 'inability to decide',sonnet,approved,local,
+2026-07-05 10:51:39,L1551098,Q2396923,odugling,sv,1,yes,EQUAL: incompetent/failed person = good-for-nothing,sonnet,approved,local,
+2026-07-05 10:51:45,L55895,Q815577,okunnighet,sv,1,yes,EQUAL: gloss matches ignorance concept exactly,sonnet,approved,local,
+2026-07-05 10:51:51,L35932,Q770480,orättvisa,sv,1,yes,"EQUAL: orättvisa=injustice, lack of fairness",sonnet,approved,local,
+2026-07-05 10:52:31,L809931,Q14560,Kaktus,de,1,yes,"Kaktus denotes cactus plants, members of Cactaceae family",sonnet,written,write.py b/CB/4b373bb3fa4e,2514098136
+2026-07-05 10:52:34,L619247,Q100249818,Kamerunerin,de,1,yes,"EQUAL: nationality demonym, gender separate",sonnet,written,write.py b/CB/4b373bb3fa4e,2514098145
+2026-07-05 10:52:36,L809398,Q13382566,Kanute,de,1,yes,BROADER: gloss is anyone who canoes; concept is competitive athlete only,sonnet,written,write.py b/CB/4b373bb3fa4e,2514098164
+2026-07-05 10:52:39,L876515,Q58697,Keiler,de,1,yes,NARROWER: male individual vs whole species,sonnet,written,write.py b/CB/4b373bb3fa4e,2514098178
+2026-07-05 10:52:41,L618232,Q484479,Kirgise,de,1,yes,Kirgise denotes a male member of the Kyrgyz ethnic group,sonnet,written,write.py b/CB/4b373bb3fa4e,2514098192
+2026-07-05 10:52:44,L37560,Q12507,Kugel,de,1,yes,BROADER: colloquial round 3D object wider than mathematical sphere surface,sonnet,written,write.py b/CB/4b373bb3fa4e,2514098200
+2026-07-05 10:52:46,L589420,Q397,Lateinisch,de,1,yes,Lateinisch used as noun denotes the Latin language,sonnet,written,write.py b/CB/4b373bb3fa4e,2514098215
+2026-07-05 10:52:49,L626665,Q2606511,Libanese,de,1,yes,"Libanese denotes a Lebanese person, matches Lebanese people",sonnet,written,write.py b/CB/4b373bb3fa4e,2514098230
+2026-07-05 10:52:51,L626664,Q2606511,Libanesin,de,1,yes,"Libanesin denotes a Lebanese woman, subset of Lebanese people",sonnet,written,write.py b/CB/4b373bb3fa4e,2514098247
+2026-07-05 10:52:54,L594719,Q5194627,Lilie,de,1,yes,Lilie as common noun denotes the genus Lilium,sonnet,written,write.py b/CB/4b373bb3fa4e,2514098261
+2026-07-05 10:52:56,L898730,Q178942,Misteldrossel,de,1,yes,Misteldrossel is the German name for Mistle Thrush,sonnet,written,write.py b/CB/4b373bb3fa4e,2514098274
+2026-07-05 10:52:59,L931877,Q2039972,Monegassin,de,1,yes,"Monegassin is female citizen of Monaco, matches concept",sonnet,written,write.py b/CB/4b373bb3fa4e,2514098281
+2026-07-05 10:53:01,L1459837,Q15098051,Nasenbeutler,de,1,yes,Nasenbeutler is the standard German term for bandicoot,sonnet,written,write.py b/CB/4b373bb3fa4e,2514098288
+2026-07-05 10:53:04,L589358,Q4317274,Nepalesin,de,1,yes,Nepalesin is the feminine form of Nepali person/citizen,sonnet,written,write.py b/CB/4b373bb3fa4e,2514098296
+2026-07-05 10:53:06,L493454,Q871904,Neuseeländer,de,1,yes,Neuseeländer denotes citizens or inhabitants of New Zealand,sonnet,written,write.py b/CB/4b373bb3fa4e,2514098304
+2026-07-05 10:53:09,L493451,Q871904,Neuseeländerin,de,1,yes,"Neuseeländerin denotes a female New Zealander, same concept",sonnet,written,write.py b/CB/4b373bb3fa4e,2514098311
+2026-07-05 10:53:11,L626473,Q16155102,Nigerianer,de,1,yes,Nigerianer denotes citizens or residents of Nigeria,sonnet,written,write.py b/CB/4b373bb3fa4e,2514098316
+2026-07-05 10:53:14,L626472,Q16155102,Nigerianerin,de,1,yes,Feminine form of Nigerianer; female Nigerian citizen,sonnet,written,write.py b/CB/4b373bb3fa4e,2514098330
+2026-07-05 10:53:16,L829164,Q14189,Quellwolke,de,1,yes,Quellwolke is a standard German term for cumulus clouds,sonnet,written,write.py b/CB/4b373bb3fa4e,2514098349
+2026-07-05 10:53:19,L1831,Q6674,Satan,de,1,yes,"Satan denotes the devil, personification of evil",sonnet,written,write.py b/CB/4b373bb3fa4e,2514098358
+2026-07-05 10:53:21,L935109,Q36855,Schweinegrippe,de,1,yes,Schweinegrippe denotes swine influenza as pig respiratory disease,sonnet,written,write.py b/CB/4b373bb3fa4e,2514098362
+2026-07-05 10:53:24,L612659,Q124216,Schweizerin,de,1,yes,Feminine form of Schweizer; denotes female Swiss citizen,sonnet,written,write.py b/CB/4b373bb3fa4e,2514098368
+2026-07-05 10:53:26,L692709,Q160894,Spanierin,de,1,yes,"EQUAL: feminine demonym, gender recorded separately",sonnet,written,write.py b/CB/4b373bb3fa4e,2514098377
+2026-07-05 10:53:29,L742111,Q8091,Sprachlehre,de,1,yes,'Sprachlehre' means grammar/language rules,sonnet,written,write.py b/CB/4b373bb3fa4e,2514098394
+2026-07-05 10:53:31,L763398,Q334667,Storyboard,de,1,yes,'Storyboard' is a direct loanword denoting the exact concept,sonnet,written,write.py b/CB/4b373bb3fa4e,2514098405
+2026-07-05 10:53:34,L226905,Q4544684,Suche,de,1,yes,"Suche means search, methods for finding people or things",sonnet,written,write.py b/CB/4b373bb3fa4e,2514098419
+2026-07-05 10:53:36,L640801,Q2408569,Thailänderin,de,1,yes,Thailänderin (Thai woman) denotes inhabitant of Thailand,sonnet,written,write.py b/CB/4b373bb3fa4e,2514098433
+2026-07-05 10:53:39,L864676,Q249697,Trauerrede,de,1,yes,"Trauerrede is a funeral/eulogy speech, exact match",sonnet,written,write.py b/CB/4b373bb3fa4e,2514098446
+2026-07-05 10:53:41,L617259,Q100146275,Tschechoslowakin,de,1,yes,Feminine form of Tschechoslowake; female Czechoslovak citizen,sonnet,written,write.py b/CB/4b373bb3fa4e,2514098463
+2026-07-05 10:53:44,L626660,Q101189416,Turkmene,de,1,yes,NARROWER: individual citizen vs collective demonym group,sonnet,written,write.py b/CB/4b373bb3fa4e,2514098476
+2026-07-05 10:53:46,L774811,Q61285,Ukulele,de,1,yes,'Ukulele' is a direct loanword for the ukulele,sonnet,written,write.py b/CB/4b373bb3fa4e,2514098491
+2026-07-05 10:53:49,L679403,Q12758374,Verwandte,de,1,yes,"Verwandte means relative, a person with kinship",sonnet,written,write.py b/CB/4b373bb3fa4e,2514098505
+2026-07-05 10:53:51,L306934,Q659503,Vogelei,de,1,yes,Vogelei means bird egg exactly,sonnet,written,write.py b/CB/4b373bb3fa4e,2514098519
+2026-07-05 10:53:53,L518726,Q15112254,Wagner,de,1,yes,Wagner is the German word for wainwright/wheelwright,sonnet,written,write.py b/CB/4b373bb3fa4e,2514098530
+2026-07-05 10:53:56,L486753,Q3517772,Weihnachtszeit,de,1,yes,Weihnachtszeit denotes exactly the Christmas/holiday season period,sonnet,written,write.py b/CB/4b373bb3fa4e,2514098543
+2026-07-05 10:53:59,L485534,Q1311,Winterzeit,de,1,yes,EQUAL: winter season matches winter time sense,sonnet,written,write.py b/CB/4b373bb3fa4e,2514098557
+2026-07-05 10:54:01,L485518,Q164160,Zwielicht,de,1,yes,'Zwielicht' denotes the dim light between day and night,sonnet,written,write.py b/CB/4b373bb3fa4e,2514098562
+2026-07-05 10:54:04,L884748,Q37083,Ölbaum,de,1,yes,Ölbaum is an established German term for the olive tree,sonnet,written,write.py b/CB/4b373bb3fa4e,2514098570
+2026-07-05 10:54:06,L612647,Q237534,Österreicherin,de,1,yes,"EQUAL: gendered demonym, citizens/residents of Austria",sonnet,written,write.py b/CB/4b373bb3fa4e,2514098578
+2026-07-05 11:21:49,L476208,Q3686031,koncentration,sv,1,yes,EQUAL: concentration sense matches chemistry property concept,sonnet,deferred,local,
