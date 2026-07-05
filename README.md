@@ -41,17 +41,20 @@ latest-lexemes.json.gz ─load_lexemes.py──▶ wikidata.sqlite3 ─┘      
 ```
 
 **Build the candidate stream:**
-1. **`build_clusters.py`** — sense-grounded clusters from `dictionaries/infer.sqlite3`.
+1. **`build_clusters.py`** — sense-grounded clusters from `dictionaries/infer.sqlite3`, built
+   from **all ~26 WikDict languages** (not just the pilot): richer evidence — more support per
+   candidate, and non-pilot pivots (e.g. es *banco*) bridge pilot members no pilot pivot links.
    Groups translation edges by the structural key `(lexentry, sense_num)` (never the gloss),
    which removes ~30% of naive lemma triples that would otherwise stitch different senses
    together (e.g. de *Bank* = bench vs. financial).
-2. **`load_lexemes.py`** — streams the Wikidata lexeme dump, keeps de/en/sv/fr/no lexemes, each
-   sense's P5137 target, and each sense's **own CC0 Wikidata gloss** (`sense_gloss` table;
-   DBnary's CC-BY-SA glosses are never touched).
+2. **`load_lexemes.py`** — streams the Wikidata lexeme dump, keeps the **review-language**
+   (`config.REVIEW_LANGS` = de/en/sv/fr/no) lexemes, each sense's P5137 target, and each sense's
+   **own CC0 Wikidata gloss** (`sense_gloss` table; DBnary's CC-BY-SA glosses are never touched).
 3. **`match.py`** — matches cluster members to noun lexemes (Q1084), finds the single dominant
    anchor Q per cluster, and emits one candidate per `(target lexeme, anchor Q)` with a
-   `support_clusters` confidence count. Abstains on conflicting anchors and never overrides an
-   existing P5137 (cross-pivot conflict).
+   `support_clusters` confidence count. **Targets are restricted to `config.REVIEW_LANGS`** —
+   the one place the pilot limit is applied to the output (anchors may be any loaded language).
+   Abstains on conflicting anchors and never overrides an existing P5137 (cross-pivot conflict).
 
 **Evaluate, verify, review, write:**
 4. **`precision.py`** / **`ablation.py`** — held-out leave-one-out precision and structural-gate

@@ -31,6 +31,18 @@ GENDER = os.path.join(DATA, "gender.sqlite3")    # LLM semantic-gender (P10339) 
 DECISIONS = os.path.join(HERE, "notes", "runs", "decisions.csv")
 
 
+# ---- language scope: two independent axes ------------------------------------
+# INPUT (clusters) vs REVIEW (candidate targets we ground/review/write) are now
+# separate. build_clusters.py draws translation edges from *all* WikDict languages
+# in infer.all_trans (richer, sense-grounded evidence: more support per candidate,
+# more non-pilot pivots bridging pilot members) — it does not read REVIEW_LANGS.
+# The pilot limit lives only at REVIEW: load_lexemes.py loads only these languages'
+# lexemes and match.py only emits candidates whose *target* is one of them (anchors
+# may come from any loaded language). So we can widen the input freely without
+# flooding the queue with languages we are not ready to review.
+REVIEW_LANGS = ("de", "en", "sv", "fr", "no")
+
+
 # ---- concept-language config (shared by the verifier and the review UI) ------
 # The all-language CC0 label/description cache (item_lang in wd_items.sqlite3, built by
 # fetch_anchor_langs.py) is the ONE multilingual store. Both the verifier's +multi concept

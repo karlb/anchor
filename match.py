@@ -8,9 +8,13 @@ Pipeline (all CC0 / structural — no gloss text):
   2. Anchor: among the cluster's matched lexemes, an "anchor" is a member lexeme
      whose P5137 senses agree on a single Q-item (monosemous anchor). A cluster
      has a usable anchor only if all such anchors agree on ONE Q (single dominant
-     anchor); otherwise abstain.
-  3. Targets: matched member lexemes not yet grounded to the anchor Q. A target
-     that already carries a *different* P5137 is a cross-pivot conflict -> abstain
+     anchor); otherwise abstain. Anchors may be in ANY loaded language — clusters
+     are built from all WikDict languages, so a non-pilot member can supply the
+     anchor concept.
+  3. Targets: matched member lexemes not yet grounded to the anchor Q, restricted
+     to config.REVIEW_LANGS — the languages we actually ground/review/write. This
+     is the one place the pilot limit is applied to the output. A target that
+     already carries a *different* P5137 is a cross-pivot conflict -> abstain
      (never override an existing P5137).
 
 Outputs data/candidates.sqlite3 (candidate + cluster_abstain tables).
@@ -70,7 +74,9 @@ GROUP BY lexentry, sense_num
 HAVING count(DISTINCT qid) = 1;
 CREATE INDEX ca_pivot ON cluster_anchor(lexentry, sense_num);
 
--- 3a. per-cluster candidate rows: matched lexemes not yet grounded to the anchor Q
+-- 3a. per-cluster candidate rows: matched lexemes not yet grounded to the anchor Q.
+-- Targets are restricted to REVIEW_LANGS (the review/write limit); anchor detection
+-- above stays unrestricted, so an anchor may be in any loaded language.
 DROP TABLE IF EXISTS candidate_raw;
 CREATE TABLE candidate_raw AS
 SELECT DISTINCT
@@ -87,7 +93,8 @@ SELECT DISTINCT
            AND mq.qid <> ca.anchor_qid)                            AS cross_pivot_conflict
 FROM cluster_anchor ca
 JOIN matched_member mm ON mm.lexentry=ca.lexentry AND mm.sense_num=ca.sense_num
-WHERE NOT EXISTS (                                                  -- ...not already grounded to Q
+WHERE mm.lang IN (%(review)s)                                       -- targets: review langs only
+  AND NOT EXISTS (                                                  -- ...not already grounded to Q
   SELECT 1 FROM member_qid mq
   WHERE mq.lid=mm.lid AND mq.lexentry=ca.lexentry AND mq.sense_num=ca.sense_num
     AND mq.qid = ca.anchor_qid);
@@ -124,7 +131,7 @@ LEFT JOIN anchor_counts ac USING (lexentry, sense_num)
 WHERE mc.n_matched >= 2
   AND NOT EXISTS (SELECT 1 FROM cluster_anchor ca
                   WHERE ca.lexentry=mc.lexentry AND ca.sense_num=mc.sense_num);
-""" % {"noun": NOUN_QID}
+""" % {"noun": NOUN_QID, "review": ",".join(f"'{c}'" for c in config.REVIEW_LANGS)}
 
 
 def main():

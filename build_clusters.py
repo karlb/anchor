@@ -1,12 +1,19 @@
 #!/usr/bin/env python3
-"""Build sense-grounded translation clusters for the de/en/sv/fr/no P5137 pilot.
+"""Build sense-grounded translation clusters for P5137 propagation.
 
 A *cluster* is anchored on a single pivot sense ``(lexentry, sense_num)`` taken
-from one pilot language, plus that sense's direct translations into the other
-pilot languages. Grouping on ``(lexentry, sense_num)`` — a structural key, NOT
-the gloss text — is what prevents polysemy stitching: two edges that merely
-share a lemma string (e.g. de ``Bank`` -> en ``bank`` financial vs. sediment)
-are kept apart because they come from different pivot senses.
+from one WikDict language, plus that sense's direct translations into every other
+WikDict language. All ~26 languages in ``infer.all_trans`` are used as input —
+richer, sense-grounded evidence than a pilot subset: more support per candidate,
+and non-pilot pivots (e.g. es ``banco``) bridge pilot members that no pilot pivot
+connects. The pilot restriction is *not* applied here; it lives only at the review
+stage (``config.REVIEW_LANGS``, enforced by load_lexemes.py + match.py), so
+widening the input never floods the queue with unreviewed languages.
+
+Grouping on ``(lexentry, sense_num)`` — a structural key, NOT the gloss text —
+is what prevents polysemy stitching: two edges that merely share a lemma string
+(e.g. de ``Bank`` -> en ``bank`` financial vs. sediment) are kept apart because
+they come from different pivot senses.
 
 License note: we read only ``lexentry``, ``sense_num`` and the lemma strings
 from ``infer.sqlite3``. The CC-BY-SA gloss text (``all_trans.sense``) is never
@@ -25,11 +32,9 @@ import sqlite3
 
 import config
 
-PILOT = ("de", "en", "sv", "fr", "no")
-
 
 def extract_edges(conn):
-    """Pull the pilot-language subset of all_trans into a small indexed table."""
+    """Pull every all-language translation edge into a small indexed table."""
     conn.execute("ATTACH DATABASE ? AS infer", [config.INFER])
     conn.executescript(
         """
@@ -39,20 +44,12 @@ def extract_edges(conn):
             lexentry TEXT, sense_num TEXT,
             from_lemma TEXT, to_lemma TEXT
         );
-        """
-    )
-    placeholders = ",".join("?" for _ in PILOT)
-    conn.execute(
-        f"""
         INSERT INTO edge
         SELECT from_lang, to_lang, lexentry, sense_num, from_vocable, to_vocable
         FROM infer.all_trans
-        WHERE from_lang IN ({placeholders})
-          AND to_lang   IN ({placeholders})
-          AND from_lang <> to_lang
-          AND sense_num IS NOT NULL
-        """,
-        [*PILOT, *PILOT],
+        WHERE from_lang <> to_lang
+          AND sense_num IS NOT NULL;
+        """
     )
     conn.execute("DETACH DATABASE infer")
     conn.executescript(
@@ -63,27 +60,6 @@ def extract_edges(conn):
         """
     )
     return conn.execute("SELECT count(*) FROM edge").fetchone()[0]
-
-
-def load_nouns(conn):
-    """Build noun(lang, lemma): common nouns only (properNoun excluded)."""
-    conn.executescript(
-        """
-        DROP TABLE IF EXISTS noun;
-        CREATE TABLE noun(lang TEXT, lemma TEXT, PRIMARY KEY (lang, lemma)) WITHOUT ROWID;
-        """
-    )
-    for lang in PILOT:
-        conn.execute("ATTACH DATABASE ? AS p", [config.PROCESSED % lang])
-        conn.execute(
-            """
-            INSERT OR IGNORE INTO noun
-            SELECT ?, written_rep FROM p.entry WHERE part_of_speech = 'noun'
-            """,
-            [lang],
-        )
-        conn.execute("DETACH DATABASE p")
-    return conn.execute("SELECT lang, count(*) FROM noun GROUP BY lang").fetchall()
 
 
 def build_clusters(conn):
@@ -106,7 +82,7 @@ def build_clusters(conn):
 
         CREATE INDEX cm_pivot ON cluster_member(lexentry, sense_num);
 
-        -- per-pivot summary: which pilot languages the sense reaches
+        -- per-pivot summary: how many languages the sense reaches
         DROP TABLE IF EXISTS cluster;
         CREATE TABLE cluster AS
         SELECT lexentry, sense_num,
@@ -129,28 +105,34 @@ def measure_stitching(conn):
     shared = distinct (de,en,sv) lemma triples where the de->en and de->sv
              edges come from the *same* German pivot sense.
     The difference is the spurious "stitched" triples the gate removes.
+
+    The de->en and de->sv slices are materialised into indexed temp tables first,
+    then self-joined. Joining them as inline CTEs instead makes SQLite nest-loop
+    two unindexed derived tables over the full all-language edge table, which runs
+    for minutes; the indexed temp tables keep it ~2s (the de/en/sv slice, hence
+    this number, is unchanged by the all-language widening).
     """
+    conn.executescript(
+        """
+        DROP TABLE IF EXISTS de_en;
+        DROP TABLE IF EXISTS de_sv;
+        CREATE TEMP TABLE de_en AS SELECT DISTINCT lexentry, sense_num, from_lemma de, to_lemma en
+          FROM edge WHERE from_lang='de' AND to_lang='en';
+        CREATE TEMP TABLE de_sv AS SELECT DISTINCT lexentry, sense_num, from_lemma de, to_lemma sv
+          FROM edge WHERE from_lang='de' AND to_lang='sv';
+        CREATE INDEX de_en_de  ON de_en(de);
+        CREATE INDEX de_sv_de  ON de_sv(de);
+        CREATE INDEX de_en_key ON de_en(lexentry, sense_num, de);
+        CREATE INDEX de_sv_key ON de_sv(lexentry, sense_num, de);
+        """
+    )
     naive = conn.execute(
-        """
-        WITH de_en AS (SELECT DISTINCT from_lemma de, to_lemma en
-                       FROM edge WHERE from_lang='de' AND to_lang='en'),
-             de_sv AS (SELECT DISTINCT from_lemma de, to_lemma sv
-                       FROM edge WHERE from_lang='de' AND to_lang='sv')
-        SELECT count(*) FROM (
-            SELECT DISTINCT de_en.de, en, sv
-            FROM de_en JOIN de_sv USING (de))
-        """
+        "SELECT count(*) FROM (SELECT DISTINCT de_en.de, en, sv "
+        "FROM de_en JOIN de_sv USING (de))"
     ).fetchone()[0]
     shared = conn.execute(
-        """
-        WITH de_en AS (SELECT DISTINCT lexentry, sense_num, from_lemma de, to_lemma en
-                       FROM edge WHERE from_lang='de' AND to_lang='en'),
-             de_sv AS (SELECT DISTINCT lexentry, sense_num, from_lemma de, to_lemma sv
-                       FROM edge WHERE from_lang='de' AND to_lang='sv')
-        SELECT count(*) FROM (
-            SELECT DISTINCT de_en.de, en, sv
-            FROM de_en JOIN de_sv USING (lexentry, sense_num, de))
-        """
+        "SELECT count(*) FROM (SELECT DISTINCT de_en.de, en, sv "
+        "FROM de_en JOIN de_sv USING (lexentry, sense_num, de))"
     ).fetchone()[0]
     return naive, shared
 
@@ -163,28 +145,25 @@ def main():
     conn.isolation_level = None
 
     n_edges = extract_edges(conn)
-    print(f"edges ({'/'.join(PILOT)} pilot subset): {n_edges:,}")
-
-    for lang, n in load_nouns(conn):
-        print(f"  nouns[{lang}]: {n:,}")
+    print(f"edges (all WikDict languages): {n_edges:,}")
 
     build_clusters(conn)
-    # A cluster needs >=2 pilot languages to ever yield a candidate (an anchor member
-    # plus a target member); reaching all PILOT langs is rare and not required.
-    total, multi, multinoun = conn.execute(
-        """
-        SELECT
-          count(*),
-          sum(n_langs >= 2),
-          sum(n_langs >= 2 AND EXISTS (
-              SELECT 1 FROM noun WHERE noun.lang = cluster.pivot_lang
-                                   AND noun.lemma = cluster.pivot_lemma))
+    # A cluster needs >=2 review languages among its members to yield a candidate
+    # (an anchor member + a target member); match.py restricts targets to
+    # config.REVIEW_LANGS, so that reach is what actually produces reviewable pairs.
+    review = ",".join(f"'{c}'" for c in config.REVIEW_LANGS)
+    total, review_reach = conn.execute(
+        f"""
+        SELECT count(*),
+               sum((SELECT count(DISTINCT lang) FROM cluster_member cm
+                    WHERE cm.lexentry = cluster.lexentry
+                      AND cm.sense_num = cluster.sense_num
+                      AND cm.lang IN ({review})) >= 2)
         FROM cluster
         """
     ).fetchone()
     print(f"clusters (pivot senses): {total:,}")
-    print(f"  spanning >=2 langs: {multi:,}")
-    print(f"  ...with a noun pivot: {multinoun:,}")
+    print(f"  reaching >=2 review languages ({'/'.join(config.REVIEW_LANGS)}): {review_reach:,}")
 
     naive, shared = measure_stitching(conn)
     stitched = naive - shared
