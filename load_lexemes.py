@@ -1,15 +1,21 @@
 #!/usr/bin/env python3
-"""Stream the Wikidata lexeme dump into SQLite, filtered to the review languages.
+"""Stream the Wikidata lexeme dump into SQLite: review languages in full, the rest
+anchor-only.
 
 Consumes ``latest-lexemes.json.gz`` (the weekly Wikidata lexeme dump: a JSON
-array with one lexeme entity per line). We keep only the review languages
-(``config.REVIEW_LANGS`` = German/English/Swedish/French/Norwegian-Bokmål) and
-extract bare facts: L-id, language, lexical category, every lemma representation,
-and each sense's P5137 ("item for this sense") target Q-id. Clusters are built
-from *all* WikDict languages (build_clusters.py); the pilot limit is applied only
-here and in match.py, so this is what keeps the reviewed/written output to the
-languages we are ready for. (To let anchors come from a non-review language, add
-its Q-id here and to config — anchor detection in match.py is language-agnostic.)
+array with one lexeme entity per line) and extracts bare facts: L-id, language,
+lexical category, every lemma representation, each sense's P5137 ("item for this
+sense") target Q-id, and each sense's own CC0 gloss.
+
+Two loading modes, keyed on ``config.REVIEW_LANGS``:
+  - **Review languages** (de/en/sv/fr/no): kept in full — they can be write
+    *targets* (grounded + reviewed) or anchors.
+  - **Every other WikDict language** (``LANG_QID`` covers all ~26): kept
+    **anchor-only** — a lexeme is loaded only if it carries a P5137. match.py
+    restricts targets to the review languages, so a non-review lexeme can only
+    ever serve as an anchor (an existing P5137 concept another cluster member
+    inherits); one without P5137 is dead weight. This is what lets a cluster
+    whose only grounded member is, say, Italian still anchor a German target.
 
 License: Wikidata's own data is CC0, including sense glosses (``senses[].glosses``),
 so we DO store them — they let a reviewer see the lexeme's own sense and let us audit
@@ -29,12 +35,23 @@ import sqlite3
 
 import config
 
-# Wikidata language item -> review 2-letter code. Norwegian Bokmaal (Q25167, lemma tag
-# "nb") maps to our "no" so it joins the WikDict/DBnary clusters, whose `no` is sourced
-# from the Bokmaal Wiktionary; Nynorsk (Q25164) has no matching DBnary dictionary here
-# and is left out. (QIDs verified against the dump: de/en/sv/fr/nb dominate their tags.)
-LANG_QID = {"Q188": "de", "Q1860": "en", "Q9027": "sv", "Q150": "fr", "Q25167": "no"}
-assert set(LANG_QID.values()) == set(config.REVIEW_LANGS), "LANG_QID must cover config.REVIEW_LANGS"
+# Wikidata language item -> WikDict 2-letter code, for all ~26 languages in
+# infer.all_trans. Each QID is the one the dump actually tags that language's lexemes
+# with (derived by scanning latest-lexemes.json.gz, not guessed): a mistyped QID would
+# silently load zero anchors. Note the non-obvious ones — no = Bokmaal Q25167 (its lemma
+# tag is "nb"; matches WikDict `no`, sourced from the Bokmaal Wiktionary; Nynorsk Q25164
+# excluded), and zh lexemes live under Q727694, not the macrolanguage Q7850.
+LANG_QID = {
+    # review languages (config.REVIEW_LANGS) — loaded in full (can be targets)
+    "Q188": "de", "Q1860": "en", "Q9027": "sv", "Q150": "fr", "Q25167": "no",
+    # remaining WikDict languages — loaded anchor-only (P5137-bearing lexemes)
+    "Q652": "it", "Q9056": "cs", "Q7737": "ru", "Q9035": "da", "Q5287": "ja",
+    "Q1321": "es", "Q5146": "pt", "Q397": "la", "Q809": "pl", "Q1412": "fi",
+    "Q7411": "nl", "Q256": "tr", "Q727694": "zh", "Q9240": "id", "Q7026": "ca",
+    "Q7918": "bg", "Q36510": "el", "Q9142": "ga", "Q36163": "ku", "Q7930": "mg",
+    "Q9083": "lt",
+}
+assert set(config.REVIEW_LANGS) <= set(LANG_QID.values()), "LANG_QID must cover config.REVIEW_LANGS"
 NOUN_QID = "Q1084"
 
 SCHEMA = """
@@ -113,6 +130,7 @@ def load(dump, out):
 
     lexemes, lemmas, senses, items, refs, glosses = [], [], [], [], [], []
     n_kept = 0
+    review = set(config.REVIEW_LANGS)
 
     def flush():
         conn.executemany("INSERT OR IGNORE INTO lexeme VALUES (?,?,?)", lexemes)
@@ -128,20 +146,30 @@ def load(dump, out):
             continue
         lang = LANG_QID.get(ent.get("language"))
         if lang is None:
-            continue  # not a review language
+            continue  # not a WikDict language
         lid = ent["id"]
+        # Buffer this lexeme's sense rows and note whether it is an anchor (carries P5137).
+        my_senses, my_glosses, my_items, my_refs = [], [], [], []
+        for s in ent.get("senses", []):
+            sid = s["id"]
+            my_senses.append((lid, sid))
+            for lang_code, g in s.get("glosses", {}).items():  # CC0 Wikidata glosses
+                my_glosses.append((lid, sid, lang_code, g["value"]))
+            for qid, claim_refs in p5137_claims(s):
+                my_items.append((lid, sid, qid))
+                for prop, value in claim_refs:
+                    my_refs.append((lid, sid, qid, prop, value))
+        # Non-review languages are loaded ANCHOR-ONLY: match.py restricts targets to
+        # REVIEW_LANGS, so a non-review lexeme can only ever serve as an anchor (an
+        # existing P5137). One with no P5137 is dead weight — skip it. Review-language
+        # lexemes are always kept (they can be targets).
+        if lang not in review and not my_items:
+            continue
         lexemes.append((lid, lang, ent.get("lexicalCategory")))
         for tag, rep in ent.get("lemmas", {}).items():
             lemmas.append((lid, tag, rep["value"]))
-        for s in ent.get("senses", []):
-            sid = s["id"]
-            senses.append((lid, sid))
-            for lang_code, g in s.get("glosses", {}).items():  # CC0 Wikidata glosses
-                glosses.append((lid, sid, lang_code, g["value"]))
-            for qid, claim_refs in p5137_claims(s):
-                items.append((lid, sid, qid))
-                for prop, value in claim_refs:
-                    refs.append((lid, sid, qid, prop, value))
+        senses.extend(my_senses); glosses.extend(my_glosses)
+        items.extend(my_items); refs.extend(my_refs)
         n_kept += 1
         if len(lemmas) > 50000:
             flush()
@@ -176,9 +204,11 @@ def main():
     if not os.path.exists(args.dump):
         raise SystemExit(f"dump not found: {args.dump}\nDownload latest-lexemes.json.gz and pass --dump.")
     stats = load(args.dump, args.out)
-    print(f"kept lexemes ({'/'.join(config.REVIEW_LANGS)}): {stats['lexemes']:,}")
+    review = set(config.REVIEW_LANGS)
+    print(f"kept lexemes: {stats['lexemes']:,}  "
+          f"(review {'/'.join(config.REVIEW_LANGS)} in full; other WikDict langs anchor-only)")
     for lang, n in stats["per_lang"]:
-        print(f"  {lang}: {n:,}")
+        print(f"  {lang}: {n:,}{'' if lang in review else '  (anchor-only)'}")
     print(f"nouns (Q1084): {stats['nouns']:,}")
     print(f"senses with P5137: {stats['p5137_senses']:,}")
     print(f"  on noun lexemes (anchor universe): {stats['anchored_noun_senses']:,}")

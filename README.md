@@ -47,9 +47,12 @@ latest-lexemes.json.gz ─load_lexemes.py──▶ wikidata.sqlite3 ─┘      
    Groups translation edges by the structural key `(lexentry, sense_num)` (never the gloss),
    which removes ~30% of naive lemma triples that would otherwise stitch different senses
    together (e.g. de *Bank* = bench vs. financial).
-2. **`load_lexemes.py`** — streams the Wikidata lexeme dump, keeps the **review-language**
-   (`config.REVIEW_LANGS` = de/en/sv/fr/no) lexemes, each sense's P5137 target, and each sense's
-   **own CC0 Wikidata gloss** (`sense_gloss` table; DBnary's CC-BY-SA glosses are never touched).
+2. **`load_lexemes.py`** — streams the Wikidata lexeme dump. Keeps **review-language**
+   (`config.REVIEW_LANGS` = de/en/sv/fr/no) lexemes in full (they can be write targets), and
+   **every other WikDict language anchor-only** (P5137-bearing lexemes, so any language can
+   anchor a cluster). Extracts each sense's P5137 target and its **own CC0 Wikidata gloss**
+   (`sense_gloss` table; DBnary's CC-BY-SA glosses are never touched). The 26-language
+   `LANG_QID` map is derived from the dump (each language's actual lexeme-tagging QID).
 3. **`match.py`** — matches cluster members to noun lexemes (Q1084), finds the single dominant
    anchor Q per cluster, and emits one candidate per `(target lexeme, anchor Q)` with a
    `support_clusters` confidence count. **Targets are restricted to `config.REVIEW_LANGS`** —

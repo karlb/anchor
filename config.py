@@ -32,14 +32,14 @@ DECISIONS = os.path.join(HERE, "notes", "runs", "decisions.csv")
 
 
 # ---- language scope: two independent axes ------------------------------------
-# INPUT (clusters) vs REVIEW (candidate targets we ground/review/write) are now
-# separate. build_clusters.py draws translation edges from *all* WikDict languages
-# in infer.all_trans (richer, sense-grounded evidence: more support per candidate,
-# more non-pilot pivots bridging pilot members) — it does not read REVIEW_LANGS.
-# The pilot limit lives only at REVIEW: load_lexemes.py loads only these languages'
-# lexemes and match.py only emits candidates whose *target* is one of them (anchors
-# may come from any loaded language). So we can widen the input freely without
-# flooding the queue with languages we are not ready to review.
+# INPUT (clusters + anchors) vs REVIEW (candidate targets we ground/review/write)
+# are separate. build_clusters.py draws translation edges from *all* WikDict
+# languages in infer.all_trans (richer, sense-grounded evidence), and load_lexemes.py
+# loads *every* WikDict language's anchors (P5137-bearing lexemes) so a cluster can
+# be anchored by any language. The pilot limit lives only at REVIEW: load_lexemes.py
+# keeps non-review languages anchor-only, and match.py only emits candidates whose
+# *target* is a REVIEW_LANGS lexeme. So we widen the evidence freely without ever
+# queueing a language we are not ready to review.
 REVIEW_LANGS = ("de", "en", "sv", "fr", "no")
 
 

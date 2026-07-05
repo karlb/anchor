@@ -6,16 +6,24 @@ current thresholds (high tier minus gate B = clean ∩ A ∩ D ∩ scope, any n_
 
 ## The three limitations
 
-1. ~~**Cluster evidence uses only the pilot languages.**~~ **Lifted 2026-07-05.** Clusters
-   now build from all ~26 WikDict languages (`build_clusters.py`); the pilot limit moved to
-   the review axis only (`config.REVIEW_LANGS`, enforced by `load_lexemes.py` + a target
-   filter in `match.py`, with anchors left language-agnostic). Measured effect on the same
-   dump: clean candidates 42,440 → 52,306 (a strict superset — zero coverage lost), the
-   monosemous verify pool 1,179 → 1,720 (+46%), the senseless create-lane 7,220 → 9,944
-   (+38%), and 4,107 shared pairs promoted from support=1 to gate-A (support≥2). Still open:
-   **anchors from a non-review language** — a cluster whose only P5137-bearing member is,
-   say, Italian can't yet supply an anchor because `load_lexemes.py` loads only review-lang
-   lexemes; add that language's Q-id there to realise the extra "distinct items per lexeme".
+1. ~~**Cluster evidence uses only the pilot languages.**~~ **Lifted 2026-07-05**, in two
+   steps, both keyed on `config.REVIEW_LANGS` (the pilot is now a review-axis concept only —
+   `load_lexemes.py` loads review langs in full + all other WikDict langs anchor-only, and a
+   target filter in `match.py` keeps candidates review-only):
+   - **All-language clusters** (`build_clusters.py`, no pilot edge filter). On its own a
+     *strict superset*: clean candidates 42,440 → 52,306, monosemous verify pool 1,179 →
+     1,720 (+46%), senseless create-lane 7,220 → 9,944, 4,107 pairs promoted to gate-A.
+   - **All-language anchors** (any WikDict language's existing P5137 can anchor a cluster).
+     This is NOT additive — non-review anchors mostly act as a cross-language *agreement
+     check*: clean 52,306 → 53,240 but with churn (9,407 new / 8,473 lost), and the
+     monosemous verify pool drops 1,720 → **1,448** (430 lost, 158 new) as disagreements
+     become `conflicting_anchors` abstentions. Sometimes a real precision catch (Habicht →
+     Q846664 "hawk" is dropped because Italian *astore* pins Q25353 "goshawk", the narrower
+     truth), sometimes over-conservative (vixen→fox broken by female-animal cross-talk).
+     **Net original→now: monosemous pool 1,179 → 1,448 (+23%).** Kept deliberately (user
+     call 2026-07-05) for the precision signal. Caveat: 27 already-decided pairs (9 written,
+     18 approved) now fall to abstain — they stay writable (write.py reads the decision log,
+     not the candidate stream) but the pipeline now disagrees with them → recheck candidates.
 2. **We defer items that aren't the recorded sense.** 150 of 639 decisions in
    `runs/decisions.csv` are deferred (23%) — minor-sense/homograph, BROADER/NARROWER,
    LATERAL, demonym→ethnic.
@@ -99,10 +107,13 @@ regardless of scope, and it is the first concrete increment of the target archit
 
 1. **Phase 2 as planned** (`sense_creation_plan.md`: sample → measure → gate → ~10
    hand-approved edits → disclose), amended to lexeme-centric review/write.
-2. ~~**All-language cluster build**~~ **— done 2026-07-05** (input-side widening; see
+2. ~~**All-language cluster build**~~ **— done 2026-07-05**, plus all-language anchors (see
    limitation 1 above). Still to do on the richer evidence: re-size gate A/support
    thresholds (support now runs much higher — common concepts accrue 50–100+ clusters via
-   non-pilot pivots), and cost sign-off for the +46% verify pool before re-verifying.
+   non-pilot pivots); re-verify the current 1,448-candidate monosemous High tier (the pool
+   both grew from clusters and was re-shaped by anchor disagreements, so cached verdicts no
+   longer cover it 1:1); and triage the 27 already-decided pairs the anchor cross-check now
+   contradicts (9 written, 18 approved) via `recheck` rows.
 3. **Match-and-extend** for polysemous and multi-item lexemes: run the existing
    gloss·tolerant verifier per (item, sense) pair — item-to-sense-gloss matching is
    the judgment it already performs (the homograph catches prove it); items matching
