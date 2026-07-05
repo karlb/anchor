@@ -50,11 +50,16 @@ def needed_qids(cache):
     """Distinct anchor Q-ids of the production verify set (ABD candidates) not yet fetched.
 
     This is the +multi verifier's universe — every anchor it will score needs its all-language
-    concept, so the multilingual format doesn't silently fall back to de/en/sv. An anchor counts
-    as done only when BOTH its labels/descriptions AND its aliases are cached, so a cache built
-    before aliases were added self-heals: those anchors re-fetch once (labels rewritten idempotently)."""
+    concept, because item_lang is now the ONLY concept the grader reads (no de/en/sv fallback).
+    So fetch EVERY non-missing ABD anchor — candidates() already excludes missing items, and we
+    deliberately do NOT pre-filter on the de/en/sv has_evidence gate: an anchor with no de/en/sv
+    label but a label in some other language would otherwise never be fetched and so never be
+    gradable. If an item genuinely has no CC0 label in any language, it fetches to zero rows,
+    is marked done, and verify's item_lang has_evidence skips it. An anchor counts as done only
+    when BOTH labels/descriptions AND aliases are cached, so a cache built before aliases were
+    added self-heals: those anchors re-fetch once (labels rewritten idempotently)."""
     args = argparse.Namespace(gate="ABD", min_support=1, senseless_only=False, all=True, limit=None)
-    want = sorted({r[3] for r in verify.candidates(args) if verify.has_evidence(r)})
+    want = sorted({r[3] for r in verify.candidates(args)})
     lang_done = {r[0] for r in cache.execute("SELECT qid FROM item_lang_fetched")}
     alias_done = {r[0] for r in cache.execute("SELECT qid FROM item_alias_fetched")}
     done = lang_done & alias_done

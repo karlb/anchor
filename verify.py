@@ -232,9 +232,12 @@ def fmt_concept(row, labels_all=False, descs_all=False, langs=None, il_map=None)
 
     langs (a config.CONCEPT_LANGS_* spec) selects the unified multilingual format: the
     concept is built from item_lang (il_map) across those languages, target-language
-    first. This is the +multi arm. When item_lang lacks the qid we widen the 3 editing
-    languages instead (labels_all=descs_all=True), so +multi degrades gracefully rather
-    than dropping coverage. langs=None keeps the legacy de/en/sv path byte-identical."""
+    first. This is the +multi arm, and the ONLY concept the live verifier grades on — its
+    has_evidence gate now keys on item_lang, so a live-run row always has an entry here.
+    The de/en/sv fallback below (when item_lang lacks the qid) is therefore reached only by
+    the frozen measurement harnesses' +multi arm and by --allow-degraded smoke runs; it is
+    the base availability tier, not a grading source. langs=None keeps the legacy de/en/sv
+    path byte-identical for those same measurement callers."""
     _lid, lang, _lemma, qid, _sup, lde, len_, lsv, dde, den, dsv = row
     if langs is not None:
         entry = (il_map or {}).get(qid)
@@ -263,7 +266,17 @@ def fmt_concept(row, labels_all=False, descs_all=False, langs=None, il_map=None)
     return qid, lab, desc
 
 
-def has_evidence(row):
+def has_evidence(row, il_map=None):
+    """True if the anchor has a gradable CC0 concept (some label or description).
+
+    With il_map (the all-language item_lang cache), evidence is judged from item_lang — the
+    SAME source the live verifier grades on — so an anchor is kept iff it can actually be
+    formatted as +multi. Without il_map it falls back to the de/en/sv base columns: the
+    pre-fetch availability tier used by fetch_anchor_langs.needed_qids (item_lang doesn't
+    exist yet at that point) and by the frozen measurement harnesses."""
+    if il_map is not None:
+        e = il_map.get(row[3])
+        return bool(e) and any((lab or desc) for lab, desc in e.values())
     qid, lab, desc = fmt_concept(row)
     return lab != "(no label)" or desc != "(no description)"
 
@@ -331,9 +344,9 @@ def main():
     ap.add_argument("--gate", default="", help="structural gate filter, e.g. ABD (the High tier)")
     ap.add_argument("--force", action="store_true", help="re-verify even cached candidates "
                     "(needed to apply a changed prompt/criterion; overwrites their verdicts)")
-    ap.add_argument("--allow-degraded", action="store_true", help="verify even when some "
-                    "anchors lack item_lang (the +multi concept) and would fall back to the "
-                    "de/en/sv base format — off by default so a stale fetch fails loud")
+    ap.add_argument("--allow-degraded", action="store_true", help="run even when some anchors "
+                    "lack item_lang — they are skipped (no +multi concept to grade) instead of "
+                    "failing the run; off by default so a stale fetch fails loud")
     ap.add_argument("--csv", default="", help="export the full verdict table to this CSV "
                     "on demand (the verdicts cache is data/verify.sqlite3)")
     args = ap.parse_args()
@@ -353,24 +366,27 @@ def main():
         (r[0], r[1]) for r in out.execute(
             "SELECT target_lid, anchor_qid FROM verdict WHERE prompt_ver = ?", [PROMPT_VER])}
 
-    rows = [r for r in candidates(args) if (r[0], r[3]) not in done and has_evidence(r)]
+    pool = [r for r in candidates(args) if (r[0], r[3]) not in done]
     if not args.all:
-        rows = rows[: args.limit]
-    # Refuse to silently downgrade +multi -> de/en/sv: every anchor about to be graded must
-    # have been fetched by fetch_anchor_langs.py, or the fetch is stale vs the candidate pool.
-    unfetched = unfetched_anchors({r[3] for r in rows})
+        pool = pool[: args.limit]
+    # The live verifier's concept comes ONLY from item_lang (the +multi format) — de/en/sv is
+    # no longer a grading fallback. So every anchor we intend to grade must have been fetched
+    # by fetch_anchor_langs.py, else it has no concept and the availability gate below silently
+    # drops it. Fail loud on a stale fetch instead.
+    unfetched = unfetched_anchors({r[3] for r in pool})
     if unfetched and not args.allow_degraded:
         ap.error(
-            f"{len(unfetched)} of {len({r[3] for r in rows}):,} anchors to verify are not in "
-            f"item_lang — verifying them would silently fall back from the +multi concept to "
-            f"the de/en/sv base format. Refresh the cache first:\n"
-            f"    uv run fetch_anchor_langs.py\n"
-            f"  (or pass --allow-degraded to grade on de/en/sv anyway, e.g. a smoke test).")
+            f"{len(unfetched)} of {len({r[3] for r in pool}):,} anchors to verify are not in "
+            f"item_lang — they have no +multi concept and would be skipped. Refresh the cache "
+            f"first:\n    uv run fetch_anchor_langs.py\n"
+            f"  (or pass --allow-degraded to run anyway, skipping them — e.g. a smoke test).")
+    il_map = load_item_lang({r[3] for r in pool})   # the all-language concept (+multi) — the
+    rows = [r for r in pool if has_evidence(r, il_map)]        # ONLY source the grader reads
+    skipped = len(pool) - len(rows)
     gmap = load_glosses({r[0] for r in rows})
-    il_map = load_item_lang({r[3] for r in rows})   # all-language concept (+multi format)
-    n_cov = sum(1 for r in rows if r[3] in il_map)
-    print(f"candidates to verify: {len(rows):,}  ({len(gmap):,} with a CC0 gloss; "
-          f"item_lang {n_cov:,}/{len(rows):,}; batch={args.batch}, model={args.model})")
+    print(f"candidates to verify: {len(rows):,}  ({len(gmap):,} with a CC0 gloss"
+          + (f"; {skipped:,} skipped — no item_lang concept" if skipped else "")
+          + f"; batch={args.batch}, model={args.model})")
 
     counts = {}
     for i in range(0, len(rows), args.batch):

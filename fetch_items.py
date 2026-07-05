@@ -3,9 +3,15 @@
 
 Reads the distinct anchor Q-ids from candidates.sqlite3 and fetches, from the
 Wikidata Action API (``wbgetentities``), each item's:
-  * CC0 label + description in de/en/sv  -> inputs for the LLM verifier;
-  * P31 (instance of) + P279 (subclass of) targets -> for the P279-hop
-    tolerance in the precision re-measure.
+  * P31 (instance of) + P279 (subclass of) targets -> item_type, the STRUCTURAL,
+    language-independent data behind gate D (concrete anchor) and the scope filter.
+    This is the reason this fetch still exists.
+  * CC0 label + description in de/en/sv -> the `item` table. NOT the verifier's
+    grading concept anymore (that is item_lang, all languages, via fetch_anchor_langs).
+    de/en/sv is a fossil of the original de/en/sv-only pilot; it survives only as the
+    cheap pre-item_lang availability tier (fetch_anchor_langs.needed_qids / has_evidence
+    before item_lang exists) and as the frozen measurement harnesses' base format. It
+    rides along for free in the same wbgetentities call that fetches P31/P279.
 
 Everything fetched is CC0 (Wikidata's own data). Results are cached in
 ``data/wd_items.sqlite3`` keyed by Q-id, so the script is fully resumable and a
