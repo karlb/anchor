@@ -28,8 +28,6 @@ import sqlite3
 
 import config
 
-NOUN_QID = "Q1084"
-
 BUILD = """
 -- 1. member -> Wikidata noun lexeme matches (exact lemma, same language).
 DROP TABLE IF EXISTS matched_member;
@@ -131,7 +129,7 @@ LEFT JOIN anchor_counts ac USING (lexentry, sense_num)
 WHERE mc.n_matched >= 2
   AND NOT EXISTS (SELECT 1 FROM cluster_anchor ca
                   WHERE ca.lexentry=mc.lexentry AND ca.sense_num=mc.sense_num);
-""" % {"noun": NOUN_QID, "review": ",".join(f"'{c}'" for c in config.REVIEW_LANGS)}
+""" % {"noun": config.NOUN_QID, "review": ",".join(f"'{c}'" for c in config.REVIEW_LANGS)}
 
 
 def main():

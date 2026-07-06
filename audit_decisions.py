@@ -29,11 +29,8 @@ import sqlite3
 
 import config
 import llm
-from review_queue import load_decisions
-
-CONFIRMED = ("approved", "written")  # human said the verifier-'yes' was correct
-LANGNAME = {"de": "German", "en": "English", "sv": "Swedish",
-            "fr": "French", "no": "Norwegian"}
+import verify
+from review_queue import CONFIRMED, load_decisions, load_verify_cache
 
 # --gloss audit: the verifier sees only the lemma, so it can't tell which sense a
 # monosemous lexeme holds. The lexeme's OWN CC0 Wikidata gloss can — when it plainly
@@ -53,19 +50,15 @@ GLOSS_SYSTEM = (
 )
 
 
-def cc0(it, qid, lang):
-    """The anchor's own CC0 label/description (target-language preferred). No DBnary."""
+def cc0(it, qid, lang, il_map):
+    """The anchor's CC0 concept exactly as the live verifier formats it (+multi from
+    item_lang, widened de/en/sv fallback) — the audit must show the SAME evidence the
+    graded verdict was based on, via the one shared formatter. No DBnary."""
     row = it.execute(
         "SELECT label_de,label_en,label_sv,desc_de,desc_en,desc_sv FROM item "
-        "WHERE qid=? AND NOT missing", [qid]).fetchone()
-    if not row:
-        return "(none)", "(none)"
-    lde, len_, lsv, dde, den, dsv = row
-    labels = {"de": lde, "en": len_, "sv": lsv}
-    descs = {"de": dde, "en": den, "sv": dsv}
-    lab = [labels.get(lang), len_] if lang != "en" else [len_]
-    lab = " / ".join(dict.fromkeys(x for x in lab if x)) or "(no label)"
-    desc = descs.get(lang) or den or dde or dsv or "(no description)"
+        "WHERE qid=? AND NOT missing", [qid]).fetchone() or (None,) * 6
+    _q, lab, desc = verify.fmt_concept((None, lang, None, qid, 0) + tuple(row),
+                                       langs=config.CONCEPT_LANGS_VERIFY, il_map=il_map)
     return lab, desc
 
 
@@ -84,35 +77,27 @@ def disagreements(dec, verdicts):
     return acc, rej
 
 
-def best_gloss(wd, lid, lang):
-    """The lexeme's own CC0 Wikidata sense gloss, target-language preferred."""
-    vals = {lg: g for lg, g in wd.execute("SELECT lang, gloss FROM sense_gloss WHERE lid=?", [lid])}
-    for code in [lang, "en", "de", "sv"]:
-        if vals.get(code):
-            return vals[code]
-    return next(iter(vals.values()), "")
-
-
 def run_gloss_batch(rows, model):
     lines = []
     for n, (d, gloss, lab, desc) in enumerate(rows, 1):
         lines.append(
-            f'{n}. word="{d["target_lemma"]}" ({LANGNAME.get(d["target_lang"], d["target_lang"])}) '
+            f'{n}. word="{d["target_lemma"]}" ({config.LANGNAME.get(d["target_lang"], d["target_lang"])}) '
             f'sense_gloss="{gloss}" | concept {d["anchor_qid"]}: label="{lab}" description="{desc}"')
     return llm.batch_json(GLOSS_SYSTEM, "Items:\n" + "\n".join(lines), model, len(rows),
                           {"verdict": "parse_error", "reason": ""})
 
 
-def gloss_audit(dec, it, wd, model, batch):
+def gloss_audit(dec, it, model, batch, il_map):
     """Flag confirmed (approved/written) links whose lexeme CC0 gloss contradicts the anchor."""
+    gmap = verify.load_glosses({lid for (lid, _), d in dec.items() if d["status"] in CONFIRMED})
     rows = []
     for (lid, qid), d in dec.items():
         if d["status"] not in CONFIRMED:
             continue
-        g = best_gloss(wd, lid, d["target_lang"])
+        g = verify.pick_gloss(gmap, lid, d["target_lang"])
         if not g:
             continue
-        lab, desc = cc0(it, qid, d["target_lang"])
+        lab, desc = cc0(it, qid, d["target_lang"], il_map)
         rows.append((d, g, lab, desc))
     flagged = []
     for i in range(0, len(rows), batch):
@@ -142,14 +127,12 @@ def main():
     dec = load_decisions()
     if not dec:
         raise SystemExit(f"no decisions at {config.DECISIONS}")
-    vf = sqlite3.connect(config.VERIFY)
-    verdicts = {(a, b): (v, r) for a, b, v, r in
-                vf.execute("SELECT target_lid, anchor_qid, verdict, reason FROM verdict")}
+    verdicts = load_verify_cache()
     it = sqlite3.connect(config.ITEMS)
+    il_map = verify.load_item_lang({qid for _, qid in dec})
 
     if args.gloss:
-        wd = sqlite3.connect(config.WIKIDATA)
-        rows, flagged = gloss_audit(dec, it, wd, args.model, args.batch)
+        rows, flagged = gloss_audit(dec, it, args.model, args.batch, il_map)
         print(f"gloss-contradiction audit: {len(rows)} confirmed links with a CC0 gloss "
               f"(model={args.model})")
         print(f"\n=== FLAGGED for re-review — lexeme gloss contradicts anchor: {len(flagged)} ===")
@@ -168,11 +151,11 @@ def main():
         out = []
         for kind, items in (("suspected_false_accept", acc), ("suspected_false_reject", rej)):
             for d, verdict, reason in items:
-                lab, desc = cc0(it, d["anchor_qid"], d["target_lang"])
+                lab, desc = cc0(it, d["anchor_qid"], d["target_lang"], il_map)
                 out.append({
                     "kind": kind, "lid": d["target_lid"], "qid": d["anchor_qid"],
                     "lemma": d["target_lemma"],
-                    "lang": LANGNAME.get(d["target_lang"], d["target_lang"]),
+                    "lang": config.LANGNAME.get(d["target_lang"], d["target_lang"]),
                     "human_status": d["status"], "verifier_now": verdict,
                     "verifier_reason": reason, "anchor_label": lab, "anchor_desc": desc,
                 })

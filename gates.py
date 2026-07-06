@@ -42,6 +42,23 @@ EXCLUDE_P31 = set(_MAKESENSE_P31.split()) | set(_ABSTRACT_P31.split())
 EXCLUDE_P279 = set(_MAKESENSE_P279.split()) | set(_ABSTRACT_P279.split())
 
 
+def clean_clause(cand_alias="c"):
+    """SQL fragment for 'clean': unambiguous lexeme match ∩ no cross-pivot conflict."""
+    c = cand_alias
+    return f"{c}.homograph_n_lid = 1 AND NOT {c}.cross_pivot_conflict"
+
+
+def gate_a(cand_alias="c", min_support=2):
+    """SQL fragment for the 'A' gate: >= min_support agreeing anchor clusters."""
+    return f"{cand_alias}.support_clusters >= {int(min_support)}"
+
+
+def gate_b(cand_alias="c", n_senses=1):
+    """SQL fragment for the 'B' gate: target sense count == n_senses (1 = monosemous
+    write stream, 0 = the senseless sense-creation lane)."""
+    return f"{cand_alias}.target_n_senses = {int(n_senses)}"
+
+
 def high_tier_where(cand_alias="c", it_alias="it", n_senses=1):
     """The canonical High-tier predicate as one SQL fragment, so verify / review /
     export / write all agree on what "High tier" means (they used to diverge — the
@@ -51,36 +68,28 @@ def high_tier_where(cand_alias="c", it_alias="it", n_senses=1):
       ∩ B (target sense count == n_senses) ∩ D (concrete anchor with a P31) ∩ in-scope.
     `n_senses` selects the tier's target: 1 = monosemous (the pilot write stream, add
     P5137 to the one existing sense); 0 = senseless (phase-2 sense-creation lane). ONE
-    definition, parameterized, so the two tiers can't silently drift (that bug once
-    existed — a hard-coded `= 1` here blocked senseless rows from every consumer).
+    definition, composed from the per-gate fragments above (so a consumer that needs a
+    single gate — verify's --gate, export's --all-clean — quotes the same SQL), and
+    parameterized so the two tiers can't silently drift (that bug once existed — a
+    hard-coded `= 1` here blocked senseless rows from every consumer).
     Assumes candidate alias `cand_alias` and the items DB attached as `it_alias`."""
     c, it = cand_alias, it_alias
-    return (
-        f"{c}.homograph_n_lid = 1 AND NOT {c}.cross_pivot_conflict "
-        f"AND {c}.support_clusters >= 2 AND {c}.target_n_senses = {int(n_senses)} "
-        f"AND " + concrete_anchor_clause(c, it)
-    )
+    return " AND ".join([clean_clause(c), gate_a(c), gate_b(c, n_senses),
+                         concrete_anchor_clause(c, it)])
 
 
 def concrete_anchor_clause(cand_alias="c", it_alias="it"):
     """SQL fragment for the 'D' gate: the anchor is a concrete, in-scope concept — it
     carries a P31 (a real instance-typed item, not a bare value) AND is not an
-    out-of-scope class. Shared by high_tier_where and verify.candidates so the
-    concrete-noun tier has ONE definition and they can't silently drift apart."""
+    out-of-scope class (EXCLUDE_P31/P279). Shared by high_tier_where and
+    verify.candidates so the concrete-noun tier has ONE definition and they can't
+    silently drift apart. Assumes the items DB is attached as `it_alias`."""
     c, it = cand_alias, it_alias
-    return (f"EXISTS(SELECT 1 FROM {it}.item_type _t "
-            f"WHERE _t.qid = {c}.anchor_qid AND _t.prop = 'P31') "
-            f"AND NOT (" + exclusion_clause(c, it) + ")")
-
-
-def exclusion_clause(cand_alias="c", it_alias="it"):
-    """SQL fragment (True when the candidate's anchor is an out-of-scope class).
-
-    Assumes the items DB is attached as `it_alias` (table item_type(qid,prop,value)).
-    Use as: ``... AND NOT (`` + exclusion_clause() + ``)``."""
     p31 = ",".join(f"'{q}'" for q in sorted(EXCLUDE_P31))
     p279 = ",".join(f"'{q}'" for q in sorted(EXCLUDE_P279))
-    return (f"EXISTS(SELECT 1 FROM {it_alias}.item_type _x "
-            f"WHERE _x.qid={cand_alias}.anchor_qid AND ("
+    return (f"EXISTS(SELECT 1 FROM {it}.item_type _t "
+            f"WHERE _t.qid = {c}.anchor_qid AND _t.prop = 'P31') "
+            f"AND NOT (EXISTS(SELECT 1 FROM {it}.item_type _x "
+            f"WHERE _x.qid={c}.anchor_qid AND ("
             f"(_x.prop='P31' AND _x.value IN ({p31})) OR "
-            f"(_x.prop='P279' AND _x.value IN ({p279}))))")
+            f"(_x.prop='P279' AND _x.value IN ({p279})))))")

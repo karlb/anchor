@@ -43,9 +43,6 @@ SYSTEM = (
     '[{"i":1,"gender":"female|male|neutral"}].'
 )
 
-LANGNAME = {"de": "German", "en": "English", "sv": "Swedish",
-            "fr": "French", "no": "Norwegian"}
-
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS gender(
     target_lid TEXT PRIMARY KEY, target_lemma TEXT, target_lang TEXT,
@@ -64,7 +61,7 @@ def approved_lexemes():
 
 
 def run_batch(rows, model):
-    lines = [f'{n}. language={LANGNAME.get(lang, lang)} noun="{lemma}"'
+    lines = [f'{n}. language={config.LANGNAME.get(lang, lang)} noun="{lemma}"'
              for n, (_lid, lemma, lang) in enumerate(rows, 1)]
     return llm.batch_json(SYSTEM, "Items:\n" + "\n".join(lines), model, len(rows),
                           {"gender": "parse_error"})

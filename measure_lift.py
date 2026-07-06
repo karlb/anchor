@@ -44,11 +44,6 @@ def item_rows(conn):
     return out
 
 
-def typed_qids(conn):
-    """qids with at least one P31 — the concrete-anchor gate (D)."""
-    return {r[0] for r in conn.execute("SELECT DISTINCT qid FROM it.item_type WHERE prop='P31'")}
-
-
 def passes_gate(gate, predicted, n_senses, n_other, typed):
     """Structural gate filter. gate is a string of letters: A (>=2 anchors),
     B (monosemous target), D (concrete anchor with P31)."""
@@ -80,7 +75,7 @@ def main():
     decided = [r for r in precision.evaluate(clusters) if r[3] in ("hit", "miss")]
     lemma = lemmas_by_lid(conn)
     items = item_rows(conn)
-    typed = typed_qids(conn) if "D" in gate else set()
+    typed = precision.typed_qids(conn) if "D" in gate else set()
 
     # build verifiable cases: (lid, lang, lemma, predicted_qid, label/desc...) + truth
     cases = []

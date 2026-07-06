@@ -134,9 +134,6 @@ SYSTEM = (
 # invalidates verdicts cached under an older prompt (they are re-verified, not trusted).
 PROMPT_VER = hashlib.sha1(SYSTEM.encode()).hexdigest()[:8]
 
-LANGNAME = {"de": "German", "en": "English", "sv": "Swedish",
-            "fr": "French", "no": "Norwegian"}
-
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS verdict(
     target_lid TEXT, anchor_qid TEXT, target_lemma TEXT, target_lang TEXT,
@@ -146,26 +143,24 @@ CREATE TABLE IF NOT EXISTS verdict(
 """
 
 
-def candidates(args):
+def candidates(gate="", min_support=1, senseless_only=False):
     """Clean candidates joined to the anchor Q's CC0 label/description.
 
-    --gate adds structural gates matching measure_lift/ablation: A (>=2 anchors),
-    B (monosemous target, n_senses==1), D (concrete anchor with a P31). ABD is the
-    measured ~95.9%-precision High tier.
+    `gate` adds structural gates (the same SQL fragments gates.high_tier_where composes):
+    A (>=2 anchors), B (monosemous target, n_senses==1), D (concrete in-scope anchor).
+    ABD is the measured ~95.9%-precision High tier. (The measurement harnesses' Python
+    gate D is the simpler has-P31 feature — see precision.typed_qids.)
     """
     cn = sqlite3.connect(config.CANDIDATES)
     cn.execute("ATTACH DATABASE ? AS it", [config.ITEMS])
-    gate = args.gate.upper()
-    where = "c.homograph_n_lid = 1 AND NOT c.cross_pivot_conflict AND c.support_clusters >= ?"
-    params = [max(args.min_support, 2 if "A" in gate else args.min_support)]
-    if args.senseless_only:
-        where += " AND c.target_n_senses = 0"
+    gate = gate.upper()
+    where = gates.clean_clause("c") + " AND " + gates.gate_a(
+        "c", max(min_support, 2) if "A" in gate else min_support)
+    if senseless_only:
+        where += " AND " + gates.gate_b("c", 0)
     if "B" in gate:
-        where += " AND c.target_n_senses = 1"
+        where += " AND " + gates.gate_b("c", 1)
     if "D" in gate:
-        # concrete anchor (has a P31) AND in-scope — the SAME 'D' gate
-        # (gates.concrete_anchor_clause) that high_tier_where / review_queue / export use,
-        # so --gate ABD matches their High tier and the two definitions can't drift apart.
         where += " AND " + gates.concrete_anchor_clause("c", "it")
     rows = cn.execute(
         f"""
@@ -175,9 +170,7 @@ def candidates(args):
         JOIN it.item i ON i.qid = c.anchor_qid AND NOT i.missing
         WHERE {where}
         ORDER BY c.support_clusters DESC, c.target_lid
-        """,
-        params,
-    ).fetchall()
+        """).fetchall()
     cn.close()
     return rows
 
@@ -221,14 +214,8 @@ def unfetched_anchors(qids):
     return qids - fetched
 
 
-def fmt_concept(row, labels_all=False, descs_all=False, langs=None, il_map=None):
+def fmt_concept(row, langs=None, il_map=None):
     """(qid, label, description) for the anchor concept, target-language first.
-
-    Default: label = target-lang + English (deduped), description = single best.
-    labels_all / descs_all widen each to ALL available CC0 languages (de/en/sv) —
-    this surfaces cross-language disagreement so the verifier can spot an INCOHERENT
-    target. Both off keeps the legacy format (so production is unchanged until an
-    A/B says a wider format actually helps).
 
     langs (a config.CONCEPT_LANGS_* spec) selects the unified multilingual format: the
     concept is built from item_lang (il_map) across those languages, target-language
@@ -236,9 +223,12 @@ def fmt_concept(row, labels_all=False, descs_all=False, langs=None, il_map=None)
     has_evidence gate now keys on item_lang, so a live-run row always has an entry here.
     The de/en/sv fallback below (when item_lang lacks the qid) is therefore reached only by
     the frozen measurement harnesses' +multi arm and by --allow-degraded smoke runs; it is
-    the base availability tier, not a grading source. langs=None keeps the legacy de/en/sv
-    path byte-identical for those same measurement callers."""
+    the base availability tier, not a grading source — and it widens to ALL of de/en/sv so
+    cross-language disagreement still surfaces. langs=None keeps the legacy de/en/sv base
+    format (target-lang + English label, single best description) byte-identical for the
+    measurement callers."""
     _lid, lang, _lemma, qid, _sup, lde, len_, lsv, dde, den, dsv = row
+    widen = False
     if langs is not None:
         entry = (il_map or {}).get(qid)
         res = config.resolve_concept_langs(entry, langs, target=lang) if entry else []
@@ -246,24 +236,20 @@ def fmt_concept(row, labels_all=False, descs_all=False, langs=None, il_map=None)
             lab = " / ".join(dict.fromkeys(l for _d, l, _ds in res if l)) or "(no label)"
             desc = " | ".join(f"{d}: {ds}" for d, _l, ds in res if ds) or "(no description)"
             return qid, lab, desc
-        labels_all = descs_all = True   # no item_lang coverage -> widen de/en/sv instead
+        widen = True   # no item_lang coverage -> widen de/en/sv instead
     # Only de/en/sv anchor labels live in the wide `item` table; a target lang outside
     # that set (fr/no) simply has no own-language column here, so use .get and fall back
     # to en/de/sv. (The +multi path above already supplies fr/no from item_lang.)
     labels = {"de": lde, "en": len_, "sv": lsv}
     descs = {"de": dde, "en": den, "sv": dsv}
     order = list(dict.fromkeys([lang, "en", "de", "sv"]))   # target-language first
-    if labels_all:
+    if widen:
         lab = " / ".join(dict.fromkeys(labels[c] for c in order if labels.get(c)))
-    else:
-        lab = " / ".join(dict.fromkeys(x for x in ([labels.get(lang), len_] if lang != "en" else [len_]) if x))
-    lab = lab or "(no label)"
-    if descs_all:
         desc = " | ".join(f"{c}: {descs[c]}" for c in order if descs.get(c))
     else:
+        lab = " / ".join(dict.fromkeys(x for x in ([labels.get(lang), len_] if lang != "en" else [len_]) if x))
         desc = descs.get(lang) or den or dde or dsv
-    desc = desc or "(no description)"
-    return qid, lab, desc
+    return qid, lab or "(no label)", desc or "(no description)"
 
 
 def has_evidence(row, il_map=None):
@@ -315,21 +301,19 @@ def pick_gloss(gmap, lid, lang):
     return next(iter(vals.values()), "")
 
 
-def run_batch(rows, model, gmap, labels_all=False, descs_all=False,
-              langs=None, il_map=None, system=None, timeout=300):
-    """Verify a batch. langs/il_map select the unified +multi concept format; system
-    overrides the default SYSTEM prompt (e.g. the multilingual-guided variant)."""
+def run_batch(rows, model, gmap, langs=None, il_map=None, timeout=300):
+    """Verify a batch. langs/il_map select the unified +multi concept format."""
     lines = []
     for n, row in enumerate(rows, 1):
         lid, lang, lemma, *_ = row
-        qid, lab, desc = fmt_concept(row, labels_all, descs_all, langs=langs, il_map=il_map)
+        qid, lab, desc = fmt_concept(row, langs=langs, il_map=il_map)
         gloss = pick_gloss(gmap, lid, lang)
         gpart = f' gloss="{gloss}"' if gloss else ""
         lines.append(
-            f'{n}. language={LANGNAME.get(lang, lang)} noun="{lemma}"{gpart} | '
+            f'{n}. language={config.LANGNAME.get(lang, lang)} noun="{lemma}"{gpart} | '
             f'concept {qid}: label="{lab}" description="{desc}"'
         )
-    return llm.batch_json(system or SYSTEM, "Items:\n" + "\n".join(lines), model, len(rows),
+    return llm.batch_json(SYSTEM, "Items:\n" + "\n".join(lines), model, len(rows),
                           {"verdict": "parse_error", "reason": ""}, timeout=timeout)
 
 
@@ -366,7 +350,8 @@ def main():
         (r[0], r[1]) for r in out.execute(
             "SELECT target_lid, anchor_qid FROM verdict WHERE prompt_ver = ?", [PROMPT_VER])}
 
-    pool = [r for r in candidates(args) if (r[0], r[3]) not in done]
+    pool = [r for r in candidates(args.gate, args.min_support, args.senseless_only)
+            if (r[0], r[3]) not in done]
     if not args.all:
         pool = pool[: args.limit]
     # The live verifier's concept comes ONLY from item_lang (the +multi format) — de/en/sv is

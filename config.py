@@ -15,7 +15,6 @@ DATA = os.path.join(HERE, "data")
 
 # inputs — local copies of the ready-built wikdict-gen dictionaries (read-only)
 INFER = os.path.join(DATA, "infer.sqlite3")
-PROCESSED = os.path.join(DATA, "%s.sqlite3")
 CLUSTERS = os.path.join(DATA, "clusters.sqlite3")
 WIKIDATA = os.path.join(DATA, "wikidata.sqlite3")
 CANDIDATES = os.path.join(DATA, "candidates.sqlite3")
@@ -30,6 +29,14 @@ GENDER = os.path.join(DATA, "gender.sqlite3")    # LLM semantic-gender (P10339) 
 # source of truth for approvals/rejections/writes; there is no review SQLite DB.
 DECISIONS = os.path.join(HERE, "notes", "runs", "decisions.csv")
 
+# The curated gold reference set (built by build_problematic_cases.py, scored by
+# score_approaches.py / ab_concept.py --gold). Git-tracked like DECISIONS, so it lives
+# here, anchored to the repo — not cwd-relative in each consumer.
+GOLD = os.path.join(HERE, "notes", "problematic_cases.csv")
+
+# Wikidata's "noun" lexical category — the pilot's lexeme filter (load_lexemes.py, match.py).
+NOUN_QID = "Q1084"
+
 
 # ---- language scope: two independent axes ------------------------------------
 # INPUT (clusters + anchors) vs REVIEW (candidate targets we ground/review/write)
@@ -41,6 +48,13 @@ DECISIONS = os.path.join(HERE, "notes", "runs", "decisions.csv")
 # *target* is a REVIEW_LANGS lexeme. So we widen the evidence freely without ever
 # queueing a language we are not ready to review.
 REVIEW_LANGS = ("de", "en", "sv", "fr", "no")
+
+# English names of the review languages, for LLM prompts ("language=German"). A missing
+# entry silently degrades a prompt to the bare 2-letter code, so keep this covering
+# REVIEW_LANGS (asserted below) — one map, shared by verify/gender/audit prompts.
+LANGNAME = {"de": "German", "en": "English", "sv": "Swedish",
+            "fr": "French", "no": "Norwegian"}
+assert set(REVIEW_LANGS) <= set(LANGNAME), "LANGNAME must cover REVIEW_LANGS"
 
 
 # ---- concept-language config (shared by the verifier and the review UI) ------

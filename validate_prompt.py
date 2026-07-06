@@ -29,21 +29,14 @@ import os
 import sqlite3
 
 import config
-from review_queue import load_decisions
+from review_queue import CONFIRMED, load_decisions, load_verify_cache
 
-CONFIRMED = ("approved", "written")  # human said the verifier-'yes' was correct
 ABSENT = "(out-of-scope)"            # gold row not present in the new cache
 
 
 def load_cache(path):
     """{(target_lid, anchor_qid): verdict} from a verify.sqlite3, or {} if missing."""
-    if not path or not os.path.exists(path):
-        return {}
-    conn = sqlite3.connect(path)
-    out = {(a, b): v for a, b, v in
-           conn.execute("SELECT target_lid, anchor_qid, verdict FROM verdict")}
-    conn.close()
-    return out
+    return {k: v[0] for k, v in load_verify_cache(path or "").items()}
 
 
 def models(path):

@@ -15,13 +15,9 @@ import subprocess
 # Running tally of `claude -p` usage across batch_json calls in this process. Every JSON response
 # carries `usage` + `total_cost_usd`; we used to parse `result` and discard the rest. Accumulating
 # it here (a fresh process starts at zero) lets a caller print real token/cost numbers without
-# changing batch_json's return type. Read via usage_summary(); reset_usage() to zero between phases.
+# changing batch_json's return type. Read via usage_summary().
 _TOK_FIELDS = ("input_tokens", "output_tokens", "cache_read_input_tokens", "cache_creation_input_tokens")
 _usage = {"calls": 0, "cost_usd": 0.0, **{k: 0 for k in _TOK_FIELDS}}
-
-
-def reset_usage():
-    _usage.update({"calls": 0, "cost_usd": 0.0, **{k: 0 for k in _TOK_FIELDS}})
 
 
 def usage_summary():

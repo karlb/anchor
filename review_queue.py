@@ -54,6 +54,10 @@ SENSELESS = False
 LOG_COLS = ["ts", "target_lid", "anchor_qid", "target_lemma", "target_lang",
             "target_n_senses", "verdict", "reason", "model", "status", "reviewer", "revid"]
 
+# The statuses meaning "the human said the verifier-'yes' was correct" (write.py folds
+# 'written' into approval) — shared by the audit/validation consumers of the log.
+CONFIRMED = ("approved", "written")
+
 
 def now():
     return datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
@@ -83,7 +87,7 @@ def append_decision(rec, path=DECISIONS):
         w.writerow({c: rec.get(c, "") for c in LOG_COLS})
 
 
-def pool(senseless=None):
+def pool(senseless=None, key=None):
     """The reviewable set: verifier-'yes' High-tier candidates (clean ∩ A: >=2
     anchors ∩ B ∩ D: concrete/P31 ∩ in-scope), each with the verdict's reason/model and
     the anchor's CC0 de/en/sv descriptions (the scope-nudge input; the displayed concept
@@ -91,7 +95,9 @@ def pool(senseless=None):
 
     `senseless` picks the B gate: False → monosemous targets (n_senses=1, the write
     stream); True → senseless targets (n_senses=0, the phase-2 sense-creation lane).
-    Defaults to the module SENSELESS mode so the HTTP Handler can call it param-free."""
+    Defaults to the module SENSELESS mode so the HTTP Handler can call it param-free.
+    `key`=(lid, qid) narrows to that one pair (the POST handler's membership check)
+    without recomputing the full join or duplicating the gate SQL."""
     if senseless is None:
         senseless = SENSELESS
     cn = sqlite3.connect(config.CANDIDATES)
@@ -106,9 +112,11 @@ def pool(senseless=None):
         JOIN vf.verdict v ON v.target_lid = c.target_lid AND v.anchor_qid = c.anchor_qid
         JOIN it.item i ON i.qid = c.anchor_qid AND NOT i.missing
         WHERE """ + gates.high_tier_where("c", "it", n_senses=0 if senseless else 1)
-        + """ AND v.verdict = 'yes'
+        + """ AND v.verdict = 'yes'"""
+        + (" AND c.target_lid = ? AND c.anchor_qid = ?" if key else "")
+        + """
         ORDER BY c.target_lang, c.target_lemma
-        """).fetchall()
+        """, list(key) if key else []).fetchall()
     cn.close()
     return rows
 
@@ -151,8 +159,7 @@ def status(args):
               f"{', '.join(sorted(ad))} — a better prompt/approach re-surfaces them")
     n_scope = sum(1 for r in undecided
                   if rel_of((r[0], r[1]), r[6], ctx) not in ad
-                  and scope_hint(r[6], *ctx.get((r[0], r[1]), (None, None)))[1]
-                  .startswith(("defer", "reject")))
+                  and action_of((r[0], r[1]), r[6], ctx) in ("defer", "reject"))
     if n_scope:
         print(f"  ⚠ of pending, {n_scope:,} are broader/narrower/lateral scope mismatches "
               "(review individually — likely defer/reject)")
@@ -196,17 +203,6 @@ def pick(lang, vals):
         if vals.get(code):
             return vals[code], code
     return "", None
-
-
-def lexeme_gloss(wd, lid, lang):
-    """The lexeme's own CC0 Wikidata sense gloss (target-language preferred).
-
-    Lets the reviewer compare the lexeme's actual sense against the anchor concept —
-    e.g. a monosemous 'sheet' glossed 'a piece of paper' should NOT link to a nautical
-    line. Glosses are CC0 (Wikidata's own), loaded by load_lexemes.py into sense_gloss."""
-    vals = {lg: g for lg, g in
-            wd.execute("SELECT lang, gloss FROM sense_gloss WHERE lid=?", [lid])}
-    return pick(lang, vals)
 
 
 def has_item_lang(it):
@@ -323,6 +319,13 @@ _ETHNIC_ANCHOR = ("ethnic group", "etnisk grupp", "etnisk gruppe", "ethnic", "et
 # demonyms (luxemburgare: keep -> needless defer) while fixing no false-keep. So keep it narrow.
 
 
+def anchor_desc(dde, den, dsv):
+    """The demonym nudge's anchor_desc input: the anchor's de/en/sv CC0 descriptions
+    joined. ONE composer, so the queue and every measurement harness feed
+    is_ethnic_demonym identical text (a change here reaches all of them at once)."""
+    return " | ".join(d for d in (dde, den, dsv) if d)
+
+
 def is_ethnic_demonym(gloss, anchor_desc):
     """A demonym lexeme linked to an ethnic-group anchor (not a nationality one)."""
     if not gloss or not anchor_desc:
@@ -332,11 +335,25 @@ def is_ethnic_demonym(gloss, anchor_desc):
     return any(m in anchor_desc.lower() for m in _ETHNIC_ANCHOR)
 
 
-def scope_hint(reason, gloss=None, anchor_desc=None):
-    """(relation, suggestion, css_class) for a verdict reason.
+# kind -> (action, reviewer-facing suggestion, css class). The ACTION token is what policy
+# consumers branch on (rel_class, ab_concept.predicted_action, the queue sort/counters);
+# the suggestion is display copy only — so rewording a hint can never silently change
+# triage behaviour again (it used to: the prose was parsed back by substring).
+HINTS = {
+    "lateral":        ("defer", "defer? (lateral — adjacent, not is-a)", "hold"),
+    "incoherent":     ("defer", "defer? (incoherent anchor — no basis to judge)", "hold"),
+    "demonym-ethnic": ("defer", "defer? (demonym vs ethnic group)", "hold"),
+    "convention":     ("keep", "keep? (demonym/gender convention)", "ok"),
+    "scope":          ("defer", "defer? (scope mismatch)", "hold"),
+    "":               ("", "", ""),
+}
+
+
+def scope_kind(reason, gloss=None, anchor_desc=None):
+    """(relation, kind) for a verdict reason — the ONE scope classifier.
 
     relation is the verifier's leading REL token (EQUAL/BROADER/NARROWER/LATERAL/INCOHERENT/…);
-    an empty suggestion means no scope flag (EQUAL or untagged). gloss + anchor_desc (when given)
+    kind keys HINTS ('' = no scope flag: EQUAL or untagged). gloss + anchor_desc (when given)
     enable the demonym→ethnic-group nudge: a person-from-X linked to an ethnic-group concept is
     downgraded keep→defer (the split convention)."""
     rel = (reason or "").split(":", 1)[0].strip().upper()
@@ -345,21 +362,28 @@ def scope_hint(reason, gloss=None, anchor_desc=None):
         # lateral-that-should-reject (arrangemang) from one that should go to a human
         # (barf=substance-vs-act, bekvämlighet=amenity-vs-state) by the relation alone, so we
         # defer rather than reject — surfacing for review never silently drops a good link.
-        return rel, "defer? (lateral — adjacent, not is-a)", "hold"
+        return rel, "lateral"
     if rel == "INCOHERENT":
-        return rel, "defer? (incoherent anchor — no basis to judge)", "hold"
+        return rel, "incoherent"
     if is_ethnic_demonym(gloss, anchor_desc):
-        return rel, "defer? (demonym vs ethnic group)", "hold"
+        return rel, "demonym-ethnic"
     if rel not in ("BROADER", "NARROWER"):
-        return rel, "", ""
+        return rel, ""
     # Demonym/gender convention: a gendered or demonymic lexeme still denotes the neutral
     # concept (sex/scope recorded separately) — but ONLY when the lexeme is NARROWER than (or
     # equal to) the concept. A BROADER lexeme is a real scope mismatch even if the reason
     # mentions a gender word: a generic word ('hog' = adult pig) is NOT the sex-specific
     # concept ('female pig'), so it must not be auto-kept by the convention nudge.
     if rel == "NARROWER" and any(k in (reason or "").lower() for k in _CONVENTION):
-        return rel, "keep? (demonym/gender convention)", "ok"
-    return rel, "defer? (scope mismatch)", "hold"
+        return rel, "convention"
+    return rel, "scope"
+
+
+def scope_hint(reason, gloss=None, anchor_desc=None):
+    """(relation, suggestion, css_class) — the display form of scope_kind."""
+    rel, kind = scope_kind(reason, gloss, anchor_desc)
+    _action, sug, cls = HINTS[kind]
+    return rel, sug, cls
 
 
 # ---- polysemy-collapse advisory ---------------------------------------------
@@ -376,19 +400,26 @@ _LANG3TO2 = {"swe": "sv", "fra": "fr", "deu": "de", "eng": "en", "nob": "no",
              "nno": "no", "nor": "no", "nld": "nl", "dan": "da", "epo": "eo"}
 
 
+_POLY_IDX = None
+
+
 def polysemy_index(cand):
     """{(target_lid, anchor_qid): {lang3_prefix: max_sense_count}} for source headwords whose
-    >=2 WikDict senses collapse onto a (target, anchor). candidate_raw is unindexed (83k rows),
-    so build this in ONE scan per render, not a lookup per row."""
-    idx = collections.defaultdict(dict)
-    for tlid, qid, lexentry, n in cand.execute(
-            "SELECT target_lid, anchor_qid, lexentry, COUNT(DISTINCT sense_num) "
-            "FROM candidate_raw GROUP BY target_lid, anchor_qid, lexentry "
-            "HAVING COUNT(DISTINCT sense_num) >= 2"):
-        pref = lexentry.split("/")[0]
-        d = idx[(tlid, qid)]
-        d[pref] = max(d.get(pref, 0), n)
-    return idx
+    >=2 WikDict senses collapse onto a (target, anchor). candidate_raw is unindexed (83k rows)
+    and immutable while a server runs (match.py rebuilds the whole DB), so scan it ONCE per
+    process — not per render, which happens on every GET and after every decision click."""
+    global _POLY_IDX
+    if _POLY_IDX is None:
+        idx = collections.defaultdict(dict)
+        for tlid, qid, lexentry, n in cand.execute(
+                "SELECT target_lid, anchor_qid, lexentry, COUNT(DISTINCT sense_num) "
+                "FROM candidate_raw GROUP BY target_lid, anchor_qid, lexentry "
+                "HAVING COUNT(DISTINCT sense_num) >= 2"):
+            pref = lexentry.split("/")[0]
+            d = idx[(tlid, qid)]
+            d[pref] = max(d.get(pref, 0), n)
+        _POLY_IDX = idx
+    return _POLY_IDX
 
 
 def undifferentiated_gloss(gloss, lemma):
@@ -440,12 +471,12 @@ def rel_class(reason, gloss=None, anchor_desc=None):
     'contested keep → defer' rule that OVERRIDES the verifier's EQUAL/BROADER guess, so all such
     pairs collapse into a single 'demonym-ethnic' class regardless of the overridden relation.
     Pre-REL free-text reasons group as '(legacy, pre-REL)' and never auto-defer."""
-    rel, suggestion, _ = scope_hint(reason, gloss, anchor_desc)
+    rel, kind = scope_kind(reason, gloss, anchor_desc)
     if rel not in KNOWN_RELS:
         return "(legacy, pre-REL)"
-    if "demonym vs ethnic" in suggestion:          # demonym→ethnic-group nudge → single defer class
+    if kind == "demonym-ethnic":                   # demonym→ethnic-group nudge → single defer class
         return "demonym-ethnic"
-    if rel in ("BROADER", "NARROWER") and "convention" in suggestion:
+    if kind == "convention":
         return rel + "·convention"
     return rel
 
@@ -453,8 +484,15 @@ def rel_class(reason, gloss=None, anchor_desc=None):
 def rel_of(key, reason, ctx=None):
     """rel_class for a pair, pulling its (gloss, anchor_desc) from a demonym_context map so the
     one gloss-aware classifier is reused at every call site."""
-    gloss, anchor_desc = (ctx or {}).get(key, (None, None))
-    return rel_class(reason, gloss, anchor_desc)
+    gloss, _glang, adesc = (ctx or {}).get(key, (None, None, None))
+    return rel_class(reason, gloss, adesc)
+
+
+def action_of(key, reason, ctx=None):
+    """The triage action ('', 'keep', 'defer', 'reject') scope_kind suggests for a pair,
+    gloss-aware via a demonym_context map — the token the queue sort and counters key on."""
+    gloss, _glang, adesc = (ctx or {}).get(key, (None, None, None))
+    return HINTS[scope_kind(reason, gloss, adesc)[1]][0]
 
 
 def load_verify_cache(path=config.VERIFY):
@@ -469,11 +507,12 @@ def load_verify_cache(path=config.VERIFY):
 
 
 def demonym_context(pairs):
-    """{(lid, qid): (gloss, anchor_desc)} — the demonym→ethnic-group nudge's inputs (the lexeme's
-    CC0 sense gloss + the anchor's de/en/sv description), joined ONCE in two batched queries so
-    every relation-classification site can feed rel_of/rel_class identical data. Without this the
-    replay paths (calibrate, auto_defer) and the render filter classify gloss-blind and drift from
-    the gloss-aware HTML queue. `pairs`: iterable of (lid, qid, lang)."""
+    """{(lid, qid): (gloss, gloss_lang, anchor_desc)} — the demonym→ethnic-group nudge's inputs
+    (the lexeme's CC0 sense gloss + the anchor's de/en/sv description), joined ONCE in two
+    batched queries so every relation-classification site can feed rel_of/rel_class identical
+    data. Without this the replay paths (calibrate, auto_defer) and the render filter classify
+    gloss-blind and drift from the gloss-aware HTML queue. gloss_lang rides along so render can
+    show the gloss without re-querying per row. `pairs`: iterable of (lid, qid, lang)."""
     pairs = [p for p in pairs if p[0] and p[1]]
     if not pairs:
         return {}
@@ -487,11 +526,11 @@ def demonym_context(pairs):
         glosses[lid][lg] = g
     wd.close()
     it = sqlite3.connect(config.ITEMS)
-    descs = {q: " | ".join(d for d in (de, en, sv) if d) for q, de, en, sv in it.execute(
+    descs = {q: anchor_desc(de, en, sv) for q, de, en, sv in it.execute(
         "SELECT qid, desc_de, desc_en, desc_sv FROM item WHERE qid IN (%s)"
         % ",".join("?" * len(qids)), list(qids))}
     it.close()
-    return {(lid, qid): (pick(lang, glosses.get(lid, {}))[0], descs.get(qid, ""))
+    return {(lid, qid): (*pick(lang, glosses.get(lid, {})), descs.get(qid, ""))
             for lid, qid, lang in pairs}
 
 
@@ -577,31 +616,29 @@ def render(limit, lang_filter=None, senseless=None):
     # same-lexeme rows adjacent so the reviewer approves/prunes the inventory as a set, not blind.
     lid_counts = collections.Counter(r[0] for r in pending)
     rows = [r for r in pending if not lang_filter or r[3] == lang_filter]
-    wd = sqlite3.connect(config.WIKIDATA)
     it = sqlite3.connect(config.ITEMS)
     cand = sqlite3.connect(config.CANDIDATES)
     have_il = has_item_lang(it)
     have_al = has_item_alias(it)
-    # Target sense gloss + polysemy-collapse flag, computed once per row (poly index is one scan)
-    # and reused by both the sort below and the render loop.
+    # Target sense gloss (from ctx — already batch-loaded by pending_view) + polysemy-collapse
+    # flag, computed once per row and reused by both the sort below and the render loop.
     poly_idx = polysemy_index(cand)
     meta = {}
     for r in rows:
-        gl, glang = lexeme_gloss(wd, r[0], r[3])
+        gl, glang, _ad = ctx.get((r[0], r[1]), ("", None, ""))
         meta[(r[0], r[1])] = (gl, glang, polysemy_hint(poly_idx, r[0], r[1], r[3], r[2], gl))
     # Float scope mismatches AND polysemy-collapse flags to the top: either concern first, then
     # convention broader/narrower, then clean EQUAL — so neither is ever pushed past `limit`.
     def _rank(r):
-        sug = scope_hint(r[6], *ctx.get((r[0], r[1]), (None, None)))[1]
-        if sug.startswith(("defer", "reject")) or meta[(r[0], r[1])][2]:
+        act = action_of((r[0], r[1]), r[6], ctx)
+        if act in ("defer", "reject") or meta[(r[0], r[1])][2]:
             return 0
-        return 1 if sug else 2
+        return 1 if act else 2
     # lid, qid tie-breakers keep a lexeme's several candidate senses adjacent (lexeme-centric).
     rows.sort(key=lambda r: (_rank(r), r[3], r[2], r[0], r[1]))
     c = collections.Counter(d["status"] for d in decisions.values())
     c["pending"] = len(pending)
-    n_scope = sum(1 for r in rows if scope_hint(r[6], *ctx.get((r[0], r[1]), (None, None)))[1]
-                  .startswith(("defer", "reject")))
+    n_scope = sum(1 for r in rows if action_of((r[0], r[1]), r[6], ctx) in ("defer", "reject"))
     n_poly = sum(1 for r in rows if meta[(r[0], r[1])][2])
     n_multi = sum(1 for r in rows if lid_counts[r[0]] > 1)  # rows on a multi-candidate lexeme
     head = " · ".join(f"{k}: {v}" for k, v in sorted(c.items())) or "empty"
@@ -619,11 +656,9 @@ def render(limit, lang_filter=None, senseless=None):
     if lang_filter:
         head += f" · filtered to {html.escape(lang_filter)} ({len(rows)})"
     trs = []
-    for (lid, qid, lemma, lang, _ns, _v, reason, _m,
-         dde, den, dsv) in rows[:limit]:
+    for (lid, qid, lemma, lang, _ns, _v, reason, _m, *_descs) in rows[:limit]:
         gl, glang, n_poly_row = meta[(lid, qid)]
-        anchor_desc = " | ".join(d for d in (dde, den, dsv) if d)
-        rel, sug, scls = scope_hint(reason, gl, anchor_desc)
+        rel, sug, scls = scope_hint(reason, gl, ctx.get((lid, qid), ("", None, ""))[2])
         scope_html = (f"<span class=rel>{rel}</span><br><span class={scls}>{html.escape(sug)}</span>"
                       if sug else f"<span class=d>{rel.title()}</span>")
         # Anchor concept in the curated languages (item_lang) — the ONLY concept source now
@@ -725,7 +760,7 @@ class Handler(BaseHTTPRequestHandler):
         action = data.get("action", [""])[0]
         lang = data.get("lang", [""])[0]
         if action in ("approved", "rejected", "deferred"):
-            row = next((r for r in pool() if r[0] == lid and r[1] == qid), None)
+            row = next(iter(pool(key=(lid, qid))), None)
             decided = load_decisions()
             if row and (lid, qid) not in decided:  # ignore replays / stale double-clicks
                 # row_lang, NOT lang: `lang` is the reviewer's active filter (hidden form

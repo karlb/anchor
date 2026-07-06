@@ -98,9 +98,8 @@ def http_get(params):
 
 
 def parse_entity(qid, ent):
-    """Extract (label/desc row, [(qid, prop, value), ...]) from an entity blob."""
-    if ent.get("missing") is not None and "id" not in ent:
-        return ("missing", None)
+    """Extract (label/desc row, [(qid, prop, value), ...]) from an entity blob.
+    The caller has already filtered out missing entities."""
     labels = ent.get("labels", {})
     descs = ent.get("descriptions", {})
     row = [qid]
@@ -167,9 +166,6 @@ def main():
                 missing.append((qid,))
                 continue
             row, ts = parse_entity(qid, ent)
-            if row == "missing":
-                missing.append((qid,))
-                continue
             rows.append(row)
             types.extend(ts)
         cache.executemany(

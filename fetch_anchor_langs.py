@@ -58,8 +58,7 @@ def needed_qids(cache):
     is marked done, and verify's item_lang has_evidence skips it. An anchor counts as done only
     when BOTH labels/descriptions AND aliases are cached, so a cache built before aliases were
     added self-heals: those anchors re-fetch once (labels rewritten idempotently)."""
-    args = argparse.Namespace(gate="ABD", min_support=1, senseless_only=False, all=True, limit=None)
-    want = sorted({r[3] for r in verify.candidates(args)})
+    want = sorted({r[3] for r in verify.candidates(gate="ABD")})
     lang_done = {r[0] for r in cache.execute("SELECT qid FROM item_lang_fetched")}
     alias_done = {r[0] for r in cache.execute("SELECT qid FROM item_alias_fetched")}
     done = lang_done & alias_done

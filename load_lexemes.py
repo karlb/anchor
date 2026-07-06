@@ -52,7 +52,6 @@ LANG_QID = {
     "Q9083": "lt",
 }
 assert set(config.REVIEW_LANGS) <= set(LANG_QID.values()), "LANG_QID must cover config.REVIEW_LANGS"
-NOUN_QID = "Q1084"
 
 SCHEMA = """
 DROP TABLE IF EXISTS lexeme;
@@ -180,10 +179,10 @@ def load(dump, out):
     stats = dict(
         lexemes=n_kept,
         per_lang=conn.execute("SELECT lang, count(*) FROM lexeme GROUP BY lang").fetchall(),
-        nouns=conn.execute("SELECT count(*) FROM lexeme WHERE lexcat=?", [NOUN_QID]).fetchone()[0],
+        nouns=conn.execute("SELECT count(*) FROM lexeme WHERE lexcat=?", [config.NOUN_QID]).fetchone()[0],
         p5137_senses=conn.execute("SELECT count(DISTINCT lid||sid) FROM sense_item").fetchone()[0],
         anchored_noun_senses=conn.execute(
-            "SELECT count(*) FROM sense_item si JOIN lexeme l USING(lid) WHERE l.lexcat=?", [NOUN_QID]
+            "SELECT count(*) FROM sense_item si JOIN lexeme l USING(lid) WHERE l.lexcat=?", [config.NOUN_QID]
         ).fetchone()[0],
         p5137_with_ref=conn.execute(
             "SELECT count(DISTINCT lid||sid||qid) FROM sense_ref").fetchone()[0],

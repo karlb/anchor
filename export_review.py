@@ -17,7 +17,7 @@ import sqlite3
 
 import config
 import gates
-import review_queue  # anchor_gloss: the one gloss policy, shared with the live review UI
+import review_queue  # anchor_gloss + pick: the one gloss/language-fallback policy, shared with the live UI
 
 
 def main():
@@ -36,7 +36,7 @@ def main():
     conn.execute("ATTACH DATABASE ? AS vf", [config.VERIFY])
     it_conn = sqlite3.connect(config.ITEMS)  # for the shared anchor_gloss preview
 
-    where = ("c.homograph_n_lid=1 AND NOT c.cross_pivot_conflict" if args.all_clean
+    where = (gates.clean_clause("c") if args.all_clean
              else gates.high_tier_where("c", "it", n_senses=0 if args.senseless else 1))
 
     rows = conn.execute(f"""
@@ -51,18 +51,9 @@ def main():
         ORDER BY c.support_clusters DESC, c.target_lang, c.target_lemma
     """).fetchall()
 
-    def pick(lang, vals):
-        """First non-empty value, preferring the target language then en/de/sv.
-        Returns (text, shown_lang) so a fallback language can be tagged."""
-        order = [lang] + [x for x in ("en", "de", "sv") if x != lang]
-        for code in order:
-            if vals.get(code):
-                return vals[code], code
-        return "", None
-
     def cell(lang, labels, descs):
-        l, llang = pick(lang, labels)
-        d, dlang = pick(lang, descs)
+        l, llang = review_queue.pick(lang, labels)
+        d, dlang = review_queue.pick(lang, descs)
         tag = lambda c: f" <span class=fl>[{c}]</span>" if c and c != lang else ""
         lab = f"<b>{html.escape(l)}</b>{tag(llang)}" if l else "<span class=d>(no label)</span>"
         dsc = f"<span class=d>{html.escape(d)}{tag(dlang)}</span>" if d else ""

@@ -45,14 +45,6 @@ def item_labels(conn):
     return out
 
 
-def typed_qids(conn):
-    """qids that have at least one P31 (instance of) — a concrete/typed concept.
-    Principled (not overfit): on the unbiased non-cognate subset, having any P31
-    is +16pt (59.7% vs 43.8% hit). Abstract typed classes (concept/activity/role)
-    still drag, but excluding those needs a blocklist we don't have here."""
-    return {r[0] for r in conn.execute("SELECT DISTINCT qid FROM it.item_type WHERE prop='P31'")}
-
-
 def build_records(conn):
     """Decided leave-one-out records + structural feature flags.
 
@@ -65,7 +57,7 @@ def build_records(conn):
     clusters = precision.load_clusters(conn)
     lemmas = lemma_sets(conn)
     labels = item_labels(conn)
-    typed = typed_qids(conn)
+    typed = precision.typed_qids(conn)
     recs = []
     for lid, q_true, predicted, outcome, lang, n_senses, n_other in precision.evaluate(clusters):
         if outcome not in ("hit", "miss"):

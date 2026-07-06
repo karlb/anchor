@@ -70,19 +70,15 @@ class QuotaAbort(RuntimeError):
 
 
 def predicted_action(verdict, reason, gloss=None, anchor_desc=None):
-    """Collapse a verifier verdict+relation to the action it implies, via scope_hint —
+    """Collapse a verifier verdict+relation to the action it implies, via scope_kind —
     so the metric scores the decision-relevant output, not the raw token. gloss + anchor_desc
-    enable scope_hint's demonym→ethnic-group nudge."""
+    enable the demonym→ethnic-group nudge."""
     if verdict == "no":
         return "reject"
     if verdict in ("uncertain", "error", "parse_error"):
         return "defer"
-    _rel, sug, _ = rq.scope_hint(reason, gloss, anchor_desc)
-    if sug.startswith("reject"):
-        return "reject"
-    if sug.startswith("defer"):
-        return "defer"
-    return "keep"   # EQUAL / convention-keep / unflagged
+    _rel, kind = rq.scope_kind(reason, gloss, anchor_desc)
+    return rq.HINTS[kind][0] or "keep"   # EQUAL / convention-keep / unflagged -> keep
 
 
 def scope_rel_map():
@@ -98,8 +94,7 @@ def load_eval_rows(suspect=False):
     truth = {k: HUMAN[(d.get("status") or "").strip()]
              for k, d in rq.load_decisions().items()
              if (d.get("status") or "").strip() in HUMAN}
-    args = argparse.Namespace(gate="ABD", min_support=1, senseless_only=False)
-    rows = [r for r in verify.candidates(args)
+    rows = [r for r in verify.candidates(gate="ABD")
             if verify.has_evidence(r) and (r[0], r[3]) in truth]
     if suspect:
         rel = scope_rel_map()
@@ -122,39 +117,41 @@ def run_arm(name, kwargs, rows, gmap, model, samples, cache, il_map, batch=8):
     cf = open(CACHE, "a")
     try:
         for s in range(samples):
-            for i in range(0, len(rows), batch):
-                chunk = rows[i:i + batch]
-                keys = [(name, s, r[0], r[3]) for r in chunk]
-                if all(k in cache for k in keys):
-                    results = [cache[k] for k in keys]
-                else:
-                    # +multi batches are bigger and run slower; give generous headroom and
-                    # RETRY a slow batch rather than aborting the whole run on one transient
-                    # slow response. Only a real quota marker aborts.
-                    vs = None
-                    for _attempt in range(3):
-                        try:
-                            vs = verify.run_batch(chunk, model, gmap, il_map=il_map,
-                                                  timeout=240, **kwargs)
-                            break
-                        except subprocess.TimeoutExpired:
-                            continue   # slow/transient — retry the batch
-                        except RuntimeError as e:
-                            if any(m in str(e).lower() for m in QUOTA_MARKERS):
-                                raise QuotaAbort(str(e)[:200]) from e
-                            break      # non-quota error — give up on this batch
-                    if vs is None:
-                        vs = [{"verdict": "error", "reason": ""}] * len(chunk)  # mark + continue
-                    results = [(v.get("verdict"), v.get("reason", "")) for v in vs]
-                    for k, (verdict, reason) in zip(keys, results):
-                        cache[k] = (verdict, reason)
-                        cf.write(json.dumps({"arm": name, "sample": s, "lid": k[2],
-                                             "qid": k[3], "verdict": verdict, "reason": reason}) + "\n")
-                    cf.flush()
-                for r, (verdict, reason) in zip(chunk, results):
-                    gloss = verify.pick_gloss(gmap, r[0], r[1])
-                    anchor_desc = " | ".join(d for d in r[8:11] if d)  # de/en/sv anchor descs
-                    votes[(r[0], r[3])][predicted_action(verdict, reason, gloss, anchor_desc)] += 1
+            # Batch only the UNCACHED pairs. Batching the raw row list and replaying a chunk
+            # only when ALL its pairs were cached meant one uncached pair re-paid the LLM for
+            # its 7 cached neighbours — and any eval-subset change shifted chunk boundaries,
+            # turning a mostly-cached run into a mostly-full-price one.
+            uncached = [r for r in rows if (name, s, r[0], r[3]) not in cache]
+            for i in range(0, len(uncached), batch):
+                chunk = uncached[i:i + batch]
+                # +multi batches are bigger and run slower; give generous headroom and
+                # RETRY a slow batch rather than aborting the whole run on one transient
+                # slow response. Only a real quota marker aborts.
+                vs = None
+                for _attempt in range(3):
+                    try:
+                        vs = verify.run_batch(chunk, model, gmap, il_map=il_map,
+                                              timeout=240, **kwargs)
+                        break
+                    except subprocess.TimeoutExpired:
+                        continue   # slow/transient — retry the batch
+                    except RuntimeError as e:
+                        if any(m in str(e).lower() for m in QUOTA_MARKERS):
+                            raise QuotaAbort(str(e)[:200]) from e
+                        break      # non-quota error — give up on this batch
+                if vs is None:
+                    vs = [{"verdict": "error", "reason": ""}] * len(chunk)  # mark + continue
+                for r, v in zip(chunk, vs):
+                    verdict, reason = v.get("verdict"), v.get("reason", "")
+                    cache[(name, s, r[0], r[3])] = (verdict, reason)
+                    cf.write(json.dumps({"arm": name, "sample": s, "lid": r[0],
+                                         "qid": r[3], "verdict": verdict, "reason": reason}) + "\n")
+                cf.flush()
+            for r in rows:
+                verdict, reason = cache[(name, s, r[0], r[3])]
+                gloss = verify.pick_gloss(gmap, r[0], r[1])
+                adesc = rq.anchor_desc(*r[8:11])  # de/en/sv anchor descs
+                votes[(r[0], r[3])][predicted_action(verdict, reason, gloss, adesc)] += 1
     finally:
         cf.close()
     return {k: c.most_common(1)[0][0] for k, c in votes.items()}
@@ -194,7 +191,7 @@ def main():
     rows, truth = load_eval_rows(suspect=args.suspect)
     if args.gold:
         gold_pairs = {(r["lid"], r["qid"])
-                      for r in csv.DictReader(open("notes/problematic_cases.csv"))}
+                      for r in csv.DictReader(open(config.GOLD))}
         rows = [r for r in rows if (r[0], r[3]) in gold_pairs]
     if args.limit:
         rows = rows[: args.limit]
@@ -202,15 +199,13 @@ def main():
     il_map = (verify.load_item_lang({r[3] for r in rows})
               if any(kw.get("langs") for _, kw in arms) else {})
     cache = load_cache()
-    cached_batches = sum(
-        all((name, s, r[0], r[3]) in cache for r in rows[i:i + 8])
-        for name, _ in arms for s in range(args.samples)
-        for i in range(0, len(rows), 8))
-    nbatches = (-(-len(rows) // 8)) * args.samples * len(arms)
+    total = len(rows) * args.samples * len(arms)
+    cached = sum((name, s, r[0], r[3]) in cache
+                 for name, _ in arms for s in range(args.samples) for r in rows)
     print(f"eval pairs: {len(rows)}  human truth: {dict(th)}  "
           f"item_lang coverage: {sum(1 for r in rows if r[3] in il_map)}/{len(rows)}")
     print(f"model={args.model} samples={args.samples} arms={[a[0] for a in arms]} "
-          f"-> {nbatches} batches  ({cached_batches} cached, {nbatches - cached_batches} to run)")
+          f"-> {total} pair-verdicts  ({cached} cached, {total - cached} to run)")
     if args.count:
         return
 

@@ -86,6 +86,15 @@ def pct(num, den):
     return f"{100.0 * num / den:.1f}%" if den else "n/a"
 
 
+def typed_qids(conn):
+    """qids with at least one P31 — the measurement harnesses' 'concrete anchor' feature
+    (gate D). Expects the items DB attached as `it`. Principled (not overfit): on the
+    unbiased non-cognate subset, having any P31 is +16pt (59.7% vs 43.8% hit).
+    NOTE: the live SQL gate (gates.concrete_anchor_clause) additionally excludes
+    out-of-scope classes; the harnesses keep the simpler has-P31 definition."""
+    return {r[0] for r in conn.execute("SELECT DISTINCT qid FROM it.item_type WHERE prop='P31'")}
+
+
 def load_types():
     """{qid: set(parent qids via P31/P279)} from the items cache, or None."""
     if not os.path.exists(config.ITEMS):
@@ -148,8 +157,11 @@ def report(records):
             [("monosemous", lambda v: v == 1), ("polysemous", lambda v: v > 1)])
     stratum("agreeing anchors", lambda r: r[6],
             [(">=2 anchors", lambda v: v >= 2), ("exactly 1", lambda v: v == 1)])
+    # every language present in the decided records (the held-out anchors span all loaded
+    # languages, not just the review set) — derived, so a new language can't go unreported
+    langs = sorted({r[4] for r in records if r[3] in ("hit", "miss")})
     stratum("language", lambda r: r[4],
-            [("de", lambda v: v == "de"), ("en", lambda v: v == "en"), ("sv", lambda v: v == "sv")])
+            [(lg, (lambda v, lg=lg: v == lg)) for lg in langs])
 
     # per-write-unit view: dedupe to (held-out lid, predicted Q) — the write unit.
     write_units = {}  # (lid, predicted) -> True if matches that lid's q_true

@@ -11,9 +11,9 @@ decisions + items DB. The rebuild runs only as a script; importing the module is
 (PROPOSED is importable data).
 """
 import csv
-import sqlite3
 import collections
 import config
+import review_queue as rq
 import verify
 import ab_concept as ab
 
@@ -189,21 +189,16 @@ def main():
         # where the real pipeline defers
         row = full_by_key.get(k)
         gloss = verify.pick_gloss(gmap, lid, row[1]) if row else None
-        anchor_desc = " | ".join(d for d in row[8:11] if d) if row else None
-        votes[(arm, k)][ab.predicted_action(verdict, reason, gloss, anchor_desc)] += 1
+        adesc = rq.anchor_desc(*row[8:11]) if row else None
+        votes[(arm, k)][ab.predicted_action(verdict, reason, gloss, adesc)] += 1
     pred = collections.defaultdict(dict)
     for (arm, k), c in votes.items():
         pred[arm][k] = c.most_common(1)[0][0]
 
-    it = sqlite3.connect(config.ITEMS)
-
     # full multilingual anchor evidence — every language's label+desc from the unified
-    # all-language CC0 cache (item_lang, fetch_anchor_langs.py).
+    # all-language CC0 cache (item_lang, fetch_anchor_langs.py), gold anchors only.
     PRIORITY = ["en", "de", "sv", "fr", "es", "it", "nl", "pt", "pl", "ru", "ja", "zh"]
-    wide = collections.defaultdict(dict)
-    for qid, lang, label, desc in it.execute(
-            "SELECT qid, lang, label, desc FROM item_lang"):
-        wide[qid][lang] = (label, desc)
+    wide = verify.load_item_lang({q for _, q in gold_keys})
 
 
     def anchor_evidence(qid):
@@ -242,11 +237,11 @@ def main():
 
     cols = ["lid", "qid", "lang", "lemma", "glosses_all", "anchor_langs",
             "human", "base", "multi", "proposed_correct", "rationale"]
-    with open("notes/problematic_cases.csv", "w", newline="") as f:
+    with open(config.GOLD, "w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=cols)
         w.writeheader()
         w.writerows(out)
-    print(f"wrote notes/problematic_cases.csv — {len(out)} curated gold cases keyed by (lid, qid), "
+    print(f"wrote {config.GOLD} — {len(out)} curated gold cases keyed by (lid, qid), "
           f"full multilingual anchor evidence inline")
 
     # candidates to curate next: suspect pairs not yet in the gold whose arms disagree, or an arm

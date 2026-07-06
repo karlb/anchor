@@ -78,14 +78,15 @@ def build_statement(anchor_qid, today):
     }
 
 
-def build_edit(row, today, include_senseless):
+def build_edit(row, today, include_senseless, it):
     """Return (wbeditentity_data, note) for one approved candidate.
 
     Monosemous: add the claim to the lexeme's single existing sense (its S-id is
     resolved against the live lexeme at write time). Senseless: create a sense whose
     gloss follows the decided policy — the anchor's CC0 description (label fallback,
     skip if neither), keyed by the language the text is in, plus an en gloss for
-    legibility (review_queue.anchor_gloss, the SAME text the review UI previewed)."""
+    legibility (review_queue.anchor_gloss, the SAME text the review UI previewed).
+    `it` is the shared items-DB connection (opened once in main)."""
     lid, qid, lemma, lang, n_senses = row
     claim = build_statement(qid, today)
 
@@ -93,9 +94,7 @@ def build_edit(row, today, include_senseless):
         sense = {"id": f"<{lid}-S? resolved live>", "claims": {"P5137": [claim]}}
         return {"senses": [sense]}, "add to existing sense"
     if include_senseless:
-        it = sqlite3.connect(config.ITEMS)
         glosses = anchor_gloss(it, qid, lang)  # {gloss_lang: text}, description-primary
-        it.close()
         if not glosses:  # no CC0 desc/label -> never fall back to the headword (degenerate)
             return None, "skipped: senseless, no CC0 anchor description/label (no gloss source)"
         sense = {"add": "",
@@ -311,7 +310,7 @@ def write_edits(edits, max_per_min):
 def main():
     ap = argparse.ArgumentParser()
     g = ap.add_mutually_exclusive_group()
-    g.add_argument("--dry-run", action="store_true", default=True,
+    g.add_argument("--dry-run", action="store_true",
                    help="print payloads, submit nothing (default)")
     g.add_argument("--write", action="store_true", help="actually submit (needs credentials)")
     ap.add_argument("--preview", action="store_true",
@@ -335,8 +334,9 @@ def main():
     # 2–4 senses, so near-synonym duplicates are caught in one human-approved inventory rather
     # than written blind pair-by-pair. Monosemous lexemes appear once, so grouping is a no-op there.
     by_lid = collections.OrderedDict()
+    it = sqlite3.connect(config.ITEMS)  # shared by the senseless gloss lookups
     for row in rows:
-        data, note = build_edit(row, today, args.include_senseless)
+        data, note = build_edit(row, today, args.include_senseless, it)
         lid, qid, lemma, lang = row[0], row[1], row[2], row[3]
         print(f"# {lang} {lemma!r}  Lexeme:{lid} → {qid}   [{note}]")
         if data is None:
