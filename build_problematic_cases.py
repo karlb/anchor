@@ -193,7 +193,7 @@ def main():
         votes[(arm, k)][ab.predicted_action(verdict, reason, gloss, adesc)] += 1
     pred = collections.defaultdict(dict)
     for (arm, k), c in votes.items():
-        pred[arm][k] = c.most_common(1)[0][0]
+        pred[arm][k] = ab.vote_action(c)   # sample tie -> defer (same rule as score_approaches)
 
     # full multilingual anchor evidence — every language's label+desc from the unified
     # all-language CC0 cache (item_lang, fetch_anchor_langs.py), gold anchors only.

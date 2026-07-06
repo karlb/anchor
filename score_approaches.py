@@ -35,13 +35,6 @@ def acceptable(r):
     return {x.strip() for x in m.group(1).split(",")} if m else {r["proposed_correct"]}
 
 
-def resolve(counter):
-    top = counter.most_common()
-    if len(top) > 1 and top[0][1] == top[1][1]:
-        return "defer"                       # split verifier -> human review
-    return top[0][0]
-
-
 def main():
     gold = {(r["lid"], r["qid"]): r for r in csv.DictReader(open(config.GOLD))}
 
@@ -59,7 +52,7 @@ def main():
             gloss, _glang, adesc = ctx.get(k, (None, None, None))
             act = ab.predicted_action(verdict, reason, gloss, adesc)
             votes[(ARMS[arm], k)][act] += 1
-    pred = {ak: resolve(c) for ak, c in votes.items()}
+    pred = {ak: ab.vote_action(c) for ak, c in votes.items()}   # sample tie -> defer
 
     # A gold case is only scored for an arm once that arm has cached verdicts for it (so a
     # half-run cache doesn't silently score uncovered cases as wrong). Coverage is reported.

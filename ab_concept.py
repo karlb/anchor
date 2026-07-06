@@ -81,6 +81,18 @@ def predicted_action(verdict, reason, gloss=None, anchor_desc=None):
     return rq.HINTS[kind][0] or "keep"   # EQUAL / convention-keep / unflagged -> keep
 
 
+def vote_action(counter):
+    """Majority-vote a Counter of per-sample predicted_action outputs down to one action; a
+    TIE -> defer (a split verifier belongs in human review). Single-sourced here so the gold
+    harnesses (score_approaches, build_problematic_cases) can't fork the tie rule. run_arm keeps
+    its own most_common vote — it feeds the live A/B, not the gold — but there are no ties in the
+    cache today, so both rules agree on current data."""
+    top = counter.most_common()
+    if len(top) > 1 and top[0][1] == top[1][1]:
+        return "defer"
+    return top[0][0]
+
+
 def scope_rel_map():
     """{(lid, qid): REL token} from the production verify cache — the verifier's relation
     for each pair, used to restrict the eval set to scope/coherence cases."""
