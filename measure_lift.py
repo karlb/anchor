@@ -46,7 +46,8 @@ def item_rows(conn):
 
 def passes_gate(gate, predicted, n_senses, n_other, typed):
     """Structural gate filter. gate is a string of letters: A (>=2 anchors),
-    B (monosemous target), D (concrete anchor with P31)."""
+    B (monosemous target), D (concrete in-scope anchor with P31 — see
+    precision.typed_qids, which applies the same scope exclusions as the live gate)."""
     if "A" in gate and not (n_other >= 2):
         return False
     if "B" in gate and not (n_senses == 1):

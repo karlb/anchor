@@ -38,6 +38,7 @@ import os
 import sqlite3
 
 import config
+import gates
 
 
 def load_clusters(conn):
@@ -87,12 +88,20 @@ def pct(num, den):
 
 
 def typed_qids(conn):
-    """qids with at least one P31 — the measurement harnesses' 'concrete anchor' feature
-    (gate D). Expects the items DB attached as `it`. Principled (not overfit): on the
-    unbiased non-cognate subset, having any P31 is +16pt (59.7% vs 43.8% hit).
-    NOTE: the live SQL gate (gates.concrete_anchor_clause) additionally excludes
-    out-of-scope classes; the harnesses keep the simpler has-P31 definition."""
-    return {r[0] for r in conn.execute("SELECT DISTINCT qid FROM it.item_type WHERE prop='P31'")}
+    """qids that pass gate D — the measurement harnesses' 'concrete anchor' feature.
+    Expects the items DB attached as `it`. Matches the live SQL gate
+    (gates.concrete_anchor_clause): carries a P31 AND is not an out-of-scope class
+    (gates.EXCLUDE_P31/P279). Principled (not overfit): on the unbiased non-cognate
+    subset, having any P31 is +16pt (59.7% vs 43.8% hit). The exclusion set is the same
+    one verify/review/write filter on, so measured lift describes the tier they operate
+    on (they used to diverge — has-P31 here vs. has-P31-minus-exclusions live)."""
+    typed = {r[0] for r in conn.execute("SELECT DISTINCT qid FROM it.item_type WHERE prop='P31'")}
+    p31 = ",".join(f"'{q}'" for q in sorted(gates.EXCLUDE_P31))
+    p279 = ",".join(f"'{q}'" for q in sorted(gates.EXCLUDE_P279))
+    excluded = {r[0] for r in conn.execute(
+        f"SELECT DISTINCT qid FROM it.item_type WHERE "
+        f"(prop='P31' AND value IN ({p31})) OR (prop='P279' AND value IN ({p279}))")}
+    return typed - excluded
 
 
 def load_types():

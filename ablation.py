@@ -89,13 +89,13 @@ def main():
     A = lambda r: r[1]
     B = lambda r: r[2]
     C = lambda r: r[3]
-    D = lambda r: r[5]  # concrete: predicted anchor has a P31 type
+    D = lambda r: r[5]  # concrete: predicted anchor has a P31 type, not an out-of-scope class
     print("single gates:")
     measure(recs, "baseline (none)", lambda r: True)
     measure(recs, "A: >=2 agreeing anchors", A)
     measure(recs, "B: monosemous target", B)
     measure(recs, "C: same-label / cognate", C)
-    measure(recs, "D: concrete anchor (has P31)", D)
+    measure(recs, "D: concrete in-scope anchor (P31)", D)
     print("\ncombinations:")
     measure(recs, "A & C", lambda r: A(r) and C(r))
     measure(recs, "A & D", lambda r: A(r) and D(r))
@@ -115,7 +115,7 @@ def main():
     measure(unbiased, "baseline (none)", lambda r: True)
     measure(unbiased, "A: >=2 agreeing anchors", A)
     measure(unbiased, "B: monosemous target", B)
-    measure(unbiased, "D: concrete anchor (has P31)", D)
+    measure(unbiased, "D: concrete in-scope anchor (P31)", D)
     measure(unbiased, "A & D", lambda r: A(r) and D(r))
     measure(unbiased, "A & B & D", lambda r: A(r) and B(r) and D(r))
     print("  (gate C omitted — degenerate on non-cognate truth)")

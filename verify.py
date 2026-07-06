@@ -149,7 +149,7 @@ def candidates(gate="", min_support=1, senseless_only=False):
     `gate` adds structural gates (the same SQL fragments gates.high_tier_where composes):
     A (>=2 anchors), B (monosemous target, n_senses==1), D (concrete in-scope anchor).
     ABD is the measured ~95.9%-precision High tier. (The measurement harnesses' Python
-    gate D is the simpler has-P31 feature — see precision.typed_qids.)
+    gate D, precision.typed_qids, applies the same P31 + scope-exclusion definition.)
     """
     cn = sqlite3.connect(config.CANDIDATES)
     cn.execute("ATTACH DATABASE ? AS it", [config.ITEMS])
