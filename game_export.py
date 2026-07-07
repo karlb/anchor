@@ -88,11 +88,19 @@ def spaced(seq, n):
 
 
 def build_tile(it, have_alias, ctx, row):
-    """The hub-ready tile JSON for one pool row — same composers as the local UI
-    (anchor_langs / alias_match / demonym_context gloss), so the crowd sees what the
-    local reviewer sees, minus the scope machinery the keep-classes don't need."""
+    """The hub-ready tile JSON for one pool row. The anchor item is NOT re-described —
+    the hub's item section already renders it in detail (user call 2026-07-07 dropped
+    the multilingual CC0 block). The verifier's free-text reason stays OUT of the tile
+    deliberately: every live tile is verifier-'yes', so the reason always argues
+    'match' — showing it anchors players toward yes (degrading the independent signal
+    plan §7 measures) and on rejected traps it leaks the expected answer via the
+    relation token. Only DETERMINISTIC notes ship, and they derive from the class/data,
+    never from gold, so traps stay indistinguishable: the alias hit (neutral evidence
+    the frontend won't compute) and the convention note (task definition — without it
+    honest players mark gendered/demonym forms 'no match' against the blessed
+    convention)."""
     lid, qid, lemma, lang = row[0], row[1], row[2], row[3]
-    gloss, glang, _adesc = ctx.get((lid, qid), ("", None, ""))
+    gloss, glang, adesc = ctx.get((lid, qid), ("", None, ""))
     lname = config.LANGNAME.get(lang, lang)
     word = (f"<b>{html.escape(lemma)}</b> <small>[{html.escape(lname)}]</small> — "
             f"<a href='https://www.wikidata.org/wiki/Lexeme:{lid}' target='_blank'>{lid}</a>")
@@ -103,20 +111,17 @@ def build_tile(it, have_alias, ctx, row):
         word += "<br><i>(no sense gloss on the lexeme)</i>"
     sections = [{"type": "html", "title": "Word sense", "text": word},
                 {"type": "item", "q": qid}]
-    # The item section renders in the player's UI language only; the multilingual CC0
-    # concept block is the cross-check that catches homographs (same reasoning as the
-    # local queue's anchor_langs display).
-    concept = "<br>".join(
-        f"<small>{html.escape(str(disp).upper())}</small> <b>{html.escape(lab or '')}</b>"
-        + (f" — {html.escape(ds)}" if ds else "")
-        for disp, lab, ds in rq.anchor_langs(it, qid))
+    notes = []
     aka = rq.alias_match(it, qid, lang, lemma) if have_alias else ""
     if aka:
-        concept += (f"<br>“{html.escape(aka)}” is a listed “also known as” "
-                    "name of this item")
-    if concept:
-        sections.append({"type": "html",
-                         "title": "Concept (CC0 labels / descriptions)", "text": concept})
+        notes.append(f"“{html.escape(aka)}” is a listed “also known as” "
+                     "name of this item.")
+    if rq.scope_kind(row[6], gloss, adesc)[1] == "convention":
+        notes.append("The word is a gendered or inhabitant/demonym form. By Wikidata "
+                     "convention it still links to the neutral concept — if that is "
+                     "the only difference, it counts as a match.")
+    if notes:
+        sections.append({"type": "html", "title": "Notes", "text": "<br>".join(notes)})
     # No id here: the contract has the service stamp id=sid at serve time.
     return {"sections": sections,
             "controls": [{"type": "buttons", "entries": BUTTONS}]}

@@ -59,7 +59,7 @@ boundary is for.
 Two artifacts, one in each direction, both versioned, nothing else crosses:
 
 ```
-  generation side (this repo, offline)          review side (Toolforge, online)
+  generation side (this repo, offline)          review side (own server, online)
  ┌──────────────────────────────────┐          ┌──────────────────────────────┐
  │ match → gates → verify → hints   │  feed    │  dumb tile spooler:          │
  │ game_export.py ─────────────────────────────▶  serve tiles, record votes   │
@@ -93,11 +93,14 @@ Two repos, split exactly along the boundary above:
 - **`anchor` (this repo):** `game_export.py`, `import_crowd.py`, promotion logic,
   analysis. They need the caches, `gates`/`review_queue` composers, and
   `decisions.csv`, and they change with the pipeline.
-- **Service repo (new, small, public):** the Toolforge tile spooler only.
-  Toolforge deploys by git-clone and requires open-source tool code — a separate
-  repo satisfies that without publishing the research repo. It also enforces
-  "no P5137 semantics" by construction: the service cannot import repo helpers,
-  only read the feed.
+- **Service repo (new, small, public):** the tile spooler only. (Update
+  2026-07-07: hosting moved from Toolforge to Karl's own server — the hub only
+  needs a public HTTPS URL; wikiloop's games ran on Google Cloud, so there is
+  precedent. That drops the Toolforge open-source-policy argument for the
+  split, but the repo stays separate and public: it enforces "no P5137
+  semantics" by construction — the service cannot import repo helpers, only
+  read the feed — and volunteers can inspect what the tool does with their
+  clicks.)
 
 Schema-drift mitigation: the service repo owns the contract (feed + vote-log
 schema doc and a small JSON Schema); `game_export.py` validates every feed
@@ -106,7 +109,7 @@ against that schema at export time. Producer asserts, consumer owns the spec.
 ## 3. Suggestion feed (generation → review)
 
 `game_export.py` (new) writes `data/game_feed/feed_v<NNN>.jsonl.gz`, uploaded to
-the Toolforge tool. One row per suggestion:
+the server. One row per suggestion:
 
 ```json
 {
@@ -123,22 +126,35 @@ the Toolforge tool. One row per suggestion:
 Pool = exactly what `review_queue.pool()` serves today (verifier-'yes' High tier
 via `gates.high_tier_where`), minus decided pairs (`config.DECISIONS` replay),
 minus auto-defer classes, minus the classes reserved for expert review (§6).
-Tile content reuses the queue's own composers so the crowd sees what Karl sees:
-lemma + CC0 sense gloss (`demonym_context`), anchor concept in
-`config.CONCEPT_LANGS_DISPLAY` languages (`anchor_langs`), the neutral alias hit
-(`alias_match`) — rendered as `html` sections plus an `item` section for the
-anchor Q. Buttons: **match** (green/yes), **no match** (blue/no), **can't tell**
-(white/skip). Instructions text explains P5137 ("the sense means exactly this
-concept") with two worked examples, per language.
+Tile content (amended 2026-07-07): lemma + CC0 sense gloss (`demonym_context`)
+as an `html` section, an `item` section for the anchor Q — the hub frontend
+renders the item in detail, so the earlier multilingual CC0 concept block was
+dropped as redundant — and an optional Notes section carrying only
+DETERMINISTIC hints: the neutral alias hit (`alias_match`; a target-language
+comparison the frontend won't compute) and the convention note on `·convention`
+tiles (task definition: without it honest players mark gendered/demonym forms
+"no match" against the blessed convention). The verifier's free-text reason is
+deliberately NOT shown: every live tile is verifier-'yes', so the reason always
+argues "match" — showing it anchors players toward yes and corrupts the §7
+calibration signal, and on rejected traps the relation token would leak the
+expected answer. Notes derive from class/data, never from `gold`, so traps stay
+indistinguishable. Buttons: **match** (green/yes), **no match** (blue/no),
+**can't tell** (white/skip). Instructions text explains P5137 ("the sense means
+exactly this concept") with two worked examples, per language.
 
 A new feed version fully replaces the old (same sids persist for undecided pairs;
 decided/withdrawn ones drop out). The service keeps accepting `log_action` for
 sids no longer in the feed and marks them `stale` — votes are never dropped.
 
-## 4. Review service (Toolforge)
+## 4. Review service (own server)
 
-New tool account (working name: `sense-anchor-game`), Python + SQLite — the same
-stdlib-first style as `review_queue.py`; Flask only if JSONP/routing gets annoying.
+Runs on Karl's server behind HTTPS (hub pages are HTTPS, so a plain-HTTP
+provider is mixed content and gets blocked; a stable URL is the game's
+registered identity). Mode B holds no Wikimedia credentials — even Mode A edits
+are executed by the hub under the player's OAuth. Python + SQLite — the same
+stdlib-first style as `review_queue.py`; Flask only if JSONP/routing gets
+annoying. The vote DB is volunteers' donated work: back it up, and run
+`import_crowd.py` pulls on a schedule from day one.
 
 Tables: `suggestion(sid, lane, mode, class, gold, tile_json, feed_version,
 first_served, n_served)` and `vote(sid, user, decision, ts, feed_version,
@@ -247,8 +263,8 @@ of expected value:
 ## 8. Phases
 
 **Phase 0 — verify externals (½ day, no code in main).**
-Register a hello-world game (3 hardcoded tiles, log-only) on the hub with a
-Toolforge stub. Confirms: registration is still self-serve, JSONP details, how
+Register a hello-world game (3 hardcoded tiles, log-only) on the hub, served
+from the server over HTTPS. Confirms: registration is still self-serve, JSONP details, how
 `item` sections render, what `log_action` actually sends (exact params, whether
 `lang` arrives), and that log-only buttons behave as the wikiloop source implies.
 Abort criterion: if registration is dead or the hub has no lexeme-tolerant
@@ -266,7 +282,7 @@ trap accuracy by class so judgment-call rejections (BROADER/LATERAL) don't
 over-penalize good-faith players. Traps split ~half rejected / half approved.
 
 **Phase 2 — pilot (service side).**
-Toolforge service, Mode B, k=2. Pilot slice: ~200 live pairs (de/en/sv first —
+Service on the server, Mode B, k=2. Pilot slice: ~200 live pairs (de/en/sv first —
 richest CC0 display data) + ~30 trap tiles. Announce on Wikidata:Lexicographical
 data + project chat. Run until the slice is consensus-complete or 4 weeks.
 
@@ -304,5 +320,5 @@ gloss creation — MachtSinn UX as prior art) as its own follow-up plan.
   BRFA text as a strengthening factor, not hidden.
 - **Open:** exact hub registration flow; whether `log_action` includes the
   player's language/UI locale (affects per-language quality splits); whether the
-  hub throttles `tiles` requests (affects serving-policy design); Toolforge tool
-  naming.
+  hub throttles `tiles` requests (affects serving-policy design); the service's
+  public hostname/URL (its registered identity — pick one that can stay).
