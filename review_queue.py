@@ -92,6 +92,8 @@ def pool(senseless=None, key=None):
     anchors ∩ B ∩ D: concrete/P31 ∩ in-scope), each with the verdict's reason/model and
     the anchor's CC0 de/en/sv descriptions (the scope-nudge input; the displayed concept
     comes from item_lang). 'pending' = this minus whatever the decision log already covers.
+    The trailing support_clusters/prompt_ver columns exist for game_export.py's feed
+    metadata — the UI consumers here star-capture past them.
 
     `senseless` picks the B gate: False → monosemous targets (n_senses=1, the write
     stream); True → senseless targets (n_senses=0, the phase-2 sense-creation lane).
@@ -107,7 +109,8 @@ def pool(senseless=None, key=None):
         """
         SELECT c.target_lid, c.anchor_qid, c.target_lemma, c.target_lang,
                c.target_n_senses, v.verdict, v.reason, v.model,
-               i.desc_de, i.desc_en, i.desc_sv
+               i.desc_de, i.desc_en, i.desc_sv,
+               c.support_clusters, v.prompt_ver
         FROM candidate c
         JOIN vf.verdict v ON v.target_lid = c.target_lid AND v.anchor_qid = c.anchor_qid
         JOIN it.item i ON i.qid = c.anchor_qid AND NOT i.missing
