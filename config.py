@@ -11,6 +11,12 @@ import os
 HERE = os.path.dirname(os.path.abspath(__file__))
 WIKDICT_GEN = os.environ.get("WIKDICT_GEN", "/home/karl/code/github/wikdict-gen")
 
+# The crowd-review service repo (the Toolforge tile spooler). It OWNS the feed/vote-log
+# contract (crowd_review_plan.md §2: producer asserts, consumer owns the spec);
+# game_export.py validates every feed row against its schema/feed_row.schema.json.
+GAME_REPO = os.environ.get("ANCHOR_GAME_REPO",
+                           os.path.join(os.path.dirname(HERE), "anchor-game"))
+
 DATA = os.path.join(HERE, "data")
 
 # inputs — local copies of the ready-built wikdict-gen dictionaries (read-only)

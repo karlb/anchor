@@ -18,14 +18,19 @@ never promotes them. Every run re-checks that no gold label leaks into tile/meta
     uv run game_export.py                          # full pool -> data/game_feed/feed_vNNN.jsonl.gz
     uv run game_export.py --langs de,en,sv --limit 200   # the Phase-2 pilot slice
 
-FEED SCHEMA v1 — one JSON object per line. The service repo owns this contract
-once it exists (plan §2); until then this docstring is the spec:
+FEED SCHEMA v1 — one JSON object per line. The service repo OWNS the contract
+(config.GAME_REPO: CONTRACT.md + schema/feed_row.schema.json); every row is
+validated against that schema file at export time (schema_check below) — producer
+asserts, consumer owns the spec. Summary:
   sid    "L123|Q456|v1"   stable id (lid|qid|tile schema); the hub's log_action tile id
   lane   "mono"           senseless sense-creation is a later phase
   mode   "B"              log-only buttons — no api_action anywhere in the feed
   class  rel_class()      the calibration bucket the pair belongs to
+  lang   target language, top level — the service matches ?action=tiles&lang=xx
+                          against it and must not peek into meta for it
   gold   null | "approved" | "rejected"      trap label (null = live suggestion)
-  tile   {id, sections: [...], controls: [{type:'buttons', entries: [...]}]}
+  tile   {sections: [...], controls: [{type:'buttons', entries: [...]}]}
+                          WITHOUT id — the service adds id=sid when serving
   meta   optimization snapshot (plan §7) — opaque to the service
 """
 
@@ -112,7 +117,8 @@ def build_tile(it, have_alias, ctx, row):
     if concept:
         sections.append({"type": "html",
                          "title": "Concept (CC0 labels / descriptions)", "text": concept})
-    return {"id": sid(lid, qid), "sections": sections,
+    # No id here: the contract has the service stamp id=sid at serve time.
+    return {"sections": sections,
             "controls": [{"type": "buttons", "entries": BUTTONS}]}
 
 
@@ -134,6 +140,90 @@ def build_meta(it, ctx, row, common):
                 gloss_undiff=rq.undifferentiated_gloss(gloss, lemma))
 
 
+# ---- contract validation (plan §2's schema-drift mitigation) -----------------
+# The service repo owns schema/feed_row.schema.json; we validate every exported row
+# against that FILE, so a contract change over there is enforced here on the next
+# export with no code sync. No jsonschema dependency (Phase 1: none) — this
+# implements exactly the keyword subset the contract uses and hard-fails on any
+# other, so the schema can never silently outgrow the validator.
+
+_ANNOTATIONS = {"$schema", "$id", "$comment", "title", "description"}
+_KEYWORDS = {"type", "required", "properties", "additionalProperties", "enum", "const",
+             "pattern", "minLength", "minItems", "items", "allOf", "if", "then", "not"}
+_TYPE_CHECKS = {
+    "object": lambda v: isinstance(v, dict),
+    "array": lambda v: isinstance(v, list),
+    "string": lambda v: isinstance(v, str),
+    "boolean": lambda v: isinstance(v, bool),
+    "null": lambda v: v is None,
+    "integer": lambda v: isinstance(v, int) and not isinstance(v, bool),
+    "number": lambda v: isinstance(v, (int, float)) and not isinstance(v, bool),
+}
+
+
+def _satisfies(inst, schema, path):
+    try:
+        schema_check(inst, schema, path)
+        return True
+    except ValueError:
+        return False
+
+
+def schema_check(inst, schema, path="$"):
+    """Raise ValueError at the first violation of the (subset) JSON Schema."""
+    unknown = set(schema) - _KEYWORDS - _ANNOTATIONS
+    if unknown:
+        raise ValueError(f"{path}: schema keyword(s) {sorted(unknown)} not implemented — "
+                         "extend schema_check to keep matching the contract")
+    if "type" in schema:
+        types = schema["type"] if isinstance(schema["type"], list) else [schema["type"]]
+        if not any(_TYPE_CHECKS[t](inst) for t in types):
+            raise ValueError(f"{path}: expected {schema['type']}, got {type(inst).__name__}")
+    if "enum" in schema and inst not in schema["enum"]:
+        raise ValueError(f"{path}: {inst!r} not in {schema['enum']}")
+    if "const" in schema and inst != schema["const"]:
+        raise ValueError(f"{path}: {inst!r} != {schema['const']!r}")
+    if isinstance(inst, str):
+        if "pattern" in schema and not re.search(schema["pattern"], inst):
+            raise ValueError(f"{path}: {inst!r} fails pattern {schema['pattern']!r}")
+        if len(inst) < schema.get("minLength", 0):
+            raise ValueError(f"{path}: shorter than minLength {schema['minLength']}")
+    if isinstance(inst, dict):
+        for k in schema.get("required", ()):
+            if k not in inst:
+                raise ValueError(f"{path}: missing required key {k!r}")
+        for k, sub in schema.get("properties", {}).items():
+            if k in inst:
+                schema_check(inst[k], sub, f"{path}.{k}")
+        ap = schema.get("additionalProperties", True)
+        if ap not in (True, False):
+            raise ValueError(f"{path}: non-boolean additionalProperties not implemented")
+        if ap is False and (extra := set(inst) - set(schema.get("properties", {}))):
+            raise ValueError(f"{path}: unexpected key(s) {sorted(extra)}")
+    if isinstance(inst, list):
+        if len(inst) < schema.get("minItems", 0):
+            raise ValueError(f"{path}: fewer than minItems {schema['minItems']}")
+        if "items" in schema:
+            for j, v in enumerate(inst):
+                schema_check(v, schema["items"], f"{path}[{j}]")
+    for sub in schema.get("allOf", ()):
+        schema_check(inst, sub, path)
+    if "if" in schema and _satisfies(inst, schema["if"], path) and "then" in schema:
+        schema_check(inst, schema["then"], path)
+    if "not" in schema and _satisfies(inst, schema["not"], path):
+        raise ValueError(f"{path}: matches a forbidden ('not') schema")
+
+
+def feed_schema():
+    path = os.path.join(config.GAME_REPO, "schema", "feed_row.schema.json")
+    try:
+        with open(path, encoding="utf-8") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        raise SystemExit(f"feed contract not found: {path} — clone the service repo "
+                         "beside this one or set ANCHOR_GAME_REPO")
+
+
 def no_gold_key(obj):
     """No dict anywhere in obj uses the key 'gold' (substring matching would
     false-positive on lemmas/glosses that merely contain the word)."""
@@ -148,14 +238,16 @@ def check(rec, seen):
     """Feed-contract self-check, run on every row (the plan's always-on unit check):
     schema shape, sid uniqueness, Mode B has no api_action, and the trap label never
     leaks below the top level."""
-    assert set(rec) == {"sid", "lane", "mode", "class", "gold", "tile", "meta"}, rec.keys()
+    assert set(rec) == {"sid", "lane", "mode", "class", "lang", "gold", "tile", "meta"}, \
+        rec.keys()
     assert rec["sid"] not in seen, f"duplicate sid {rec['sid']}"
     assert rec["mode"] == "B" and rec["lane"] == "mono"
+    assert rec["lang"] and rec["lang"] == rec["meta"]["lang"]
     assert rec["gold"] in (None, "approved", "rejected")
     if rec["gold"] != "rejected":   # rejected traps may carry any class (see build)
         assert rec["class"] in CROWD_CLASSES
     tile = rec["tile"]
-    assert tile["id"] == rec["sid"] and tile["sections"] and tile["controls"]
+    assert set(tile) == {"sections", "controls"} and tile["sections"] and tile["controls"]
     for entry in tile["controls"][0]["entries"]:
         assert "api_action" not in entry, "Mode B feed must not carry edits"
     assert no_gold_key([tile, rec["meta"]]), "trap label leaked into content"
@@ -218,7 +310,7 @@ def build(langs=None, limit=0, trap_frac=0.15):
     for r, gold in sorted([(r, None) for r in live] + traps,
                           key=lambda x: (x[0][3], x[0][2], x[0][0], x[0][1])):
         rec = {"sid": sid(r[0], r[1]), "lane": "mono", "mode": "B",
-               "class": rq.rel_of((r[0], r[1]), r[6], ctx), "gold": gold,
+               "class": rq.rel_of((r[0], r[1]), r[6], ctx), "lang": r[3], "gold": gold,
                "tile": build_tile(it, have_alias, ctx, r),
                "meta": build_meta(it, ctx, r, common)}
         check(rec, seen)
@@ -245,14 +337,19 @@ def main():
 
     os.makedirs(FEED_DIR, exist_ok=True)
     version = args.version or next_version(FEED_DIR)
+    schema = feed_schema()
     for rec in recs:
         rec["meta"]["feed_version"] = version
+        try:
+            schema_check(rec, schema)
+        except ValueError as e:
+            raise SystemExit(f"{rec['sid']} violates the feed contract: {e}")
     path = os.path.join(FEED_DIR, f"feed_v{version:03d}.jsonl.gz")
     with gzip.open(path, "wt", encoding="utf-8") as f:
         for rec in recs:
             f.write(json.dumps(rec, ensure_ascii=False) + "\n")
 
-    by_lang = collections.Counter(r["meta"]["lang"] for r in recs)
+    by_lang = collections.Counter(r["lang"] for r in recs)
     by_class = collections.Counter(r["class"] for r in recs)
     print(f"wrote {len(recs):,} tiles -> {path}")
     print(f"  live {n_live:,} · traps {n_traps:,} "
