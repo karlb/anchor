@@ -238,17 +238,31 @@ def classify(scores, users):
     return tiers
 
 
-def aggregate(latest, tiers, decisions, by_sid):
-    """Bucket every voted live pair; returns (promoted, refuted, contested, pending,
-    n_decided, uncovered_sids). promoted/refuted items are (sid, [users]).
+# The service's serving cutoff, mirrored ONLY to spot pairs it will never serve
+# again (anchor-game app.py: a live tile is terminal at K yes, K no, or VOTE_CAP
+# non-skip votes — RAW counts, spammer votes included). Aggregation stays ours.
+SERVE_K, SERVE_CAP = 2, 3
+
+Agg = collections.namedtuple(
+    "Agg", "promoted refuted contested pending decided uncovered starved late")
+
+
+def aggregate(latest, tiers, decisions, first, by_sid):
+    """Bucket every voted live pair (Agg fields; promoted/refuted items (sid, users)).
 
     A vote whose sid has dropped out of the newest feed still counts while the pair
     is undecided: sids drop out almost always BECAUSE the pair got decided (caught by
-    the decisions replay right here), and the sid pins the exact tile the voter saw."""
+    the decisions replay right here), and the sid pins the exact tile the voter saw.
+
+    Two audit lists ride along: 'starved' pairs hit the service's raw-count serving
+    cutoff without reaching OUR threshold (spam-inflated counts — the game will never
+    finish them, so they fall back to the local queue); 'late' collects non-spammer
+    votes cast after a pair was decided that contradict the decision — the decision
+    stands, this only surfaces what would otherwise vanish into the decided count."""
     by_pair = collections.defaultdict(list)
     for (sid, user), r in latest.items():
-        by_pair[sid].append((user, r["decision"]))
-    promoted, refuted, contested, uncovered = [], [], [], []
+        by_pair[sid].append((user, r["decision"], r["ts"]))
+    promoted, refuted, contested, uncovered, starved, late = [], [], [], [], [], []
     pending = decided = 0
     for sid, votes in sorted(by_pair.items()):
         row = by_sid.get(sid)
@@ -257,21 +271,34 @@ def aggregate(latest, tiers, decisions, by_sid):
             continue
         if row["gold"] is not None:
             continue                # trap: measured in trap_scores, never promoted
-        if sid_key(sid) in decisions:
+        key = sid_key(sid)
+        if key in decisions:
             decided += 1            # any status blocks — idempotency, and pairs
-            continue                # Karl decided after the feed shipped
-        votes = [(u, d) for u, d in votes if tiers[u] != "spammer" and d != "skip"]
-        yes = sorted(u for u, d in votes if d == "yes")
-        no = sorted(u for u, d in votes if d == "no")
+            st = decisions[key]["status"]
+            bad = "no" if st in rq.CONFIRMED else "yes" if st == "rejected" else ""
+            ts0 = first.get(key, ("", ""))[0]
+            users = sorted(u for u, d, ts in votes
+                           if bad and d == bad and ts > ts0 and tiers[u] != "spammer")
+            if users:
+                late.append((sid, st, bad, users))
+            continue
+        honest = [(u, d) for u, d, _ in votes if tiers[u] != "spammer" and d != "skip"]
+        yes = sorted(u for u, d in honest if d == "yes")
+        no = sorted(u for u, d in honest if d == "no")
         if yes and no:
             contested.append((sid, yes, no))
         elif sum(PROMOTE_WEIGHT[tiers[u]] for u in yes) >= 2:
             promoted.append((sid, yes))
         elif sum(PROMOTE_WEIGHT[tiers[u]] for u in no) >= 2:
             refuted.append((sid, no))
-        elif votes:
-            pending += 1
-    return promoted, refuted, contested, pending, decided, uncovered
+        else:
+            if honest:
+                pending += 1
+            raw_y = sum(d == "yes" for _, d, _ in votes)
+            raw_n = sum(d == "no" for _, d, _ in votes)
+            if raw_y >= SERVE_K or raw_n >= SERVE_K or raw_y + raw_n >= SERVE_CAP:
+                starved.append((sid, raw_y, raw_n))
+    return Agg(promoted, refuted, contested, pending, decided, uncovered, starved, late)
 
 
 def promote(promoted, by_sid, dry):
@@ -302,7 +329,7 @@ def pair_line(sid, by_sid, newest):
 
 
 def report(payload, n_new, latest, scores, tiers, agg, by_sid, newest, dry):
-    promoted, refuted, contested, pending, decided, uncovered = agg
+    promoted, refuted, contested, pending, decided, uncovered, starved, late = agg
     promoted_note = "would promote (dry-run)" if dry else "promoted"
     counts = collections.defaultdict(collections.Counter)
     for (sid, user), r in latest.items():
@@ -339,6 +366,16 @@ def report(payload, n_new, latest, scores, tiers, agg, by_sid, newest, dry):
             print(pair_line(sid, by_sid, newest)
                   + f"   yes: {', '.join(yes)} / no: {', '.join(no)}")
             print(f"      verifier: {by_sid[sid]['meta']['reason']}")
+    if starved:
+        print(f"capped-but-unresolved {len(starved)} — the game hit its serving cutoff "
+              "on raw counts (spam included) and will not serve these again; finish locally:")
+        for sid, raw_y, raw_n in starved:
+            print(pair_line(sid, by_sid, newest) + f"   raw {raw_y}y/{raw_n}n")
+    if late:
+        print(f"late contradictions on {len(late)} decided pair(s) "
+              "(audit only — the decision stands unless rechecked):")
+        for sid, st, bad, users in late:
+            print(pair_line(sid, by_sid, newest) + f"   {st}, later {bad} from {', '.join(users)}")
     print(f"pending: {pending} voted pair(s) below threshold · "
           f"{decided} already-decided pair(s) excluded")
 
@@ -356,10 +393,11 @@ def main():
     by_sid, newest = load_feeds()
     n_new, rows = archive_votes(payload["votes"], args.dry_run)
     latest = latest_votes(rows)
-    scores = trap_scores(latest, by_sid, first_decisions())
+    first = first_decisions()
+    scores = trap_scores(latest, by_sid, first)
     tiers = classify(scores, sorted({u for _, u in latest}))
-    agg = aggregate(latest, tiers, rq.load_decisions(), by_sid)
-    promote(agg[0], by_sid, args.dry_run)
+    agg = aggregate(latest, tiers, rq.load_decisions(), first, by_sid)
+    promote(agg.promoted, by_sid, args.dry_run)
     report(payload, n_new, latest, scores, tiers, agg, by_sid, newest, args.dry_run)
 
 
