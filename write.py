@@ -279,11 +279,19 @@ def write_edits(edits, max_per_min):
                     print(f"  skip {lid}: no longer senseless ({len(live)} live sense(s)) — "
                           f"manual review (semantic-duplicate hazard) → {anchors}")
                     continue
+            # Crowd-approved rows credit their approvers in the public edit summary:
+            # import_crowd.py sets reviewer = "crowd:<names>", used verbatim here —
+            # never parsed back, so any characters hub usernames allow are fine.
+            crowd = sorted({rev[len("crowd:"):] for a in anchors
+                            if (rev := decisions.get((lid, a), {}).get("reviewer", ""))
+                            .startswith("crowd:")})
             if interval and last_edit:  # pace only between actual submissions
                 wait = interval - (time.monotonic() - last_edit)
                 if wait > 0:
                     time.sleep(wait)
-            revid = submit(opener, csrf, lid, data, summary)
+            revid = submit(opener, csrf, lid, data, summary
+                           + (f", approved by {', '.join(crowd)} via the distributed game"
+                              if crowd else ""))
             last_edit = time.monotonic()
         except Exception as e:  # noqa: BLE001 — one bad edit shouldn't abort the batch
             print(f"  FAIL {lid} → {anchors}: {e}"); continue
