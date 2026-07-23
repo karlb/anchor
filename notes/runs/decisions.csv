@@ -774,3 +774,298 @@ ts,target_lid,anchor_qid,target_lemma,target_lang,target_n_senses,verdict,reason
 2026-07-05 18:30:21,L829164,Q14189,Quellwolke,de,1,yes,"re-adjudicated 2026-07-05 (was written, rev 2514098349): written stands — Quellwolke=cumulus cloud Q14189 is EQUAL (verifier 'yes'); the sole competitor Q1584134 'mound' is cross-language noise. LIVE edit stands.",sonnet,written,recheck,
 2026-07-05 18:30:21,L640801,Q2408569,Thailänderin,de,1,yes,"re-adjudicated 2026-07-05 (was written, rev 2514098433): written stands — nationality demonym → 'Thai people' (Q2408569, 'citizens or residents of X', P31 human population) is the codified/blessed P5137 target and KEEPS (contrast the ethnic-group demonyms deferred in the same cross-check batch — Irish/Georgian/French/Bulgarian/Kyrgyz). All-language anchor cross-check abstained only on the Thai LANGUAGE Q9217 stitched into the cluster — cross-language homograph pollution, not a scope error. LIVE edit stands; no re-point needed.",sonnet,written,recheck,
 2026-07-05 18:30:21,L626660,Q101189416,Turkmene,de,1,yes,"re-adjudicated 2026-07-05 (was written, rev 2514098476): written stands — nationality demonym → 'Turkmenistanis' (Q101189416, 'citizens or residents of X', P31 human population) is the codified/blessed P5137 target and KEEPS (contrast the ethnic-group demonyms deferred in the same cross-check batch — Irish/Georgian/French/Bulgarian/Kyrgyz). All-language anchor cross-check abstained only on the Turkmen LANGUAGE Q9267 (and ethnic Turkmens) stitched into the cluster — cross-language homograph pollution, not a scope error. LIVE edit stands; no re-point needed.",sonnet,written,recheck,
+2026-07-09 05:08:10,L1503392,Q102786,abbreviature,en,1,yes,"re-adjudicated 2026-07-05 (was approved): approved stands — abbreviature=abbreviation Q102786 is EQUAL (verifier 'yes'); sole competitor Q306824 is the zoological sense of 'abbreviation' — a homograph, not a better target.",sonnet,written,write.py b/CB/20264bde1d33,2515402228
+2026-07-09 05:08:12,L14671,Q126553,ark,en,1,yes,EQUAL: ark-as-boat sense is Noah's Ark,sonnet,written,write.py b/CB/20264bde1d33,2515402238
+2026-07-09 05:08:15,L30009,Q2095549,aviator,en,1,yes,EQUAL: aviator matches aircraft pilot concept,sonnet,written,write.py b/CB/20264bde1d33,2515402259
+2026-07-09 05:08:17,L316756,Q127076,barf,en,1,yes,"Barf is informal English for vomiting, matches the concept exactly",sonnet,written,write.py b/CB/20264bde1d33,2515402273
+2026-07-09 05:08:20,L30119,Q40050,beverage,en,1,yes,Beverage denotes a liquid prepared for human consumption.,sonnet,written,write.py b/CB/20264bde1d33,2515402292
+2026-07-09 05:08:23,L1500783,Q886518,blood count,en,1,yes,BROADER: blood count wider than complete blood count,sonnet,written,write.py b/CB/20264bde1d33,2515402312
+2026-07-09 05:08:25,L317764,Q13039303,carving,en,1,yes,carving denotes the act of shaping by scraping material,sonnet,written,write.py b/CB/20264bde1d33,2515402332
+2026-07-09 05:08:28,L318179,Q156351,cliché,en,1,yes,Cliché denotes exactly an overused idea or expression.,sonnet,written,write.py b/CB/20264bde1d33,2515402346
+2026-07-09 05:08:30,L318213,Q27765385,clotting,en,1,yes,EQUAL: clotting/solidifying process same as coagulation,sonnet,written,write.py b/CB/20264bde1d33,2515402361
+2026-07-09 05:08:33,L319141,Q4,decease,en,1,yes,EQUAL: decease = death,sonnet,written,write.py b/CB/20264bde1d33,2515402375
+2026-07-09 05:08:35,L227403,Q4,demise,en,1,yes,EQUAL: demise synonym for death,sonnet,written,write.py b/CB/20264bde1d33,2515402390
+2026-07-09 05:08:38,L1553739,Q133772,dental caries,en,1,yes,dental caries exactly matches tooth decay by bacterial acid,sonnet,written,write.py b/CB/20264bde1d33,2515402408
+2026-07-09 05:08:40,L1406065,Q166376,doping,en,1,yes,EQUAL: athletic drug doping matches concept,sonnet,written,write.py b/CB/20264bde1d33,2515402425
+2026-07-09 05:08:42,L319856,Q154547,dukedom,en,1,yes,Dukedom in its territorial sense equals duchy,sonnet,written,write.py b/CB/20264bde1d33,2515402435
+2026-07-09 05:08:45,L32939,Q12891156,earnest,en,1,yes,EQUAL: state of being serious equals seriousness concept,sonnet,written,write.py b/CB/20264bde1d33,2515402444
+2026-07-09 05:08:48,L1410678,Q2095,eat,en,1,yes,EQUAL: that which is eaten = food,sonnet,written,write.py b/CB/20264bde1d33,2515402450
+2026-07-09 05:08:50,L32555,Q47054,enigma,en,1,yes,EQUAL: enigma/puzzle and riddle are synonyms,sonnet,written,write.py b/CB/20264bde1d33,2515402460
+2026-07-09 05:08:53,L1473567,Q180007,fainting,en,1,yes,EQUAL: fainting is syncope,sonnet,written,write.py b/CB/20264bde1d33,2515402471
+2026-07-09 05:08:55,L1457911,Q4197743,gamer,en,1,yes,EQUAL: person who plays a game,sonnet,written,write.py b/CB/20264bde1d33,2515402478
+2026-07-09 05:08:58,L34678,Q222046,genomics,en,1,yes,genomics is exactly that interdisciplinary biology field,sonnet,written,write.py b/CB/20264bde1d33,2515402488
+2026-07-09 05:09:00,L34204,Q37525,glucose,en,1,yes,glucose exactly denotes this monosaccharide,sonnet,written,write.py b/CB/20264bde1d33,2515402498
+2026-07-09 05:09:03,L321412,Q2728730,gratefulness,en,1,yes,gratefulness is a direct synonym for gratitude,sonnet,written,write.py b/CB/20264bde1d33,2515402506
+2026-07-09 05:09:05,L321955,Q843281,hobo,en,1,yes,re-adjudicated 2026-07-05 (was approved): approved stands — hobo → Q843281 (the 'hobo' concept itself) is EQUAL; the cross-check abstained on vagrancy near-synonyms stitched into the cluster (tramp/homeless-person/migrant-worker). Anchor is the precise concept; stands.,sonnet,written,write.py b/CB/20264bde1d33,2515402519
+2026-07-09 05:09:08,L35966,Q1714828,huntsman,en,1,yes,NARROWER: huntsman with weapons is subset of general hunter,sonnet,written,write.py b/CB/20264bde1d33,2515402531
+2026-07-09 05:09:10,L1405710,Q40415,impressionism,en,1,yes,impressionism clearly denotes this 19th-century art movement,sonnet,written,write.py b/CB/20264bde1d33,2515402542
+2026-07-09 05:09:13,L322443,Q10301920,indecisiveness,en,1,yes,EQUAL: indecisiveness = indecision,sonnet,written,write.py b/CB/20264bde1d33,2515402549
+2026-07-09 05:09:15,L36773,Q1364673,informer,en,1,yes,EQUAL: informer/informant near-synonyms for source,sonnet,written,write.py b/CB/20264bde1d33,2515402560
+2026-07-09 05:09:18,L36814,Q1125062,insurgent,en,1,yes,EQUAL: insurgent glossed 'rebel' matches rebel concept directly,sonnet,written,write.py b/CB/20264bde1d33,2515402566
+2026-07-09 05:09:20,L314906,Q124734,insurrection,en,1,yes,Insurrection denotes violent uprising against government.,sonnet,written,write.py b/CB/20264bde1d33,2515402573
+2026-07-09 05:09:23,L226958,Q706622,intent,en,1,yes,re-adjudicated 2026-07-05 (was approved): approved stands — intent=intention Q706622 is EQUAL (verifier 'yes'); competitors (motif/end/meaning/butt) are pure homograph noise.,sonnet,written,write.py b/CB/20264bde1d33,2515402586
+2026-07-09 05:09:25,L6970,Q21004260,investigation,en,1,yes,EQUAL: investigation and inquiry are synonyms,sonnet,written,write.py b/CB/20264bde1d33,2515402607
+2026-07-09 05:09:28,L296140,Q133244,jaundice,en,1,yes,Jaundice names exactly this human disease.,sonnet,written,write.py b/CB/20264bde1d33,2515402624
+2026-07-09 05:09:30,L37080,Q182436,librarian,en,1,yes,'librarian' matches the concept precisely,sonnet,written,write.py b/CB/20264bde1d33,2515402642
+2026-07-09 05:09:33,L313288,Q1363634,marginalization,en,1,yes,marginalization denotes exactly this social exclusion concept,sonnet,written,write.py b/CB/20264bde1d33,2515402660
+2026-07-09 05:09:35,L1522489,Q105726,micturition,en,1,yes,"micturition is the medical term for urination, exact match",sonnet,written,write.py b/CB/20264bde1d33,2515402679
+2026-07-09 05:09:38,L324103,Q47715,mongolism,en,1,yes,EQUAL: mongolism = Down syndrome,sonnet,written,write.py b/CB/20264bde1d33,2515402694
+2026-07-09 05:09:41,L324321,Q1642590,naivety,en,1,yes,EQUAL: naivety = lack of experience,sonnet,written,write.py b/CB/20264bde1d33,2515402711
+2026-07-09 05:09:43,L40568,Q16351788,patriot,en,1,yes,EQUAL: patriot matches love-of-country sense,sonnet,written,write.py b/CB/20264bde1d33,2515402725
+2026-07-09 05:18:10,L499162,Q79797,Armenierin,de,1,yes,"NARROWER: demonym vs ethnic group, defer convention",sonnet,deferred,local,
+2026-07-09 05:18:13,L590989,Q188779,Norwegerin,de,1,yes,"NARROWER: demonym vs ethnic-group sense, contested",sonnet,deferred,local,
+2026-07-09 05:18:25,L72988,Q7140693,Partnerin,de,1,yes,BROADER: generic partner vs specific business rank,sonnet,rejected,local,
+2026-07-09 05:18:29,L499504,Q485150,Rumänin,de,1,yes,"NARROWER: demonym vs ethnic group, defer convention",sonnet,deferred,local,
+2026-07-09 05:18:40,L617255,Q170217,Tschechin,de,1,yes,NARROWER: demonym person vs ethnic-group concept,sonnet,deferred,local,
+2026-07-09 05:18:43,L295254,Q84072,Türkin,de,1,yes,NARROWER: female person vs ethnic group (demonym convention),sonnet,deferred,local,
+2026-07-09 05:19:33,L679403,Q210799,Verwandte,de,1,yes,INCOHERENT: translations disagree (only female line vs any line),sonnet,deferred,local,
+2026-07-09 05:19:49,L925394,Q144700,Aalquappe,de,1,yes,EQUAL: burbot species matches exactly,sonnet,approved,local,
+2026-07-09 05:47:27,L626618,Q16007968,Afghanin,de,1,yes,"EQUAL: gendered demonym, blessed national target",sonnet,approved,local,
+2026-07-09 05:47:30,L931831,Q97890404,Angolanerin,de,1,yes,"EQUAL: gender recorded separately, same demonym",sonnet,approved,local,
+2026-07-09 05:47:33,L589401,Q100251705,Bhutanerin,de,1,yes,"EQUAL: gendered demonym, nationality (gender separate)",sonnet,approved,local,
+2026-07-09 05:48:15,L498196,Q1196645,Kanadierin,de,1,yes,"EQUAL: gendered demonym, sex recorded separately",sonnet,approved,local,
+2026-07-09 05:48:18,L1547537,Q101444758,Grönländer,de,1,yes,EQUAL: demonym matches national residents concept,sonnet,approved,local,
+2026-07-09 05:48:48,L626622,Q100450210,Katarer,de,1,yes,EQUAL: citizen of Qatar matches,sonnet,approved,local,
+2026-07-09 05:48:52,L626623,Q100450210,Katarerin,de,1,yes,"EQUAL: gendered demonym, gender recorded separately",sonnet,approved,local,
+2026-07-09 05:48:57,L784551,Q16970,Kirchengebäude,de,1,yes,EQUAL: church building matches exactly,sonnet,approved,local,
+2026-07-09 05:49:29,L849649,Q2747456,Königssohn,de,1,yes,EQUAL: king's son matches prince concept,sonnet,approved,local,
+2026-07-09 05:49:31,L612660,Q2698746,Liechtensteinerin,de,1,yes,"EQUAL: gendered demonym, neutral counterpart",sonnet,approved,local,
+2026-07-09 05:49:34,L594719,Q40458125,Lilie,de,1,yes,EQUAL: lily flower,sonnet,approved,local,
+2026-07-09 05:49:38,L626476,Q3310017,Pakistaner,de,1,yes,"EQUAL: national demonym, gender recorded separately",sonnet,approved,local,
+2026-07-09 05:49:43,L785357,Q128751,Quelltext,de,1,yes,EQUAL: source code definition matches exactly,sonnet,approved,local,
+2026-07-09 05:50:56,L867552,Q729,Biest,de,1,yes,EQUAL: Tier denotes animal kingdom concept,sonnet,deferred,local,
+2026-07-09 05:51:11,L931832,Q110942731,Weißrussin,de,1,yes,"EQUAL: gendered demonym, gender recorded separately",sonnet,approved,local,
+2026-07-09 05:51:12,L493566,Q2918061,Äthiopier,de,1,yes,"EQUAL: gendered demonym, sex recorded separately",sonnet,approved,local,
+2026-07-09 06:00:59,L499736,Q3957,Städtchen,de,1,yes,EQUAL: small town matches Kleinstadt definition,sonnet,approved,local,
+2026-07-11 17:18:27,L925394,Q144700,Aalquappe,de,1,yes,EQUAL: burbot species matches exactly,sonnet,written,write.py b/CB/526c6b6d0797,2516351447
+2026-07-11 17:18:29,L626618,Q16007968,Afghanin,de,1,yes,"EQUAL: gendered demonym, blessed national target",sonnet,written,write.py b/CB/526c6b6d0797,2516351456
+2026-07-11 17:18:32,L931831,Q97890404,Angolanerin,de,1,yes,"EQUAL: gender recorded separately, same demonym",sonnet,written,write.py b/CB/526c6b6d0797,2516351463
+2026-07-11 17:18:34,L589401,Q100251705,Bhutanerin,de,1,yes,"EQUAL: gendered demonym, nationality (gender separate)",sonnet,written,write.py b/CB/526c6b6d0797,2516351479
+2026-07-11 17:18:36,L1547537,Q101444758,Grönländer,de,1,yes,EQUAL: demonym matches national residents concept,sonnet,written,write.py b/CB/526c6b6d0797,2516351499
+2026-07-11 17:18:39,L498196,Q1196645,Kanadierin,de,1,yes,"EQUAL: gendered demonym, sex recorded separately",sonnet,written,write.py b/CB/526c6b6d0797,2516351523
+2026-07-11 17:18:41,L626622,Q100450210,Katarer,de,1,yes,EQUAL: citizen of Qatar matches,sonnet,written,write.py b/CB/526c6b6d0797,2516351544
+2026-07-11 17:18:44,L626623,Q100450210,Katarerin,de,1,yes,"EQUAL: gendered demonym, gender recorded separately",sonnet,written,write.py b/CB/526c6b6d0797,2516351570
+2026-07-11 17:18:46,L784551,Q16970,Kirchengebäude,de,1,yes,EQUAL: church building matches exactly,sonnet,written,write.py b/CB/526c6b6d0797,2516351589
+2026-07-11 17:18:49,L849649,Q2747456,Königssohn,de,1,yes,EQUAL: king's son matches prince concept,sonnet,written,write.py b/CB/526c6b6d0797,2516351603
+2026-07-11 17:18:52,L612660,Q2698746,Liechtensteinerin,de,1,yes,"EQUAL: gendered demonym, neutral counterpart",sonnet,written,write.py b/CB/526c6b6d0797,2516351616
+2026-07-11 17:18:54,L626476,Q3310017,Pakistaner,de,1,yes,"EQUAL: national demonym, gender recorded separately",sonnet,written,write.py b/CB/526c6b6d0797,2516351636
+2026-07-11 17:18:56,L785357,Q128751,Quelltext,de,1,yes,EQUAL: source code definition matches exactly,sonnet,written,write.py b/CB/526c6b6d0797,2516351655
+2026-07-11 17:18:59,L499736,Q3957,Städtchen,de,1,yes,EQUAL: small town matches Kleinstadt definition,sonnet,written,write.py b/CB/526c6b6d0797,2516351675
+2026-07-11 17:19:02,L931832,Q110942731,Weißrussin,de,1,yes,"EQUAL: gendered demonym, gender recorded separately",sonnet,written,write.py b/CB/526c6b6d0797,2516351697
+2026-07-11 17:19:04,L493566,Q2918061,Äthiopier,de,1,yes,"EQUAL: gendered demonym, sex recorded separately",sonnet,written,write.py b/CB/526c6b6d0797,2516351726
+2026-07-11 17:19:07,L325398,Q12362622,philanthropist,en,1,yes,exact label and concept match,sonnet,written,write.py b/CB/526c6b6d0797,2516351750
+2026-07-11 17:19:09,L41206,Q35911,pomology,en,1,yes,exact match in label and description,sonnet,written,write.py b/CB/526c6b6d0797,2516351766
+2026-07-11 17:19:12,L325798,Q3785625,powerlessness,en,1,yes,EQUAL: powerlessness = helplessness,sonnet,written,write.py b/CB/526c6b6d0797,2516351789
+2026-07-11 17:19:15,L41256,Q1076052,preschool,en,1,yes,exact match in label and description,sonnet,written,write.py b/CB/526c6b6d0797,2516351815
+2026-07-11 17:19:18,L41506,Q48428,raptor,en,1,yes,EQUAL: predatory bird is bird of prey,sonnet,written,write.py b/CB/526c6b6d0797,2516351840
+2026-07-11 17:19:20,L326701,Q19357667,resourcefulness,en,1,yes,EQUAL: resourcefulness = ingenuity,sonnet,written,write.py b/CB/526c6b6d0797,2516351859
+2026-07-11 17:19:23,L41973,Q1429491,riverbed,en,1,yes,"riverbed is channel bottom of a river, included in definition",sonnet,written,write.py b/CB/526c6b6d0797,2516351878
+2026-07-11 17:19:25,L327238,Q48942,schoolgirl,en,1,yes,NARROWER: female student subset of schoolchildren,haiku,written,write.py b/CB/526c6b6d0797,2516351896
+2026-07-11 17:19:28,L7743,Q106575204,sheet,en,1,yes,"re-adjudicated 2026-07-05 (was approved): approved stands — sheet → Q106575204 ('single piece of paper as distinct from the printed image') is the correct paper-sheet sense (human-approved); competitors are unrelated homographs (page/petal/newspaper/level/disk). Cluster-pollution abstain, not a verdict change.",sonnet,written,write.py b/CB/526c6b6d0797,2516351905
+2026-07-11 17:19:30,L42155,Q500251,shipowner,en,1,yes,shipowner exactly matches ship-owner concept,sonnet,written,write.py b/CB/526c6b6d0797,2516351913
+2026-07-11 17:19:33,L268134,Q12136,sickness,en,1,yes,EQUAL: sickness as condition of having a malady matches disease,sonnet,written,write.py b/CB/526c6b6d0797,2516351924
+2026-07-11 17:19:35,L42506,Q1385709,sprout,en,1,yes,EQUAL: sprout/young growth matches seedling concept,sonnet,written,write.py b/CB/526c6b6d0797,2516351934
+2026-07-11 17:19:38,L1560949,Q201610,status quo,en,1,yes,"EQUAL: same Latin phrase, current state",sonnet,written,write.py b/CB/526c6b6d0797,2516351945
+2026-07-11 17:19:40,L10834,Q1762621,supplier,en,1,yes,EQUAL: supplier/vendor both denote business providing goods or services,sonnet,written,write.py b/CB/526c6b6d0797,2516351955
+2026-07-11 17:19:43,L328892,Q184439,swearing,en,1,yes,EQUAL: swearing = profanity,sonnet,written,write.py b/CB/526c6b6d0797,2516351972
+2026-07-11 17:19:45,L579436,Q13258,synesthesia,en,1,yes,EQUAL: same neurological phenomenon,sonnet,written,write.py b/CB/526c6b6d0797,2516351991
+2026-07-11 17:19:48,L329150,Q289,telly,en,1,yes,EQUAL: telly is register variant of television,sonnet,written,write.py b/CB/526c6b6d0797,2516352016
+2026-07-11 17:19:50,L43673,Q81054,tempest,en,1,yes,EQUAL: tempest is a synonym/register variant for storm,sonnet,written,write.py b/CB/526c6b6d0797,2516352038
+2026-07-11 17:19:53,L5423,Q218005,total,en,1,yes,re-adjudicated 2026-07-05 (was approved): approved stands — total=sum Q218005 is EQUAL (verifier 'yes'); competitors (spouse/integer/whole/musical-group) are homograph noise.,sonnet,written,write.py b/CB/526c6b6d0797,2516352059
+2026-07-11 17:19:55,L44498,Q105196,transplantation,en,1,yes,transplantation exactly matches organ/tissue transfer concept,sonnet,written,write.py b/CB/526c6b6d0797,2516352081
+2026-07-11 17:19:58,L329887,Q16523851,ungratefulness,en,1,yes,EQUAL: ingratitude synonym match,sonnet,written,write.py b/CB/526c6b6d0797,2516352101
+2026-07-18 07:05:43,L294945,Q124734,uprising,en,1,yes,uprising closely denotes violent resistance against authority,sonnet,written,write.py b/CB/19407570465d,2519008266
+2026-07-18 07:05:45,L330110,Q256401,vexation,en,1,yes,"EQUAL: vexation = annoyance, same feeling",sonnet,written,write.py b/CB/19407570465d,2519008271
+2026-07-18 07:05:48,L9483,Q18560095,victor,en,1,yes,"Victor means one who wins, matches winner concept",sonnet,written,write.py b/CB/19407570465d,2519008277
+2026-07-18 07:05:50,L52454,Q106640477,zetetic,en,1,yes,"EQUAL: zetetic = skeptic, same concept",sonnet,written,write.py b/CB/19407570465d,2519008281
+2026-07-18 07:05:53,L592748,Q16007968,Afghan,fr,1,yes,EQUAL: national demonym matches citizens-of-Afghanistan concept,sonnet,written,write.py b/CB/19407570465d,2519008285
+2026-07-18 07:05:55,L614539,Q2146321,Andorrane,fr,1,yes,"EQUAL: nationality demonym, blessed target",sonnet,written,write.py b/CB/19407570465d,2519008288
+2026-07-18 07:05:58,L592715,Q2365041,Argentine,fr,1,yes,"EQUAL: gendered demonym, recorded separately",sonnet,written,write.py b/CB/19407570465d,2519008294
+2026-07-18 07:06:00,L611980,Q1318423,Australienne,fr,1,yes,"EQUAL: gender recorded separately, same demonym",sonnet,written,write.py b/CB/19407570465d,2519008297
+2026-07-18 07:06:03,L612484,Q1377716,Belge,fr,1,yes,"EQUAL: national demonym, citizens/residents of Belgium",sonnet,written,write.py b/CB/19407570465d,2519008300
+2026-07-18 07:06:05,L612927,Q100251705,Bhoutanaise,fr,1,yes,EQUAL: feminine demonym matches citizens/residents,sonnet,written,write.py b/CB/19407570465d,2519008311
+2026-07-18 07:06:08,L612567,Q110942731,Biélorusse,fr,1,yes,"EQUAL: national demonym, citizens/residents of Belarus",sonnet,written,write.py b/CB/19407570465d,2519008317
+2026-07-18 07:06:10,L612883,Q99907279,Bosnien,fr,1,yes,"re-adjudicated 2026-07-05 (was approved): approved stands — nationality demonym → 'Bosnians and Herzegovinians' (Q99907279, 'citizens or residents of X', P31 human population) is the codified/blessed P5137 target and KEEPS (contrast the ethnic-group demonyms deferred in the same cross-check batch — Irish/Georgian/French/Bulgarian/Kyrgyz). All-language anchor cross-check abstained only on the Bosnian LANGUAGE Q9303 stitched into the cluster — cross-language homograph pollution, not a scope error.",sonnet,written,write.py b/CB/19407570465d,2519008321
+2026-07-18 07:06:12,L592504,Q842438,Britannique,fr,1,yes,"re-adjudicated 2026-07-05 (was approved): approved stands — nationality demonym → 'British' (Q842438, 'citizens or residents of X', P31 human population) is the codified/blessed P5137 target and KEEPS (contrast the ethnic-group demonyms deferred in the same cross-check batch — Irish/Georgian/French/Bulgarian/Kyrgyz). All-language anchor cross-check abstained only on an uncached homograph anchor stitched into the cluster — cross-language homograph pollution, not a scope error.",sonnet,written,write.py b/CB/19407570465d,2519008327
+2026-07-18 07:06:15,L592523,Q873625,Brésilien,fr,1,yes,"re-adjudicated 2026-07-05 (was approved): approved stands — nationality demonym → 'Brazilians' (Q873625, 'citizens or residents of X', P31 human population) is the codified/blessed P5137 target and KEEPS (contrast the ethnic-group demonyms deferred in the same cross-check batch — Irish/Georgian/French/Bulgarian/Kyrgyz). All-language anchor cross-check abstained only on Brazilian Portuguese Q750553 stitched into the cluster — cross-language homograph pollution, not a scope error.",sonnet,written,write.py b/CB/19407570465d,2519008336
+2026-07-18 07:06:17,L592524,Q873625,Brésilienne,fr,1,yes,"EQUAL: national demonym, gender recorded separately",sonnet,written,write.py b/CB/19407570465d,2519008345
+2026-07-18 07:06:20,L611987,Q100249818,Camerounaise,fr,1,yes,"EQUAL: nationality demonym, gender recorded separately",sonnet,written,write.py b/CB/19407570465d,2519008353
+2026-07-18 07:06:22,L592592,Q160894,Espagnole,fr,1,yes,EQUAL: national demonym matches citizens-of-Spain concept,sonnet,written,write.py b/CB/19407570465d,2519008361
+2026-07-18 07:06:25,L612984,Q99717065,Gambien,fr,1,yes,"EQUAL: national demonym, citizens/residents of Gambia",sonnet,written,write.py b/CB/19407570465d,2519008367
+2026-07-18 07:06:27,L612988,Q99717065,Gambienne,fr,1,yes,"EQUAL: gender recorded separately, same concept",sonnet,written,write.py b/CB/19407570465d,2519008371
+2026-07-18 07:06:30,L612075,Q20826647,Guatémaltèque,fr,1,yes,EQUAL: Guatemalan demonym matches citizens/residents,sonnet,written,write.py b/CB/19407570465d,2519008379
+2026-07-18 07:06:32,L612414,Q99635366,Guinéen,fr,1,yes,EQUAL: national demonym matches citizens of Guinea,sonnet,written,write.py b/CB/19407570465d,2519008386
+2026-07-18 07:06:35,L612415,Q99635366,Guinéenne,fr,1,yes,"EQUAL: national demonym, citizens/residents of Guinea",sonnet,written,write.py b/CB/19407570465d,2519008394
+2026-07-18 07:06:37,L592507,Q862086,Indienne,fr,1,yes,"re-adjudicated 2026-07-05 (was approved): approved stands — nationality demonym → 'Indians (of India)' (Q862086, 'citizens or residents of X', P31 human population) is the codified/blessed P5137 target and KEEPS (contrast the ethnic-group demonyms deferred in the same cross-check batch — Irish/Georgian/French/Bulgarian/Kyrgyz). All-language anchor cross-check abstained only on the 'Indian' homographs — indium Q1094 and Indigenous peoples of the Americas Q36747 stitched into the cluster — cross-language homograph pollution, not a scope error.",sonnet,written,write.py b/CB/19407570465d,2519008400
+2026-07-18 07:06:40,L592551,Q397297,Iranien,fr,1,yes,"EQUAL: Iranian demonym, blessed nationality target",sonnet,written,write.py b/CB/19407570465d,2519008413
+2026-07-18 07:06:42,L592552,Q397297,Iranienne,fr,1,yes,EQUAL: Iran demonym matches people from Iran,sonnet,written,write.py b/CB/19407570465d,2519008417
+2026-07-18 07:06:45,L611978,Q99766936,Ivoirienne,fr,1,yes,"EQUAL: nationality demonym, gender recorded separately",sonnet,written,write.py b/CB/19407570465d,2519008420
+2026-07-18 07:06:47,L612800,Q2606511,Libanais,fr,1,yes,EQUAL: inhabitant/citizen of Lebanon matches demonym,sonnet,written,write.py b/CB/19407570465d,2519008427
+2026-07-18 07:06:50,L612802,Q2606511,Libanaise,fr,1,yes,"EQUAL: gender recorded separately, same demonym",sonnet,written,write.py b/CB/19407570465d,2519008433
+2026-07-18 07:06:52,L612823,Q99735521,Libérien,fr,1,yes,EQUAL: citizens/residents of Liberia matches demonym,sonnet,written,write.py b/CB/19407570465d,2519008438
+2026-07-18 07:06:55,L612825,Q99735521,Libérienne,fr,1,yes,"EQUAL: gender recorded separately, same demonym",sonnet,written,write.py b/CB/19407570465d,2519008446
+2026-07-18 07:06:57,L613494,Q1092641,Luxembourgeoise,fr,1,yes,"EQUAL: national demonym, citizens/residents of Luxembourg",sonnet,written,write.py b/CB/19407570465d,2519008450
+2026-07-18 07:07:00,L612976,Q97696014,Namibien,fr,1,yes,EQUAL: national demonym matches citizens/residents target,sonnet,written,write.py b/CB/19407570465d,2519008457
+2026-07-18 07:07:02,L612977,Q97696014,Namibienne,fr,1,yes,"EQUAL: national demonym, citizens/residents of Namibia",sonnet,written,write.py b/CB/19407570465d,2519008462
+2026-07-18 07:07:05,L592514,Q16155102,Nigériane,fr,1,yes,"EQUAL: national demonym, gender recorded separately",sonnet,written,write.py b/CB/19407570465d,2519008471
+2026-07-18 07:07:07,L611985,Q60545071,Nigérienne,fr,1,yes,EQUAL: national demonym matches citizens of Niger,sonnet,written,write.py b/CB/19407570465d,2519008477
+2026-07-18 07:07:10,L612391,Q200569,Néerlandais,fr,1,yes,"EQUAL: Dutch demonym, nationality concept",sonnet,written,write.py b/CB/19407570465d,2519008482
+2026-07-18 07:07:12,L612844,Q871904,Néo-Zélandais,fr,1,yes,EQUAL: national demonym matches citizens/residents of NZ,sonnet,written,write.py b/CB/19407570465d,2519008487
+2026-07-18 07:07:15,L612845,Q871904,Néo-Zélandaise,fr,1,yes,"EQUAL: feminine demonym, gender recorded separately",sonnet,written,write.py b/CB/19407570465d,2519008492
+2026-07-18 07:07:17,L592767,Q4317274,Népalais,fr,1,yes,EQUAL: Nepali demonym matches people/citizens of Nepal,sonnet,written,write.py b/CB/19407570465d,2519008501
+2026-07-18 07:07:19,L592768,Q4317274,Népalaise,fr,1,yes,"re-adjudicated 2026-07-05 (was approved): approved stands — nationality demonym → 'Nepalis' (Q4317274, 'citizens or residents of X', P31 human population) is the codified/blessed P5137 target and KEEPS (contrast the ethnic-group demonyms deferred in the same cross-check batch — Irish/Georgian/French/Bulgarian/Kyrgyz). All-language anchor cross-check abstained only on the Nepali LANGUAGE Q33823 stitched into the cluster — cross-language homograph pollution, not a scope error.",sonnet,written,write.py b/CB/19407570465d,2519008506
+2026-07-18 07:07:22,L592536,Q4172847,Philippine,fr,1,yes,EQUAL: Philippines demonym matches people/citizens,sonnet,written,write.py b/CB/19407570465d,2519008514
+2026-07-18 07:07:25,L592751,Q18600381,Saoudien,fr,1,yes,EQUAL: national demonym matches citizens-of-Saudi-Arabia concept,sonnet,written,write.py b/CB/19407570465d,2519008522
+2026-07-18 07:07:27,L592753,Q18600381,Saoudienne,fr,1,yes,EQUAL: national demonym matches citizens-of-Saudi-Arabia concept,sonnet,written,write.py b/CB/19407570465d,2519008531
+2026-07-18 07:07:30,L614535,Q100363435,Seychelloise,fr,1,yes,"EQUAL: nationality demonym, blessed target",sonnet,written,write.py b/CB/19407570465d,2519008536
+2026-07-18 07:07:32,L592721,Q3976616,Soudanais,fr,1,yes,EQUAL: national demonym matches citizens of Sudan,sonnet,written,write.py b/CB/19407570465d,2519008552
+2026-07-18 07:07:35,L592722,Q3976616,Soudanaise,fr,1,yes,EQUAL: national demonym matches citizens-of-Sudan concept,sonnet,written,write.py b/CB/19407570465d,2519008560
+2026-07-18 07:07:37,L612585,Q124216,Suisse,fr,1,yes,"EQUAL: national demonym, citizens/residents of Switzerland",sonnet,written,write.py b/CB/19407570465d,2519008570
+2026-07-18 07:07:40,L611988,Q707133,Taïwanais,fr,1,yes,"EQUAL: nationality demonym, citizens/residents of Taiwan",sonnet,written,write.py b/CB/19407570465d,2519008576
+2026-07-18 07:07:42,L611989,Q707133,Taïwanaise,fr,1,yes,"EQUAL: national demonym, citizens/residents of Taiwan",sonnet,written,write.py b/CB/19407570465d,2519008582
+2026-07-18 07:07:45,L592555,Q2408569,Thaïlandaise,fr,1,yes,"re-adjudicated 2026-07-05 (was approved): approved stands — nationality demonym → 'Thai people' (Q2408569, 'citizens or residents of X', P31 human population) is the codified/blessed P5137 target and KEEPS (contrast the ethnic-group demonyms deferred in the same cross-check batch — Irish/Georgian/French/Bulgarian/Kyrgyz). All-language anchor cross-check abstained only on the Thai LANGUAGE Q9217 stitched into the cluster — cross-language homograph pollution, not a scope error.",sonnet,written,write.py b/CB/19407570465d,2519008588
+2026-07-18 07:07:48,L612788,Q97466048,Togolais,fr,1,yes,"EQUAL: national demonym, citizens/residents of Togo",sonnet,written,write.py b/CB/19407570465d,2519008601
+2026-07-18 07:07:50,L592762,Q2996826,Vénézuélienne,fr,1,yes,"EQUAL: nationality demonym, gender recorded separately",sonnet,written,write.py b/CB/19407570465d,2519008607
+2026-07-18 07:07:52,L1415156,Q706884,acolyte,fr,1,yes,"EQUAL: accomplice in crime, same sense",sonnet,written,write.py b/CB/19407570465d,2519008611
+2026-07-18 07:07:55,L1417176,Q193036,acrobatie,fr,1,yes,EQUAL: matches acrobatics art/sport sense,sonnet,written,write.py b/CB/19407570465d,2519008616
+2026-07-18 07:07:57,L1221870,Q189580,acromégalie,fr,1,yes,EQUAL: acromegaly growth-hormone disease matches,sonnet,written,write.py b/CB/19407570465d,2519008621
+2026-07-18 07:08:00,L1417178,Q173287,acrostiche,fr,1,yes,EQUAL: acrostic poem matches concept,sonnet,written,write.py b/CB/19407570465d,2519008629
+2026-07-18 07:08:03,L1372018,Q1754990,agressivité,fr,1,yes,EQUAL: aggressive behavior pattern matches,sonnet,written,write.py b/CB/19407570465d,2519008637
+2026-07-18 07:08:05,L1230658,Q28692,anis,fr,1,yes,EQUAL: anise plant species match,sonnet,written,write.py b/CB/19407570465d,2519008651
+2026-07-18 07:08:07,L700346,Q308859,anonymat,fr,1,yes,EQUAL: anonymity quality matches concept,sonnet,written,write.py b/CB/19407570465d,2519008656
+2026-07-18 07:08:10,L27844,Q29714270,astuce,fr,1,yes,EQUAL: astuteness matches cunning/cleverness,sonnet,written,write.py b/CB/19407570465d,2519008661
+2026-07-18 07:08:12,L24274,Q11326182,aube,fr,1,yes,EQUAL: dawn time period matches concept,sonnet,written,write.py b/CB/19407570465d,2519008670
+2026-07-18 07:08:15,L1234531,Q173424,autocratie,fr,1,yes,EQUAL: autocracy rule by single person,sonnet,written,write.py b/CB/19407570465d,2519008677
+2026-07-18 07:08:18,L28179,Q2533752,avant-plan,fr,1,yes,EQUAL: foreground matches,sonnet,written,write.py b/CB/19407570465d,2519008682
+2026-07-18 07:08:20,L291630,Q1321241,avant-poste,fr,1,yes,EQUAL: military outpost,sonnet,written,write.py b/CB/19407570465d,2519008691
+2026-07-18 07:08:23,L1344334,Q471191,balkanisation,fr,1,yes,EQUAL: territorial fragmentation matches balkanization,sonnet,written,write.py b/CB/19407570465d,2519008698
+2026-07-18 07:08:25,L691372,Q806798,banquière,fr,1,yes,"EQUAL: gendered banker, sex recorded separately",sonnet,written,write.py b/CB/19407570465d,2519008710
+2026-07-18 07:08:28,L1421376,Q109196,bergamote,fr,1,yes,EQUAL: fruit synonym for bergamot species/fruit,sonnet,written,write.py b/CB/19407570465d,2519008714
+2026-07-18 07:08:30,L26286,Q2704791,énumération,fr,1,yes,INCOHERENT: listing vs math counting field conflict,sonnet,written,write.py b/CB/19407570465d,2519008722
+2026-07-18 07:08:33,L400261,Q9597,abdomen,sv,1,yes,EQUAL: bakkropp matches insect/human abdomen concept,sonnet,written,write.py b/CB/19407570465d,2519008734
+2026-07-18 07:08:35,L580330,Q49546,aceton,sv,1,yes,Direct match; Wikidata label is 'aceton',sonnet,written,write.py b/CB/19407570465d,2519008745
+2026-07-18 07:08:38,L35886,Q28008314,adressat,sv,1,yes,'adressat' precisely means addressee of a message,sonnet,written,write.py b/CB/19407570465d,2519008751
+2026-07-18 07:08:40,L38089,Q43845,affärskvinna,sv,1,yes,EQUAL: gender rule applies; businesswoman denotes same concept as businessperson,sonnet,written,write.py b/CB/19407570465d,2519008755
+2026-07-18 07:08:43,L33614,Q1075929,afrikan,sv,1,yes,"""afrikan"" clearly denotes a person of African origin",sonnet,written,write.py b/CB/19407570465d,2519008760
+2026-07-18 07:08:45,L1134623,Q49085,afroamerikan,sv,1,yes,afroamerikan is a direct calque of African American,sonnet,written,write.py b/CB/19407570465d,2519008766
+2026-07-18 07:08:48,L55159,Q407747,agg,sv,1,yes,"agg means grudge/resentment, a negative feeling",sonnet,written,write.py b/CB/19407570465d,2519008772
+2026-07-18 07:08:50,L52385,Q12480578,algerier,sv,1,yes,"EQUAL: national demonym, codified blessed target",sonnet,written,write.py b/CB/19407570465d,2519008779
+2026-07-18 07:08:53,L1096143,Q11072,amnesi,sv,1,yes,amnesi is the direct Swedish equivalent of amnesia,sonnet,written,write.py b/CB/19407570465d,2519008786
+2026-07-18 07:08:55,L298419,Q506524,amöba,sv,1,yes,EQUAL: unicellular organism amoeba,sonnet,written,write.py b/CB/19407570465d,2519008791
+2026-07-18 07:08:58,L1091419,Q6199,anarkism,sv,1,yes,anarkism is the Swedish word for anarchism,sonnet,written,write.py b/CB/19407570465d,2519008799
+2026-07-18 07:09:00,L1415060,Q2146321,andorran,sv,1,yes,andorran denotes a citizen or resident of Andorra,sonnet,written,write.py b/CB/19407570465d,2519008812
+2026-07-18 07:09:03,L1399603,Q28837,anestesiläkare,sv,1,yes,anestesiläkare and narkosläkare are direct Swedish synonyms for anesthesiologist,sonnet,written,write.py b/CB/19407570465d,2519008814
+2026-07-18 07:09:05,L1092686,Q17930,anomi,sv,1,yes,anomi is the Swedish term for anomie/normlessness,sonnet,written,write.py b/CB/19407570465d,2519008824
+2026-07-18 07:09:08,L33660,Q581459,antipati,sv,1,yes,Swedish 'antipati' directly denotes antipathy/dislike,sonnet,written,write.py b/CB/19407570465d,2519008835
+2026-07-18 07:09:10,L295060,Q4773904,antropolog,sv,1,yes,antropolog directly denotes an anthropologist,sonnet,written,write.py b/CB/19407570465d,2519008848
+2026-07-18 07:09:13,L1558881,Q3355098,apelsinträd,sv,1,yes,"apelsinträd is the sweet orange tree, Citrus sinensis",sonnet,written,write.py b/CB/19407570465d,2519008854
+2026-07-18 07:09:16,L52384,Q2365041,argentinare,sv,1,yes,EQUAL: demonym to blessed national-demonym target,sonnet,written,write.py b/CB/19407570465d,2519008859
+2026-07-18 07:09:18,L1505829,Q10294,armod,sv,1,yes,armod directly denotes poverty/destitution,sonnet,written,write.py b/CB/19407570465d,2519008867
+2026-07-18 07:09:20,L35856,Q675316,arvtagare,sv,1,yes,"'arvtagare' means heir, person entitled to inheritance",sonnet,written,write.py b/CB/19407570465d,2519008872
+2026-07-18 07:09:23,L47706,Q334473,avdelningschef,sv,1,yes,"avdelningschef = division head, exact match",sonnet,written,write.py b/CB/19407570465d,2519008879
+2026-07-18 07:09:25,L1413288,Q1643652,avståndsmätare,sv,1,yes,"avståndsmätare means distance-measurer, exactly a rangefinder",sonnet,written,write.py b/CB/19407570465d,2519008884
+2026-07-18 07:09:28,L1419898,Q356367,babbe,sv,1,yes,re-adjudicated 2026-07-05 (was approved): approved stands — babbe (Swedish pejorative slang) → Q356367 is EQUAL (verifier 'yes'); sole competitor uncached. Stands as a factual denotation.,sonnet,written,write.py b/CB/19407570465d,2519008895
+2026-07-18 07:09:30,L490815,Q160131,bagerska,sv,1,yes,"EQUAL: female baker, gender recorded separately",sonnet,written,write.py b/CB/19407570465d,2519008906
+2026-07-18 07:09:33,L32862,Q62024649,behörighet,sv,1,yes,EQUAL: right to participate matches eligibility exactly,sonnet,written,write.py b/CB/19407570465d,2519008913
+2026-07-18 07:09:35,L1413190,Q1367353,bekvämlighet,sv,1,yes,"bekvämlighet means comfort/ease, matching exactly",sonnet,written,write.py b/CB/19407570465d,2519008920
+2026-07-18 07:09:38,L32648,Q1377716,belgare,sv,1,yes,belgare denotes citizens or residents of Belgium,sonnet,written,write.py b/CB/19407570465d,2519008929
+2026-07-18 07:09:41,L1001767,Q1377716,belgier,sv,1,yes,"re-adjudicated 2026-07-05 (was approved): approved stands — nationality demonym → 'Belgians' (Q1377716, 'citizens or residents of X', P31 human population) is the codified/blessed P5137 target and KEEPS (contrast the ethnic-group demonyms deferred in the same cross-check batch — Irish/Georgian/French/Bulgarian/Kyrgyz). All-language anchor cross-check abstained only on an uncached homograph anchor stitched into the cluster — cross-language homograph pollution, not a scope error.",sonnet,written,write.py b/CB/19407570465d,2519008935
+2026-07-23 06:26:57,L1410898,Q9149093,bergsbestigare,sv,1,yes,"bergsbestigare means mountaineer, person who climbs mountains",sonnet,written,write.py b/CB/0d896e38a436,2521516020
+2026-07-23 06:26:59,L242756,Q829909,besittning,sv,1,yes,EQUAL: control over a thing matches legal possession,sonnet,written,write.py b/CB/0d896e38a436,2521516024
+2026-07-23 06:27:02,L1412313,Q4394121,beslutsamhet,sv,1,yes,EQUAL: decisiveness personality trait,sonnet,written,write.py b/CB/0d896e38a436,2521516031
+2026-07-23 06:27:04,L60449,Q5184855,besättningsmedlem,sv,1,yes,'besättningsmedlem' is the direct Swedish equivalent of crew member,sonnet,written,write.py b/CB/0d896e38a436,2521516038
+2026-07-23 06:27:07,L294911,Q593132,besöksförbud,sv,1,yes,exact match; Wikidata label is besöksförbud itself,sonnet,written,write.py b/CB/0d896e38a436,2521516041
+2026-07-23 06:27:09,L1518461,Q100251705,bhutanes,sv,1,yes,EQUAL: nationality demonym matches blessed citizens-of-X concept,sonnet,written,write.py b/CB/0d896e38a436,2521516046
+2026-07-23 06:27:12,L247296,Q506002,biskopsstav,sv,1,yes,"biskopsstav = bishop's crook-staff, exact crosier match",sonnet,written,write.py b/CB/0d896e38a436,2521516049
+2026-07-23 06:27:14,L1558854,Q107090995,björnhona,sv,1,yes,EQUAL: female bear matches she-bear,sonnet,written,write.py b/CB/0d896e38a436,2521516056
+2026-07-23 06:27:17,L32638,Q169336,blandning,sv,1,yes,EQUAL: mixture of combined parts matches mixture concept,sonnet,written,write.py b/CB/0d896e38a436,2521516062
+2026-07-23 06:27:19,L1410350,Q29496,blodcancer,sv,1,yes,BROADER: blood cancer broader than leukemia,sonnet,written,write.py b/CB/0d896e38a436,2521516065
+2026-07-23 06:27:22,L487440,Q16735601,blomsterhandlare,sv,1,yes,"blomsterhandlare denotes florist, a flower-selling profession",sonnet,written,write.py b/CB/0d896e38a436,2521516068
+2026-07-23 06:27:24,L1449683,Q11199149,blygsamhet,sv,1,yes,"BROADER: general unassuming modesty, not only dress-based modesty",sonnet,written,write.py b/CB/0d896e38a436,2521516076
+2026-07-23 06:27:27,L586036,Q1595418,botemedel,sv,1,yes,re-adjudicated 2026-07-05 (was approved): approved stands — botemedel=remedy/cure Q1595418 is EQUAL (verifier 'yes'); the cross-check abstained on the near-synonym medication Q12140 (narrower: a drug) stitched into the cluster. Remedy is the right general concept; stands.,sonnet,written,write.py b/CB/0d896e38a436,2521516081
+2026-07-23 06:27:29,L52381,Q873625,brasilian,sv,1,yes,"re-adjudicated 2026-07-05 (was approved): approved stands — nationality demonym → 'Brazilians' (Q873625, 'citizens or residents of X', P31 human population) is the codified/blessed P5137 target and KEEPS (contrast the ethnic-group demonyms deferred in the same cross-check batch — Irish/Georgian/French/Bulgarian/Kyrgyz). All-language anchor cross-check abstained only on Brazilian Portuguese Q750553 stitched into the cluster — cross-language homograph pollution, not a scope error.",sonnet,written,write.py b/CB/0d896e38a436,2521516085
+2026-07-23 06:27:32,L246207,Q873625,brasilianare,sv,1,yes,"re-adjudicated 2026-07-05 (was approved): approved stands — nationality demonym → 'Brazilians' (Q873625, 'citizens or residents of X', P31 human population) is the codified/blessed P5137 target and KEEPS (contrast the ethnic-group demonyms deferred in the same cross-check batch — Irish/Georgian/French/Bulgarian/Kyrgyz). All-language anchor cross-check abstained only on Brazilian Portuguese Q750553 stitched into the cluster — cross-language homograph pollution, not a scope error.",sonnet,written,write.py b/CB/0d896e38a436,2521516091
+2026-07-23 06:27:34,L246643,Q1277575,brevväxling,sv,1,yes,re-adjudicated 2026-07-05 (was approved): approved stands — brevväxling=correspondence (letters exchanged) Q1277575 is EQUAL (verifier 'yes'); competitors are the 'correspondence' literary-genre sense Q1784733 and chronicle Q185363 — homograph pollution.,sonnet,written,write.py b/CB/0d896e38a436,2521516102
+2026-07-23 06:27:37,L240156,Q61356432,brödskiva,sv,1,yes,EQUAL: bread slice matches exactly,sonnet,written,write.py b/CB/0d896e38a436,2521516108
+2026-07-23 06:27:40,L32090,Q829020,bussförare,sv,1,yes,"Bussförare means bus driver, the exact occupation described.",sonnet,written,write.py b/CB/0d896e38a436,2521516117
+2026-07-23 06:27:42,L58550,Q32880,byggnadsstil,sv,1,yes,Byggnadsstil denotes architectural style of a building,sonnet,written,write.py b/CB/0d896e38a436,2521516124
+2026-07-23 06:27:45,L366627,Q60297962,cancelkultur,sv,1,yes,Cancelkultur is the direct Swedish term for cancel culture,sonnet,written,write.py b/CB/0d896e38a436,2521516133
+2026-07-23 06:27:47,L70507,Q12078,cancersjukdom,sv,1,yes,cancersjukdom directly denotes cancer as a disease group,sonnet,written,write.py b/CB/0d896e38a436,2521516141
+2026-07-23 06:27:50,L1563509,Q1430956,charlatan,sv,1,yes,Charlatan denotes exactly an impostor pretending for personal gain,sonnet,written,write.py b/CB/0d896e38a436,2521516148
+2026-07-23 06:27:52,L36115,Q124378,daggmask,sv,1,yes,re-adjudicated 2026-07-05 (was approved): approved stands — daggmask=earthworm Q124378 is EQUAL (verifier 'yes'); competitors uncached cross-language noise.,sonnet,written,write.py b/CB/0d896e38a436,2521516159
+2026-07-23 06:27:55,L55012,Q11326182,dagning,sv,1,yes,dagning means the dawn period exactly,sonnet,written,write.py b/CB/0d896e38a436,2521516168
+2026-07-23 06:27:57,L32714,Q5716684,dansös,sv,1,yes,"dansös is female dancer, same concept",sonnet,written,write.py b/CB/0d896e38a436,2521516176
+2026-07-23 06:28:00,L1160759,Q2383053,digression,sv,1,yes,EQUAL: temporary shift of subject in narrative,sonnet,written,write.py b/CB/0d896e38a436,2521516182
+2026-07-23 06:28:03,L33278,Q4,död,sv,1,yes,"död/döden directly denotes death, permanent cessation of life",sonnet,written,write.py b/CB/0d896e38a436,2521516192
+2026-07-23 06:28:06,L240031,Q4402708,efterfrågan,sv,1,yes,efterfrågan is the Swedish word for economic demand,sonnet,written,write.py b/CB/0d896e38a436,2521516200
+2026-07-23 06:28:08,L1418477,Q1409751,elddop,sv,1,yes,EQUAL: ordeal/baptism by fire match,sonnet,written,write.py b/CB/0d896e38a436,2521516205
+2026-07-23 06:28:11,L35755,Q168983,eldsvåda,sv,1,yes,"eldsvåda means uncontrolled conflagration, matching exactly",sonnet,written,write.py b/CB/0d896e38a436,2521516218
+2026-07-23 06:28:13,L663898,Q1341477,energiförsörjning,sv,1,yes,LATERAL: energy access/availability vs economic supply sector,sonnet,written,write.py b/CB/0d896e38a436,2521516223
+2026-07-23 06:28:16,L713701,Q2333152,envishet,sv,1,yes,"envishet directly means stubbornness, the described trait",sonnet,written,write.py b/CB/0d896e38a436,2521516230
+2026-07-23 06:28:18,L1380689,Q3683504,erövrare,sv,1,yes,"BROADER: erövrare is any conqueror, not only famous empire-extenders",sonnet,written,write.py b/CB/0d896e38a436,2521516238
+2026-07-23 06:28:21,L501654,Q1147273,est,sv,1,yes,"re-adjudicated 2026-07-05 (was approved): approved stands — nationality demonym → 'Estonians' (Q1147273, 'citizens or residents of X', P31 human population) is the codified/blessed P5137 target and KEEPS (contrast the ethnic-group demonyms deferred in the same cross-check batch — Irish/Georgian/French/Bulgarian/Kyrgyz). All-language anchor cross-check abstained only on the Estonian LANGUAGE Q9072 and Estonian horse Q1370382 stitched into the cluster — cross-language homograph pollution, not a scope error.",sonnet,written,write.py b/CB/0d896e38a436,2521516247
+2026-07-23 06:28:23,L400252,Q394067,europé,sv,1,yes,'europé' denotes a person from Europe,sonnet,written,write.py b/CB/0d896e38a436,2521516254
+2026-07-23 06:28:26,L60275,Q104080200,extremist,sv,1,yes,extremist exactly matches the Swedish definition given,sonnet,written,write.py b/CB/0d896e38a436,2521516266
+2026-07-23 06:28:29,L238083,Q12812139,fackterm,sv,1,yes,fackterm means specialized/technical term exactly,sonnet,written,write.py b/CB/0d896e38a436,2521516281
+2026-07-23 06:28:32,L1420605,Q1401607,feghet,sv,1,yes,feghet is the direct Swedish word for cowardice,sonnet,written,write.py b/CB/0d896e38a436,2521516286
+2026-07-23 06:28:35,L35507,Q104605901,fegis,sv,1,yes,'fegis' is exactly Swedish for coward,sonnet,written,write.py b/CB/0d896e38a436,2521516299
+2026-07-23 06:28:38,L588171,Q4172847,filippinska,sv,1,yes,"EQUAL: female Filipino = Filipinos, gender rule applies",sonnet,written,write.py b/CB/0d896e38a436,2521516304
+2026-07-23 06:28:40,L1133454,Q167612,fingerfärdighet,sv,1,yes,"fingerfärdighet means manual dexterity, exact match",sonnet,written,write.py b/CB/0d896e38a436,2521516311
+2026-07-23 06:28:43,L1418111,Q181391,flint,sv,1,yes,LATERAL: physical bald patch vs. state/condition of baldness,sonnet,written,write.py b/CB/0d896e38a436,2521516316
+2026-07-23 06:28:45,L246876,Q1429491,flodbädd,sv,1,yes,"flodbädd = river/stream bed, exact match including Swedish label",sonnet,written,write.py b/CB/0d896e38a436,2521516326
+2026-07-23 06:28:48,L245391,Q157165,fordringsägare,sv,1,yes,"fordringsägare = creditor, exact match",sonnet,written,write.py b/CB/0d896e38a436,2521516337
+2026-07-23 06:28:50,L482449,Q2793701,fosterbarn,sv,1,yes,fosterbarn is the direct Swedish word for foster child,sonnet,written,write.py b/CB/0d896e38a436,2521516346
+2026-07-23 06:28:53,L32572,Q937857,fotbollsspelare,sv,1,yes,fotbollsspelare exactly denotes an association football player,sonnet,written,write.py b/CB/0d896e38a436,2521516352
+2026-07-23 06:28:55,L710841,Q846430,framtidsforskare,sv,1,yes,'framtidsforskare' (future researcher) matches futurist,sonnet,written,write.py b/CB/0d896e38a436,2521516362
+2026-07-23 06:28:58,L32669,Q55187,frisörska,sv,1,yes,"frisörska is the female form of hairdresser, same concept",sonnet,written,write.py b/CB/0d896e38a436,2521516370
+2026-07-23 06:29:00,L33216,Q2304859,furste,sv,1,yes,EQUAL: furste = sovereign monarch ruler,sonnet,written,write.py b/CB/0d896e38a436,2521516377
+2026-07-23 06:29:03,L579254,Q334166,färdmedel,sv,1,yes,EQUAL: gloss 'way to get from place to place' aligns with mode of transport,sonnet,written,write.py b/CB/0d896e38a436,2521516384
+2026-07-23 06:29:05,L251553,Q2095,föda,sv,1,yes,föda as noun denotes food/nourishment,sonnet,written,write.py b/CB/0d896e38a436,2521516394
+2026-07-23 06:29:08,L1494890,Q83267,förbrytelse,sv,1,yes,"förbrytelse means crime, an act contrary to law",sonnet,written,write.py b/CB/0d896e38a436,2521516399
+2026-07-23 06:29:10,L51557,Q21255975,förbättring,sv,1,yes,"förbättring directly means improvement, process of higher quality",sonnet,written,write.py b/CB/0d896e38a436,2521516407
+2026-07-23 06:29:13,L241912,Q179742,fördom,sv,1,yes,"fördom means prejudice, matches description exactly",sonnet,written,write.py b/CB/0d896e38a436,2521516413
+2026-07-23 06:29:15,L33343,Q7958,förklaring,sv,1,yes,förklaring directly means explanation,sonnet,written,write.py b/CB/0d896e38a436,2521516420
+2026-07-23 06:29:18,L1092769,Q20861252,förlorare,sv,1,yes,"förlorare means loser, one who loses a competition",sonnet,written,write.py b/CB/0d896e38a436,2521516423
+2026-07-23 06:29:21,L1560823,Q537963,förlåtelse,sv,1,yes,förlåtelse directly means forgiveness,sonnet,written,write.py b/CB/0d896e38a436,2521516429
+2026-07-23 06:29:23,L32230,Q685433,försäljare,sv,1,yes,försäljare exactly denotes salesperson,sonnet,written,write.py b/CB/0d896e38a436,2521516442
+2026-07-23 06:29:25,L1404534,Q685433,försäljerska,sv,1,yes,försäljerska is the feminine form of försäljare/salesperson,sonnet,written,write.py b/CB/0d896e38a436,2521516446
+2026-07-23 06:29:28,L1495536,Q256401,förtret,sv,1,yes,EQUAL: annoyance/irritation matches förtret,sonnet,written,write.py b/CB/0d896e38a436,2521516454
+2026-07-23 06:29:31,L1208527,Q104776274,förvåning,sv,1,yes,BROADER: gloss says 'surprise'; concept specifies 'very great surprise',sonnet,written,write.py b/CB/0d896e38a436,2521516459
+2026-07-23 06:29:33,L1414867,Q505619,galenskap,sv,1,yes,galenskap is a Swedish synonym for insanity/madness,sonnet,written,write.py b/CB/0d896e38a436,2521516465
+2026-07-23 06:29:36,L52375,Q99717065,gambier,sv,1,yes,EQUAL: person från Gambia = citizen/resident of The Gambia,sonnet,written,write.py b/CB/0d896e38a436,2521516471
+2026-07-23 06:29:38,L1087696,Q170084,generalisering,sv,1,yes,generalisering directly denotes the abstraction concept,sonnet,written,write.py b/CB/0d896e38a436,2521516475
+2026-07-23 06:29:41,L1418382,Q166153,germanistik,sv,1,yes,germanistik directly denotes German language and literature studies,sonnet,written,write.py b/CB/0d896e38a436,2521516485
+2026-07-23 06:29:43,L494552,Q1499127,girigbuk,sv,1,yes,"girigbuk directly denotes a miser, stingy hoarder",sonnet,written,write.py b/CB/0d896e38a436,2521516490
+2026-07-23 06:29:46,L1561003,Q855091,gitarrspelare,sv,1,yes,"gitarrspelare means guitar player, matching guitarist",sonnet,written,write.py b/CB/0d896e38a436,2521516497
+2026-07-23 06:29:48,L1561004,Q11303721,golfspelare,sv,1,yes,golfspelare directly denotes a person who plays golf,sonnet,written,write.py b/CB/0d896e38a436,2521516502
+2026-07-23 06:29:51,L246185,Q1537035,gondoljär,sv,1,yes,gondoljär clearly denotes a gondolier,sonnet,written,write.py b/CB/0d896e38a436,2521516509
+2026-07-23 06:29:54,L46303,Q1986893,grannfru,sv,1,yes,EQUAL: female neighbor; gender recorded separately per rule,sonnet,written,write.py b/CB/0d896e38a436,2521516515
+2026-07-23 06:29:56,L244187,Q884301,gratispassagerare,sv,1,yes,gratispassagerare = free-rider; description matches concept exactly,sonnet,written,write.py b/CB/0d896e38a436,2521516520
+2026-07-23 06:29:59,L32306,Q23090513,grop,sv,1,yes,grop denotes a hole or cavity in the ground,sonnet,written,write.py b/CB/0d896e38a436,2521516530
+2026-07-23 06:30:01,L1417386,Q20826647,guatemalan,sv,1,yes,guatemalan denotes a citizen or resident of Guatemala,sonnet,written,write.py b/CB/0d896e38a436,2521516538
+2026-07-23 06:30:04,L1417387,Q99635366,guinean,sv,1,yes,guinean denotes a citizen or resident of Guinea,sonnet,written,write.py b/CB/0d896e38a436,2521516543
+2026-07-23 06:30:06,L60254,Q15360275,gymnasist,sv,1,yes,EQUAL: gymnasist and high school student are equivalent,sonnet,written,write.py b/CB/0d896e38a436,2521516552
+2026-07-23 06:30:09,L1493376,Q815825,gästvänlighet,sv,1,yes,EQUAL: ability to receive guests well = hospitality,sonnet,written,write.py b/CB/0d896e38a436,2521516563
+2026-07-23 06:30:11,L32826,Q82714,haka,sv,1,yes,"haka means chin, a body part; exact match",sonnet,written,write.py b/CB/0d896e38a436,2521516566
+2026-07-23 06:30:13,L475922,Q848944,handelsfartyg,sv,1,yes,EQUAL: merchant ship/vessel same concept,sonnet,written,write.py b/CB/0d896e38a436,2521516575
+2026-07-23 06:30:16,L35690,Q1400189,handläggare,sv,1,yes,LATERAL: case-handler applying rules vs official in charge,sonnet,written,write.py b/CB/0d896e38a436,2521516581
+2026-07-23 06:30:18,L1561008,Q9286830,hasardspelare,sv,1,yes,"'hasardspelare' directly means gambler, matching exactly",sonnet,written,write.py b/CB/0d896e38a436,2521516585
+2026-07-23 06:30:21,L585633,Q43115,helgon,sv,1,yes,"helgon is exactly saint, holy person venerated",sonnet,written,write.py b/CB/0d896e38a436,2521516595
+2026-07-23 06:30:24,L1143178,Q51621,helgonförklaring,sv,1,yes,"helgonförklaring literally means canonization, exact match",sonnet,written,write.py b/CB/0d896e38a436,2521516600
+2026-07-23 06:30:26,L32702,Q11330348,hjältinna,sv,1,yes,"hjältinna means female hero, exact match",sonnet,written,write.py b/CB/0d896e38a436,2521516609
+2026-07-23 06:30:28,L243314,Q268930,hjärnhinna,sv,1,yes,EQUAL: membrane around brain = meninges,sonnet,written,write.py b/CB/0d896e38a436,2521516614
+2026-07-23 06:30:31,L588188,Q200569,holländare,sv,1,yes,holländare clearly denotes a Dutch person/citizen,sonnet,written,write.py b/CB/0d896e38a436,2521516616
+2026-07-23 06:30:34,L56718,Q2447386,hudläkare,sv,1,yes,hudläkare is the common Swedish word for dermatologist,sonnet,written,write.py b/CB/0d896e38a436,2521516623
+2026-07-23 06:30:36,L55075,Q37413,hundratal,sv,1,yes,EQUAL: 'hundra stycken' denotes the number 100,sonnet,written,write.py b/CB/0d896e38a436,2521516633
+2026-07-23 06:30:39,L585889,Q99895,huvudkudde,sv,1,yes,"Huvudkudde literally means head cushion, i.e. pillow",sonnet,written,write.py b/CB/0d896e38a436,2521516639
+2026-07-23 06:30:41,L251580,Q39373172,hälft,sv,1,yes,"hälft = half, matches concept of one of two equal parts",sonnet,written,write.py b/CB/0d896e38a436,2521516646
+2026-07-23 06:30:44,L490934,Q1622272,högskolelärare,sv,1,yes,"BROADER: högskola covers all higher education, not only universities",sonnet,written,write.py b/CB/0d896e38a436,2521516654
+2026-07-23 06:30:46,L47966,Q193607,idiot,sv,1,yes,idiot means person of low intelligence in Swedish,sonnet,written,write.py b/CB/0d896e38a436,2521516660
+2026-07-23 06:30:49,L61324,Q2066131,idrottskvinna,sv,1,yes,EQUAL: gender rule; sportswoman = athlete with sex noted separately,sonnet,written,write.py b/CB/0d896e38a436,2521516668
+2026-07-23 06:30:51,L33391,Q862086,indier,sv,1,yes,EQUAL: national demonym matches citizens/residents of India,sonnet,written,write.py b/CB/0d896e38a436,2521516675
+2026-07-23 06:30:53,L242796,Q121359,infrastruktur,sv,1,yes,infrastruktur directly denotes infrastructure,sonnet,written,write.py b/CB/0d896e38a436,2521516683
+2026-07-23 06:30:56,L1524836,Q41374,inkarnation,sv,1,yes,inkarnation directly denotes divine taking physical form,sonnet,written,write.py b/CB/0d896e38a436,2521516694
+2026-07-23 07:11:06,L320124,Q205,endlessness,en,1,yes,EQUAL: endlessness synonym of infinity concept,sonnet,rejected,crowd+manual,
+2026-07-23 07:11:06,L323277,Q205,limitlessness,en,1,,quality noun; not used for the mathematical concept infinity (Q205) — sibling of endlessness,,rejected,manual,
+2026-07-23 07:11:06,L448928,Q205,immensité,fr,1,,'immensité' (vastness/immensity) does not denote the mathematical concept infinity (Q205),,rejected,manual,
+2026-07-23 07:11:06,L845963,Q205,Grenzenlosigkeit,de,0,,'Grenzenlosigkeit' (boundlessness) does not denote the mathematical concept infinity (Q205),,rejected,manual,
