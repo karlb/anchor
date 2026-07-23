@@ -162,6 +162,18 @@ def archive_votes(votes, dry, path=CROWD_LOG):
     return len(fresh), rows + fresh
 
 
+def first_decisions(path=rq.DECISIONS):
+    """{(lid, qid): (ts, reviewer)} of each pair's FIRST logged event — the moment it
+    left the live pool and (for approved/rejected) its gold label was born. The
+    append-only log is in time order, so the first row per key wins."""
+    out = {}
+    if os.path.exists(path):
+        with open(path, newline="") as f:
+            for r in csv.DictReader(f):
+                out.setdefault((r["target_lid"], r["anchor_qid"]), (r["ts"], r["reviewer"]))
+    return out
+
+
 def latest_votes(rows):
     """{(sid, user): row}, max-ts row winning (string compare is safe on the fixed
     'YYYY-MM-DD HH:MM:SS' format)."""
@@ -171,13 +183,17 @@ def latest_votes(rows):
     return latest
 
 
-def trap_scores(latest, by_sid):
+def trap_scores(latest, by_sid, first):
     """{user: [a_ok, a_n, r_ok, r_n]} from votes on trap tiles, skips not counted.
 
     Graded against the FEED's gold label, not the exported is_gold flag — that flag
-    is export-time state (the service LEFT JOINs the *current* suggestion table), so
-    a vote cast while the pair was still live grades here against the eventual human
-    verdict: more signal, and promotion has its own already-decided check."""
+    is export-time state (the service LEFT JOINs the *current* suggestion table).
+
+    Grade nobody against gold they helped create: a vote cast at-or-before the pair's
+    first decision was promotion input, so it only grades when that decision was
+    crowd-independent — Karl's verdicts stay free retroactive signal, while
+    crowd-created gold measures only players who voted once it existed. This is what
+    lets crowd-decided pairs serve as traps in languages with no local reviewer."""
     scores = collections.defaultdict(lambda: [0, 0, 0, 0])
     for (sid, user), r in latest.items():
         row = by_sid.get(sid)
@@ -186,6 +202,9 @@ def trap_scores(latest, by_sid):
             print(f"  warn: {sid} exported is_gold but no local feed marks it gold "
                   "(feed files out of date?) — vote not graded")
         if gold is None or r["decision"] == "skip":
+            continue
+        ts0, rev0 = first.get(sid_key(sid), ("", ""))
+        if r["ts"] <= ts0 and rev0.startswith("crowd:"):
             continue
         s = scores[user]
         if gold == "approved":
@@ -337,7 +356,7 @@ def main():
     by_sid, newest = load_feeds()
     n_new, rows = archive_votes(payload["votes"], args.dry_run)
     latest = latest_votes(rows)
-    scores = trap_scores(latest, by_sid)
+    scores = trap_scores(latest, by_sid, first_decisions())
     tiers = classify(scores, sorted({u for _, u in latest}))
     agg = aggregate(latest, tiers, rq.load_decisions(), by_sid)
     promote(agg[0], by_sid, args.dry_run)
