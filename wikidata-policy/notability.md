@@ -53,17 +53,23 @@ Wikibase Suite, wikiba.se) rather than Wikidata.
 
 ## Relevance to this project
 
-`write.py` adds P5137 ("item for this sense") links **to existing lexeme senses**
-and links them to **pre-existing, notable** anchor items — it does not create new
-items — so item-notability questions don't normally arise. Notability matters
-mainly at **step 2 of the mass-editing process** (don't mass-create non-notable
-items). Note also that **lexicographical data has its own separate notability
-guidance** (linked below), distinct from these item criteria.
+`write.py` adds P5137 ("item for this sense") links pointing at **pre-existing,
+notable** anchor items, and **creates no items** — so *item* notability questions
+don't normally arise. Notability matters mainly at **step 2 of the mass-editing
+process** (don't mass-create non-notable items).
+
+This page is **not the binding one for us**, though. Since the senseless-target
+stream (`notes/sense_creation_plan.md`) the pipeline also **creates lexeme
+senses**, and senses are governed by the separate
+[Wikidata:Lexicographical data/Notability](https://www.wikidata.org/wiki/Wikidata:Lexicographical_data/Notability)
+— summarised in `lexicographical-notability.md`, which is where the open
+sourcing question for created senses is written up. Read that one first for
+anything touching sense creation.
 
 ## Related links
 
 - [Wikidata:Notability/Exclusion criteria](https://www.wikidata.org/wiki/Wikidata:Notability/Exclusion_criteria)
 - [Wikidata:Notability/Items considered notable](https://www.wikidata.org/wiki/Wikidata:Notability/Items_considered_notable)
-- [Wikidata:Lexicographical data/Notability](https://www.wikidata.org/wiki/Wikidata:Lexicographical_data/Notability)
+- [Wikidata:Lexicographical data/Notability](https://www.wikidata.org/wiki/Wikidata:Lexicographical_data/Notability) — see `lexicographical-notability.md`
 - [Wikidata:Requests for deletion](https://www.wikidata.org/wiki/Wikidata:Requests_for_deletion)
 - [Wikidata:Requests for comment/Mass-editing policy](https://www.wikidata.org/wiki/Wikidata:Requests_for_comment/Mass-editing_policy) — see `mass-editing-policy.md`
