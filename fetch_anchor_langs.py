@@ -47,10 +47,14 @@ CREATE TABLE IF NOT EXISTS item_alias_fetched(qid TEXT PRIMARY KEY);
 
 
 def needed_qids(cache):
-    """Distinct anchor Q-ids of the production verify set (ABD candidates) not yet fetched.
+    """Distinct anchor Q-ids of both review lanes, not yet fetched.
 
     This is the +multi verifier's universe — every anchor it will score needs its all-language
     concept, because item_lang is now the ONLY concept the grader reads (no de/en/sv fallback).
+    BOTH tiers count: ABD (monosemous write stream, n_senses=1) and AD --senseless-only
+    (the phase-2 sense-creation lane, n_senses=0). Fetching only ABD left every senseless-only
+    anchor uncached, so review_queue --senseless showed "(no item_lang concept — run
+    fetch_anchor_langs.py)" while this script reported 0 to fetch — a dead end.
     So fetch EVERY non-missing ABD anchor — candidates() already excludes missing items, and we
     deliberately do NOT pre-filter on the de/en/sv has_evidence gate: an anchor with no de/en/sv
     label but a label in some other language would otherwise never be fetched and so never be
@@ -58,7 +62,8 @@ def needed_qids(cache):
     is marked done, and verify's item_lang has_evidence skips it. An anchor counts as done only
     when BOTH labels/descriptions AND aliases are cached, so a cache built before aliases were
     added self-heals: those anchors re-fetch once (labels rewritten idempotently)."""
-    want = sorted({r[3] for r in verify.candidates(gate="ABD")})
+    want = sorted({r[3] for r in verify.candidates(gate="ABD")}
+                  | {r[3] for r in verify.candidates(gate="AD", senseless_only=True)})
     lang_done = {r[0] for r in cache.execute("SELECT qid FROM item_lang_fetched")}
     alias_done = {r[0] for r in cache.execute("SELECT qid FROM item_alias_fetched")}
     done = lang_done & alias_done
