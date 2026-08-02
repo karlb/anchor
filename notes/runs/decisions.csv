@@ -1146,3 +1146,5 @@ ts,target_lid,anchor_qid,target_lemma,target_lang,target_n_senses,verdict,reason
 2026-08-02 13:19:41,L769000,Q245359,Injektion,de,0,yes,EQUAL: Injektion and injection (fluid via needle) denote the same medical concept,sonnet,approved,local,
 2026-08-02 13:19:52,L492503,Q5576720,Intonation,de,0,yes,EQUAL: linguistic intonation = variation of pitch in speech,sonnet,approved,local,
 2026-08-02 13:19:57,L789289,Q131401,Kalifat,de,0,yes,EQUAL: 'Kalifat' directly matches caliphate concept,sonnet,approved,local,
+2026-08-02 15:50:20,L825212,Q67439188,Chronologie,de,0,yes,BROADER: 'Chronologie' is the science/arrangement; concept is specifically a document,sonnet,deferred,manual,
+2026-08-02 15:50:20,L882787,Q867132,Diva,de,0,yes,"EQUAL: celebrated female performer, descriptions agree",sonnet,approved,manual,
