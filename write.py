@@ -26,8 +26,9 @@ since a semantically-duplicate sense is a hazard the P5137-only check can't see.
 
 Senseless (--include-senseless) writes are lexeme-centric: all approved items for one lexeme
 are grouped into a single edit creating one sense each, so a multi-item lexeme's inventory is
-written as one human-approved unit. The gloss follows the decided policy (description-primary,
-label fallback, skip if neither), keyed by the language of the text — see review_queue.anchor_gloss.
+written as one human-approved unit. The gloss is the anchor's CC0 DESCRIPTION — target language
+first, else any other language that has one, never a label — keyed by the language of the text.
+See review_queue.anchor_gloss for why a foreign description beats a same-language name.
 """
 
 import argparse
@@ -83,9 +84,10 @@ def build_edit(row, today, include_senseless, it):
 
     Monosemous: add the claim to the lexeme's single existing sense (its S-id is
     resolved against the live lexeme at write time). Senseless: create a sense whose
-    gloss follows the decided policy — the anchor's CC0 description (label fallback,
-    skip if neither), keyed by the language the text is in, plus an en gloss for
-    legibility (review_queue.anchor_gloss, the SAME text the review UI previewed).
+    gloss is the anchor's CC0 description (target language first, else any language that
+    has one; never a label, skip if none), keyed by the language the text is in, plus an
+    en gloss for legibility (review_queue.anchor_gloss, the SAME text the review UI
+    previewed).
     `it` is the shared items-DB connection (opened once in main)."""
     lid, qid, lemma, lang, n_senses = row
     claim = build_statement(qid, today)
@@ -94,9 +96,9 @@ def build_edit(row, today, include_senseless, it):
         sense = {"id": f"<{lid}-S? resolved live>", "claims": {"P5137": [claim]}}
         return {"senses": [sense]}, "add to existing sense"
     if include_senseless:
-        glosses = anchor_gloss(it, qid, lang)  # {gloss_lang: text}, description-primary
-        if not glosses:  # no CC0 desc/label -> never fall back to the headword (degenerate)
-            return None, "skipped: senseless, no CC0 anchor description/label (no gloss source)"
+        glosses = anchor_gloss(it, qid, lang)  # {gloss_lang: text}, descriptions only
+        if not glosses:  # no CC0 description in ANY language -> nothing that defines the sense
+            return None, "skipped: senseless, no CC0 anchor description in any language"
         sense = {"add": "",
                  "glosses": {g: {"language": g, "value": t} for g, t in glosses.items()},
                  "claims": {"P5137": [claim]}}
@@ -327,8 +329,8 @@ def main():
     ap.add_argument("--max-edits-per-min", type=int, default=30,
                     help="cap submission rate (0 = no cap); default 30")
     ap.add_argument("--include-senseless", action="store_true",
-                    help="also build sense-creation edits (gloss = CC0 description, label "
-                         "fallback; one grouped edit per lexeme)")
+                    help="also build sense-creation edits (gloss = the anchor's CC0 "
+                         "description, any language, never a label; one edit per lexeme)")
     args = ap.parse_args()
 
     today = datetime.date.today().isoformat()

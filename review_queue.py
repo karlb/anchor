@@ -266,25 +266,41 @@ def anchor_cc0(it, qid, lang):
 
 
 def anchor_gloss(it, qid, lang):
-    """Glosses {gloss_lang: text} for a would-be new (senseless-target) sense, per the
-    decided policy (sense_creation_plan.md): the anchor's CC0 DESCRIPTION, falling back to
-    its LABEL only when no description exists in that language; empty dict = skip the
-    candidate (no usable CC0 text). Keyed by the language the text is ACTUALLY in — the
-    fix for the old bug where an en-fallback string was written under a `de`/`fr` key — and,
-    when the target language isn't en, an extra en gloss so a non-target-language patroller
-    can still read the created sense. CC0 only; a DBnary gloss is never read. This is the
-    single source of the gloss text: the review UI previews exactly what write.py will
-    write, both calling here."""
-    out = {}
-    lab, desc = anchor_cc0(it, qid, lang)
-    text = desc or lab                      # description-primary, label fallback (same language)
-    if text:
-        out[lang] = text
-    if lang != "en":
-        elab, edesc = anchor_cc0(it, qid, "en")
-        etext = edesc or elab
-        if etext and etext not in out.values():
-            out["en"] = etext
+    """Glosses {gloss_lang: text} for a would-be new (senseless-target) sense: the anchor's
+    CC0 DESCRIPTION, target language first, else the first other language that has one.
+    Empty dict = no description anywhere = skip the candidate.
+
+    DESCRIPTIONS ONLY — never a label. A label is a NAME, a gloss must DEFINE, so field type
+    outranks language: a French description beats a German label. The old rule resolved the
+    other way (`desc or lab` per language, target then en) and it cost real damage — of the
+    769 senseless candidates whose anchor lacks a target-language description, 417 would have
+    created a sense glossed with its own headword (de Parasit -> "Parasit") and 325 more with
+    a bare one-word synonym. Those anchors are not undescribed: 654 of the 769 carry
+    descriptions in 5+ OTHER languages, 518 in 10+. The code was discarding a real definition
+    to reach for a name in the right language. Dropping the label branch also finally makes
+    write.py's "never fall back to the headword (degenerate)" guard true — it only ever fired
+    on total absence, while the headword walked in through this fallback.
+
+    Keyed by the language the text is ACTUALLY in — the fix for the old bug where an
+    en-fallback string was written under a `de`/`fr` key — plus an extra en gloss when the
+    chosen one isn't English, so a non-target-language patroller can read the created sense.
+    CC0 only; a DBnary gloss is never read. This is the single source of the gloss text: the
+    review UI previews exactly what write.py will write, both calling here."""
+    if has_item_lang(it):
+        entry = {lg: (lab, ds) for lg, lab, ds in
+                 it.execute("SELECT lang, label, desc FROM item_lang WHERE qid=?", [qid])}
+        described = [(d, ds) for d, _lab, ds in config.resolve_concept_langs(
+            entry, config.CONCEPT_LANGS_DISPLAY, target=lang) if ds]
+    else:   # pre-fetch / fixture: only the de/en/sv columns of `item` exist
+        pairs = [(lg, anchor_cc0(it, qid, lg)[1]) for lg in dict.fromkeys([lang, "en"])]
+        described = [(lg, ds) for lg, ds in pairs if ds]
+    if not described:
+        return {}
+    out = {described[0][0]: described[0][1]}
+    for lg, ds in described:
+        if lg == "en":
+            out.setdefault("en", ds)   # legibility gloss; no-op when en was already chosen
+            break
     return out
 
 
