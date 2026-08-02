@@ -95,8 +95,8 @@ Also noted as a to-do: "function words should not have senses."
   `notes/sense_creation_plan.md:162` — the item-description-as-gloss pattern is
   written into Wikibase's own model documentation. Cite it in the BRFA.
 
-- **The wrong-first-sense hazard** (`sense_creation_plan.md:65`) is real but is a
-  *display* problem, not a rules problem. Creating S1 for a polysemous word's
+- **The minor-sense-as-S1 concern** (`sense_creation_plan.md`, "Risk model") is real
+  but is a *display* problem, not a rules problem. Creating S1 for a polysemous word's
   minor meaning breaks no requirement; it just parks that meaning permanently at
   the top of the lexeme page, where the counter guarantees it can never be moved
   down. So the mitigation that matters is the one already chosen — a gloss

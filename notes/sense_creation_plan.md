@@ -61,10 +61,13 @@ Blocks:
   demonym/ethnic scope-hint nudge is deterministic (no gloss needed), and `item_lang`
   multi-language labels give the reviewer (and optionally the +multi verifier) a
   cross-language consistency check.
-- **Wrong-first-sense hazard.** "Senseless" ≠ "monosemous in reality". If the cluster
-  sense is a polysemous word's *minor* meaning, we create S1 = the minor sense; later
-  editors may pile dominant-meaning data onto it. Mitigation: the gloss makes the sense
-  self-describing, and every pre-BRFA edit is human-approved *including the gloss text*.
+- **Minor sense as S1 — a gloss concern, not a rules one.** "Senseless" ≠ "monosemous in
+  reality". If the cluster sense is a polysemous word's *minor* meaning, we create S1 =
+  the minor sense. That breaks no requirement (`wikidata-policy/lexeme-data-model.md`:
+  sense ids auto-increment and are never renumbered, so rank is a display artifact — not
+  worth engineering around). The real exposure is that later editors pile dominant-meaning
+  data onto an under-specific gloss. Mitigation: the gloss makes the sense self-describing,
+  and every pre-BRFA edit is human-approved *including the gloss text*.
 - **Precision is an assumption until measured.** The monosemous 95.7% (180/188) is
   inherited, not demonstrated; the 48-sample yes-rate (75%) sits between the held-out
   85% and the fresh-monosemous 51%, so the stream's difficulty is genuinely unknown.

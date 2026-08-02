@@ -399,6 +399,10 @@ def scope_hint(reason, gloss=None, anchor_desc=None):
 # glossed just 'concentration'. NEUTRAL reviewer context (like alias_match) — the human weighs it;
 # we deliberately DON'T feed it to the verifier or auto-defer (would be noisy — the benign majority,
 # metonymy / species-vs-individual, is filtered out by the undifferentiated-gloss gate).
+# In the SENSELESS lane there is no gloss, so that gate is vacuous and the flag fires on every
+# collapse row. It does NOT mean "reject a minor sense": creating S1 for a minor meaning breaks no
+# rule (lexeme-data-model.md — sense ids auto-increment and are never renumbered, so rank is a
+# display artifact). The reviewer's actual job there is gloss specificity, which is what it asks.
 _LANG3TO2 = {"swe": "sv", "fra": "fr", "deu": "de", "eng": "en", "nob": "no",
              "nno": "no", "nor": "no", "nld": "nl", "dan": "da", "epo": "eo"}
 
@@ -699,8 +703,9 @@ def render(limit, lang_filter=None, senseless=None):
             gloss_html = f"“{html.escape(gl)}”{gtag}" if gl else "<i>(no sense gloss)</i>"
         if n_poly_row:
             gloss_html += (f"<div class=poly>⚠ source word is polysemous ({n_poly_row} WikDict "
-                           "senses collapse here) — creating S1 from a minor sense risks a "
-                           "wrong first sense; check this is the dominant meaning</div>"
+                           "senses collapse here) — S1 may be a minor sense, which is fine; "
+                           "check the gloss pins THIS meaning so a later editor can’t mistake "
+                           "it for the dominant one</div>"
                            if senseless else
                            f"<div class=poly>⚠ source word is polysemous ({n_poly_row} WikDict "
                            "senses collapse here) — this sense gloss is undifferentiated, so "
