@@ -265,10 +265,20 @@ def anchor_cc0(it, qid, lang):
     return None, None
 
 
-def anchor_gloss(it, qid, lang):
+def anchor_gloss(it, qid, lang, lemma):
     """Glosses {gloss_lang: text} for a would-be new (senseless-target) sense: the anchor's
     CC0 DESCRIPTION, target language first, else the first other language that has one.
-    Empty dict = no description anywhere = skip the candidate.
+    Empty dict = no usable description anywhere = skip the candidate.
+
+    A description that just restates the headword is not a gloss — "Parasit" defines nothing
+    about *Parasit* — so `lemma` is required and such a description is passed over for the
+    next language rather than accepted. It fires on 37 of the 8,888 senseless candidates,
+    whose Wikidata description field genuinely IS the word (the other 417 headword-glosses
+    used to arrive via a label fallback that no longer exists), and costs no skips: every one
+    had a real description in another language. Compared on letters alone, because the
+    restatement is often re-spelled — de 'Striptease-Tänzer/in' IS 'Stripteasetänzerin'.
+    Only the headword itself is rejected: terse-but-real descriptions ("Holzart" for
+    Ebenholz) still define, and dropping those would cost far more than it saves.
 
     DESCRIPTIONS ONLY — never a label. A label is a NAME, a gloss must DEFINE, so field type
     outranks language: a French description beats a German label. The old rule resolved the
@@ -286,14 +296,22 @@ def anchor_gloss(it, qid, lang):
     chosen one isn't English, so a non-target-language patroller can read the created sense.
     CC0 only; a DBnary gloss is never read. This is the single source of the gloss text: the
     review UI previews exactly what write.py will write, both calling here."""
+    def bare(s):   # compare on letters alone: de 'Striptease-Tänzer/in' IS 'Stripteasetänzerin'
+        return "".join(ch for ch in (s or "").casefold() if ch.isalnum())
+
+    headword = bare(lemma)
+
+    def usable(ds):
+        return ds and bare(ds) != headword
+
     if has_item_lang(it):
         entry = {lg: (lab, ds) for lg, lab, ds in
                  it.execute("SELECT lang, label, desc FROM item_lang WHERE qid=?", [qid])}
         described = [(d, ds) for d, _lab, ds in config.resolve_concept_langs(
-            entry, config.CONCEPT_LANGS_DISPLAY, target=lang) if ds]
+            entry, config.CONCEPT_LANGS_DISPLAY, target=lang) if usable(ds)]
     else:   # pre-fetch / fixture: only the de/en/sv columns of `item` exist
         pairs = [(lg, anchor_cc0(it, qid, lg)[1]) for lg in dict.fromkeys([lang, "en"])]
-        described = [(lg, ds) for lg, ds in pairs if ds]
+        described = [(lg, ds) for lg, ds in pairs if usable(ds)]
     if not described:
         return {}
     out = {described[0][0]: described[0][1]}
@@ -852,7 +870,7 @@ def render(limit, lang_filter=None, senseless=None):
         if senseless:
             # No existing sense to show — preview the sense we would CREATE (approval covers
             # this gloss text, not just the link), using the exact policy write.py will apply.
-            glosses = anchor_gloss(it, qid, lang)
+            glosses = anchor_gloss(it, qid, lang, lemma)
             if glosses:
                 primary_lang = lang if lang in glosses else next(iter(glosses))
                 parts = [f"[{g}] “{html.escape(t)}”" for g, t in

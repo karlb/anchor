@@ -96,7 +96,7 @@ def build_edit(row, today, include_senseless, it):
         sense = {"id": f"<{lid}-S? resolved live>", "claims": {"P5137": [claim]}}
         return {"senses": [sense]}, "add to existing sense"
     if include_senseless:
-        glosses = anchor_gloss(it, qid, lang)  # {gloss_lang: text}, descriptions only
+        glosses = anchor_gloss(it, qid, lang, lemma)  # descriptions only, never the headword
         if not glosses:  # no CC0 description in ANY language -> nothing that defines the sense
             return None, "skipped: senseless, no CC0 anchor description in any language"
         sense = {"add": "",

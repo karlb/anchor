@@ -66,7 +66,7 @@ def main():
         descs = {"de": dde, "en": den, "sv": dsv}
         anchor = cell(lang, labels, descs)
         if args.senseless:  # preview the sense we'd CREATE (same policy as write.py / the live UI)
-            glosses = review_queue.anchor_gloss(it_conn, qid, lang)
+            glosses = review_queue.anchor_gloss(it_conn, qid, lang, lemma)
             preview = (" · ".join(f"[{g}] “{html.escape(t)}”" for g, t in glosses.items())
                        if glosses else "<i>(no CC0 gloss source — would be skipped)</i>")
             anchor += f"<div class=create>will CREATE sense — gloss: {preview}</div>"
