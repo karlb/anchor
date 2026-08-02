@@ -11,7 +11,8 @@ the human actually ruled plus an ADVISORY readiness flag against the gates below
 lists the CONTRADICTIONS — decided pairs where the human verdict disagrees with the
 verifier rating in the direction the live gate would get wrong — so they can be eyeballed.
 
-    uv run calibrate.py            # print the table + contradictions
+    uv run calibrate.py               # print the table + contradictions
+    uv run calibrate.py --occupancy   # same, each class split by same-language slot occupancy
 
 Gates (user call 2026-06-27 — avoid wrong writes "by all cost"). Denominator is always
 the bucket's human-decided pairs (approved + rejected + deferred):
@@ -29,6 +30,7 @@ is a hold (nothing written): it counts TOWARD the safety floor (a defer is not a
 write) but AGAINST the approve floor (a defer is not a confirmation).
 """
 
+import argparse
 import collections
 
 import review_queue as rq
@@ -44,9 +46,19 @@ APPROVE_FLOOR = 0.80   # approve/decided >= this          -> bulk are real appro
 REJECT_FLOOR = 0.80    # reject/decided >= this           -> safe to auto-hide a reject-rated class
 
 
+# --occupancy suffix: the anchor's same-language slot is already filled by an exact-label
+# match (rq.occupancy_context). A split bucket faces the SAME gate as its parent class, so
+# strip the suffix before the ACTION lookup.
+OCCUPIED = "·occupied"
+
+
+def action_of(cls):
+    return ACTION.get(cls[:-len(OCCUPIED)] if cls.endswith(OCCUPIED) else cls)
+
+
 def readiness(cls, appr, rej, defer):
     """ADVISORY flag for a bucket: which gate (if any) it has cleared, or why not."""
-    action = ACTION.get(cls)
+    action = action_of(cls)
     decided = appr + rej + defer
     if action is None:
         return "manual (not a current-prompt rating)"
@@ -82,10 +94,18 @@ def _fmt(d):
 
 
 def main():
+    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap.add_argument("--occupancy", action="store_true",
+                    help="split each class by whether the anchor's same-language slot is already "
+                         "filled by an exact-label match (advisory measurement)")
+    args = ap.parse_args()
+
     decisions = rq.load_decisions()   # last event per (lid, anchor) wins
     cache = rq.load_verify_cache()    # the LIVE prompt's relation per pair (supersedes the
     #                                   frozen log reason, so pre-REL approvals bucket too)
-    ctx = rq.demonym_context([(k[0], k[1], d.get("target_lang")) for k, d in decisions.items()])
+    pairs = [(k[0], k[1], d.get("target_lang")) for k, d in decisions.items()]
+    ctx = rq.demonym_context(pairs)
+    occ = rq.occupancy_context(pairs) if args.occupancy else {}
     buckets = collections.defaultdict(collections.Counter)
     rows_by_cls = collections.defaultdict(list)
     for k, d in decisions.items():
@@ -95,18 +115,24 @@ def main():
         cls = rq.live_rel(k, d.get("reason"), cache, ctx)
         if cls is None:               # the live verifier no longer says 'yes' — not write-eligible
             continue
+        if occ.get(k):
+            cls += OCCUPIED
         buckets[cls][st] += 1
         # show the live rating (the basis we bucketed on) in the contradiction list, not the frozen one
         rows_by_cls[cls].append({**d, "reason": cache.get(k, (None, d.get("reason")))[1]})
 
     print(f"decision log: {rq.DECISIONS}")
-    print(f"{'class':<20}{'gate':>8}{'n':>5}{'appr':>6}{'rej':>5}{'defer':>6}   readiness")
+    if args.occupancy:
+        print(f"{OCCUPIED} = the anchor's same-language slot is already filled by an exact-label "
+              "match (advisory split; nothing live keys on it)")
+    width = 20 + len(OCCUPIED) * args.occupancy
+    print(f"{'class':<{width}}{'gate':>8}{'n':>5}{'appr':>6}{'rej':>5}{'defer':>6}   readiness")
     for cls, c in sorted(buckets.items(), key=lambda kv: -sum(kv[1].values())):
         appr = c["approved"] + c["written"]   # written == approved-then-written
         rej, defer = c["rejected"], c["deferred"]
         n = appr + rej + defer
-        gate = ACTION.get(cls, "—")
-        print(f"{cls:<20}{gate:>8}{n:>5}{appr:>6}{rej:>5}{defer:>6}   "
+        gate = action_of(cls) or "—"
+        print(f"{cls:<{width}}{gate:>8}{n:>5}{appr:>6}{rej:>5}{defer:>6}   "
               f"{readiness(cls, appr, rej, defer)}")
 
     # ---- contradictions: the pairs a live gate would get WRONG ------------------
@@ -114,9 +140,9 @@ def main():
     # is a wrong write auto-approve would make; a reject-rated pair the human KEPT is a
     # good link auto-hide would silently drop. Listed so they can be eyeballed, never
     # bulk-trusted. (Bucketed by the live cache relation, so pre-REL pairs are included.)
-    keep_rej = [d for cls, rows in rows_by_cls.items() if ACTION.get(cls) == "keep"
+    keep_rej = [d for cls, rows in rows_by_cls.items() if action_of(cls) == "keep"
                 for d in rows if (d.get("status") or "").strip() == "rejected"]
-    reject_kept = [d for cls, rows in rows_by_cls.items() if ACTION.get(cls) == "reject"
+    reject_kept = [d for cls, rows in rows_by_cls.items() if action_of(cls) == "reject"
                    for d in rows if (d.get("status") or "").strip() != "rejected"]
     by_lemma = lambda d: (d.get("target_lang") or "", d.get("target_lemma") or "")
 

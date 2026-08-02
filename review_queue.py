@@ -541,6 +541,43 @@ def demonym_context(pairs):
             for lid, qid, lang in pairs}
 
 
+def occupancy_context(pairs):
+    """{(lid, qid): bool} — True when the anchor item ALREADY carries a P5137 sense from a
+    DIFFERENT lexeme in the target's OWN language whose lemma is that item's label in that
+    language. The canonical same-language slot is filled by an exact match, so the candidate
+    is a second, redundant bid rather than the only one (de Benehmen → Q9332, where
+    L3386-S2 Verhalten already anchors it).
+
+    MEASUREMENT ONLY — calibrate.py --occupancy splits its buckets on this to test whether a
+    scope-mismatch class is safer to auto-defer when the slot is taken. Nothing live keys on
+    it: occupancy is NOT a reject signal by itself (EQUAL·occupied still runs 122/137 = 89%
+    approved — same-concept synonymy is exactly what the item-as-pivot model expects).
+    `pairs`: iterable of (lid, qid, lang), same shape demonym_context takes."""
+    pairs = [p for p in pairs if p[0] and p[1] and p[2]]
+    if not pairs:
+        return {}
+    qids = {p[1] for p in pairs}
+    langs = {p[2] for p in pairs}
+    hole = ",".join("?" * len(qids))
+    wd = sqlite3.connect(config.WIKIDATA)
+    incumbent = collections.defaultdict(set)          # (lang, qid) -> {(lid, lemma)}
+    for lid, lang, lemma, qid in wd.execute(
+            "SELECT si.lid, l.lang, lm.lemma, si.qid FROM sense_item si "
+            "JOIN lexeme l ON l.lid = si.lid JOIN lemma lm ON lm.lid = si.lid "
+            "WHERE si.qid IN (%s)" % hole, list(qids)):
+        if lang in langs:
+            incumbent[(lang, qid)].add((lid, lemma))
+    wd.close()
+    it = sqlite3.connect(config.ITEMS)
+    label = {(q, lg): lb for q, lg, lb in it.execute(
+        "SELECT qid, lang, label FROM item_lang WHERE qid IN (%s)" % hole, list(qids))
+        if lg in langs and lb}
+    it.close()
+    return {(lid, qid): any(other != lid and lemma == label.get((qid, lang))
+                            for other, lemma in incumbent.get((lang, qid), ()))
+            for lid, qid, lang in pairs}
+
+
 def live_rel(key, log_reason, cache, ctx=None):
     """Relation to bucket a decided pair by, preferring the LIVE verify cache (the current
     prompt's rating of the pair) over the frozen decision-log reason — so pairs reviewed
