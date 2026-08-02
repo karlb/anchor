@@ -149,10 +149,17 @@ def pending_view(senseless=None):
     return decisions, undecided, ctx, ad, vcache
 
 
-def counts(view=None):
-    """(status -> n) from the log, plus computed 'pending' (human-pending) and 'auto_deferred'."""
+def counts(view=None, senseless=None):
+    """(status -> n) from the log, plus computed 'pending' (human-pending) and 'auto_deferred'.
+
+    The decided counts are scoped to the SAME lane as the pending numbers printed beside them.
+    Pooled, senseless mode reported the monosemous lane's 335 writes directly above its own
+    340 pending, reading as if the sense-creation lane were nearly worked through when it has
+    written nothing at all."""
+    want = bool(SENSELESS if senseless is None else senseless)
     decisions, undecided, ctx, ad, _ = view or pending_view()
-    c = collections.Counter(d["status"] for d in decisions.values())
+    c = collections.Counter(d["status"] for d in decisions.values()
+                            if decided_lane(d) is want)
     c["auto_deferred"] = sum(1 for r in undecided if rel_of((r[0], r[1]), r[6], ctx) in ad)
     c["pending"] = len(undecided) - c["auto_deferred"]
     return c
@@ -185,6 +192,8 @@ def status(args):
     keep_ok = keep_n = 0
     for k, dec in decided.items():
         if (dec.get("status") or "").strip() not in ("approved", "written", "rejected"):
+            continue
+        if decided_lane(dec) is not SENSELESS:   # lane-scoped like the counts above
             continue
         rel = live_rel(k, dec.get("reason"), vcache, ctx)
         if not rel or REL_ACTION.get(rel) != "keep":
