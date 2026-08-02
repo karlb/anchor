@@ -5,6 +5,9 @@ Pipeline (all CC0 / structural — no gloss text):
   1. Match each cluster member (lemma, lang) to Wikidata noun lexemes (Q1084).
      Exact, case- & diacritic-sensitive; all representations of a lexeme count,
      so de-ch spellings match automatically. Homographs keep every L-id (flagged).
+     Clusters whose OWN part of speech is a verb or adjective are excluded first —
+     since every match is pinned to a noun lexeme, such a cluster can only match by
+     lemma coincidence (see NON_NOUN_POS).
   2. Anchor: among the cluster's matched lexemes, an "anchor" is a member lexeme
      whose P5137 senses agree on a single Q-item (monosemous anchor). A cluster
      has a usable anchor only if all such anchors agree on ONE Q (single dominant
@@ -28,6 +31,53 @@ import sqlite3
 
 import config
 
+# A WikDict lexentry carries the source Wiktionary's part of speech: `lang/lemma__POS__n`
+# (deu/annullieren__Verb__1, ita/mangiare__verb__1, swe/falsk__Adjektiv__1). Nothing downstream
+# ever read it, and matched_member pins EVERY match to a noun lexeme (Q1084, the pilot scope) —
+# so a verb or adjective cluster could only ever match a noun by lemma coincidence, and did:
+#
+#   en cancel -> Q192298 "ring finger" carried support_clusters = 13, every one of them a
+#   cancel-VERB cluster (deu/annullieren, nld/afzeggen, pol/kasować, por/cancelar...) and every
+#   one anchored by the same lexeme, es *anular* — a noun meaning ring finger whose lemma
+#   collides with the verb "to annul". Gate A does not merely miss this, it AMPLIFIES it: one
+#   Spanish statement times however many verbs translate to *anular* reads as 13 agreeing
+#   clusters, and verify.candidates sorts by support_clusters DESC, so the most confidently
+#   wrong candidate for that lexeme sorted first.
+#
+# Excluding these costs 120 of 1,448 High-tier candidates (8.3%) and 321 of 8,888 senseless
+# (3.6%). Their support does not shrink so much as collapse — en knock 13 -> 0, en squeeze
+# 12 -> 0, en put 49 -> 1 — because it was POS-mismatched in its entirety. The 11 reviewed ones
+# were rejected at 27% against the lane's 9%. It is not mainly a filter on WRONG links (the
+# three such pairs already written are all correct); it is a filter on gate A being satisfied by
+# evidence that is not independent — en sprout's "two agreeing clusters" are nor/spire__Substantiv__1
+# and nor/spire__Verb__1, one Norwegian word counted twice.
+#
+# BLACKLIST, deliberately: an unrecognised token KEEPS the cluster, so a language whose token we
+# have not classified loses nothing. These 24 are the confident verb/adjective tokens; adverbs and
+# the ~170 rare tokens (1.7% of lexentries) are not yet classified and are therefore kept. Growing
+# this set tightens the filter; it can never loosen it. When the pilot widens past nouns, the rule
+# generalises to POS AGREEMENT — the cluster's POS must equal the matched lexeme's lexcat, of
+# which this is the noun-only case (matched_member's `lx.lexcat = NOUN_QID` is the other half).
+NON_NOUN_POS = {
+    # verbs
+    "Verb", "verb", "czasownik", "sloveso", "гл", "Verbo", "Verbe", "verbo", "verbe",
+    "Verbi", "Veiksmažodis",
+    # adjectives
+    "Adjektiv", "Adjective", "adjective", "agg", "przymiotnik", "прил", "přídavné_jméno",
+    "adj", "adjetivo", "adjc", "Adjektiivi", "Adjectiu", "Būdvardis",
+}
+
+
+def lexentry_pos(lexentry):
+    """The source Wiktionary POS token in a WikDict lexentry, or '' if it has no POS segment.
+
+    Split from the RIGHT: the format is `lang/lemma__POS__n` and a lemma may itself contain
+    '__', so only the last two separators are structural.
+    """
+    parts = lexentry.rsplit("__", 2)
+    return parts[1] if len(parts) == 3 else ""
+
+
 BUILD = """
 -- 1. member -> Wikidata noun lexeme matches (exact lemma, same language).
 DROP TABLE IF EXISTS matched_member;
@@ -35,7 +85,8 @@ CREATE TABLE matched_member AS
 SELECT cm.lexentry, cm.sense_num, cm.lang, cm.lemma, cm.role, lx.lid
 FROM cl.cluster_member cm
 JOIN wd.lexeme lx   ON lx.lang = cm.lang AND lx.lexcat = '%(noun)s'
-JOIN wd.lemma  lm   ON lm.lid = lx.lid AND lm.lemma = cm.lemma;
+JOIN wd.lemma  lm   ON lm.lid = lx.lid AND lm.lemma = cm.lemma
+WHERE NOT EXISTS (SELECT 1 FROM excluded_cluster xc WHERE xc.lexentry = cm.lexentry);
 CREATE INDEX mm_pivot ON matched_member(lexentry, sense_num);
 CREATE INDEX mm_key   ON matched_member(lexentry, sense_num, lang, lemma);
 CREATE INDEX mm_lid   ON matched_member(lid);
@@ -144,6 +195,18 @@ def main():
     conn = sqlite3.connect(args.out)
     conn.execute("ATTACH DATABASE ? AS cl", [args.clusters])
     conn.execute("ATTACH DATABASE ? AS wd", [args.wikidata])
+
+    # Materialise the POS exclusion before BUILD: the token lives inside the lexentry string,
+    # and picking the second-to-last '__'-delimited field in SQL is far less legible than doing
+    # it here. BUILD never drops this table, so it is available to matched_member.
+    conn.execute("CREATE TABLE excluded_cluster(lexentry TEXT PRIMARY KEY, pos TEXT)")
+    every = conn.execute("SELECT DISTINCT lexentry FROM cl.cluster").fetchall()
+    excluded = [(le, lexentry_pos(le)) for (le,) in every if lexentry_pos(le) in NON_NOUN_POS]
+    conn.executemany("INSERT INTO excluded_cluster VALUES (?, ?)", excluded)
+    conn.commit()
+    print(f"clusters excluded as verb/adjective: {len(excluded):,} of {len(every):,} "
+          f"({len(excluded) / len(every):.1%}) — see match.NON_NOUN_POS")
+
     conn.executescript(BUILD)
 
     n_cand = conn.execute("SELECT count(*) FROM candidate").fetchone()[0]
