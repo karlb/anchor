@@ -102,9 +102,14 @@ def build_edit(row, today, include_senseless, it):
         sense = {"add": "",
                  "glosses": {g: {"language": g, "value": t} for g, t in glosses.items()},
                  "claims": {"P5137": [claim]}}
-        primary = glosses.get(lang) or next(iter(glosses.values()))
-        extra = " +en" if "en" in glosses and lang != "en" else ""
-        return {"senses": [sense]}, f"CREATE sense (gloss[{lang}]{extra}: {primary!r})"
+        # Report the language the gloss is ACTUALLY in, not the candidate's. Since glosses are
+        # descriptions-only, 1,154 of 8,876 senseless edits are legitimately glossed from
+        # another language, and tagging those gloss[de] in the on-wiki edit summary misstates
+        # what was written. Same primary-pick as the review render, so preview and summary agree.
+        primary_lang = lang if lang in glosses else next(iter(glosses))
+        primary = glosses[primary_lang]
+        extra = " +en" if "en" in glosses and primary_lang != "en" else ""
+        return {"senses": [sense]}, f"CREATE sense (gloss[{primary_lang}]{extra}: {primary!r})"
     return None, "skipped: senseless (needs gloss policy; use --include-senseless)"
 
 
