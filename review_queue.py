@@ -124,6 +124,17 @@ def pool(senseless=None, key=None):
     return rows
 
 
+def decided_lane(d):
+    """Which review lane a DECIDED log row belongs to: True = senseless (the sense-creation
+    lane, target_n_senses 0), False = monosemous (the write stream, 1), None = neither.
+
+    Read from the count FROZEN in the log row, never recomputed from the current dump: a
+    senseless target that was approved and written HAS a sense now, but the verdict on it
+    calibrates the lane it was judged in. Single-sourced here because the status counts, the
+    auto-defer gate and calibrate all have to agree on what lane a row belongs to."""
+    return {"0": True, "1": False}.get((d.get("target_n_senses") or "").strip())
+
+
 def pending_view(senseless=None):
     """The shared review pipeline, computed ONCE per invocation: (decisions, undecided,
     ctx, auto-defer classes, verify cache). counts/status/render all consume this — it

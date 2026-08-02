@@ -11,8 +11,13 @@ the human actually ruled plus an ADVISORY readiness flag against the gates below
 lists the CONTRADICTIONS — decided pairs where the human verdict disagrees with the
 verifier rating in the direction the live gate would get wrong — so they can be eyeballed.
 
-    uv run calibrate.py               # print the table + contradictions
-    uv run calibrate.py --occupancy   # same, each class split by same-language slot occupancy
+    uv run calibrate.py                   # print the table + contradictions
+    uv run calibrate.py --occupancy       # each class split by same-language slot occupancy
+    uv run calibrate.py --lane senseless  # calibrate ONE review lane (see --lane below)
+
+The two review lanes are calibrated separately, not split into sub-classes: the senseless
+lane is small enough that every bucket would read "hold (need N more)" while its monosemous
+half carried the table. --lane FILTERS instead, so each run's MIN_SAMPLES means what it says.
 
 Gates (user call 2026-06-27 — avoid wrong writes "by all cost"). Denominator is always
 the bucket's human-decided pairs (approved + rejected + deferred):
@@ -98,9 +103,15 @@ def main():
     ap.add_argument("--occupancy", action="store_true",
                     help="split each class by whether the anchor's same-language slot is already "
                          "filled by an exact-label match (advisory measurement)")
+    ap.add_argument("--lane", choices=("senseless", "monosemous"),
+                    help="calibrate only the sense-creation lane (target_n_senses 0) or only "
+                         "the monosemous write stream (1); default pools both")
     args = ap.parse_args()
 
     decisions = rq.load_decisions()   # last event per (lid, anchor) wins
+    if args.lane:                     # filter, don't sub-class — see the module docstring
+        want = args.lane == "senseless"
+        decisions = {k: d for k, d in decisions.items() if rq.decided_lane(d) is want}
     cache = rq.load_verify_cache()    # the LIVE prompt's relation per pair (supersedes the
     #                                   frozen log reason, so pre-REL approvals bucket too)
     pairs = [(k[0], k[1], d.get("target_lang")) for k, d in decisions.items()]
@@ -121,7 +132,8 @@ def main():
         # show the live rating (the basis we bucketed on) in the contradiction list, not the frozen one
         rows_by_cls[cls].append({**d, "reason": cache.get(k, (None, d.get("reason")))[1]})
 
-    print(f"decision log: {rq.DECISIONS}")
+    print(f"decision log: {rq.DECISIONS}"
+          + (f"   [LANE: {args.lane} only]" if args.lane else ""))
     if args.occupancy:
         print(f"{OCCUPIED} = the anchor's same-language slot is already filled by an exact-label "
               "match (advisory split; nothing live keys on it)")
