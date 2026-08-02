@@ -140,12 +140,17 @@ def pending_view(senseless=None):
     ctx, auto-defer classes, verify cache). counts/status/render all consume this — it
     is a 3-DB join plus a full log replay and a verify-cache scan, so each caller runs
     it once and the call sites can't drift apart."""
+    if senseless is None:
+        senseless = SENSELESS
     decisions = load_decisions()
     vcache = load_verify_cache()
+    # `decisions` stays whole: the pending dedup must see BOTH lanes (a decided pair must not
+    # resurface, and n_senses moves once a senseless target is written). Only the gate below and
+    # the counts() display scope to `senseless`.
     undecided = [r for r in pool(senseless) if (r[0], r[1]) not in decisions]
     ctx = demonym_context([(k[0], k[1], d.get("target_lang")) for k, d in decisions.items()]
                           + [(r[0], r[1], r[3]) for r in undecided])
-    ad = auto_defer_classes(decisions, ctx, vcache)
+    ad = auto_defer_classes(decisions, ctx, vcache, senseless)
     return decisions, undecided, ctx, ad, vcache
 
 
@@ -473,7 +478,9 @@ def polysemy_hint(idx, lid, qid, lang, lemma, gloss):
 # re-verifies a pair into a different class it reappears in review on its own — no un-defer step. The
 # cost is the small fraction of these the human WOULD have approved (LATERAL ~7%); they sit unwritten
 # until a prompt/approach improvement re-surfaces them. The instrument calibrate.py reports the SAME
-# gate by importing these names, so the readiness table and the live filter can't drift apart.
+# gate by importing these names, so the readiness table and the live filter can't drift apart —
+# `calibrate.py --lane X` is the matching view now that the gate is measured per review lane
+# (auto_defer_classes); calibrate's pooled default deliberately corresponds to no live gate.
 GATE_MIN_SAMPLES = 30
 AUTO_DEFER_NOWRITE = 0.85
 KNOWN_RELS = ("EQUAL", "BROADER", "NARROWER", "LATERAL", "INCOHERENT", "DIFFERENT")
@@ -617,8 +624,9 @@ def live_rel(key, log_reason, cache, ctx=None):
     return rel_of(key, log_reason, ctx)
 
 
-def auto_defer_classes(decisions=None, ctx=None, cache=None):
-    """{rel_class}: defer-classes the log proves are >=85% not-written on >=GATE_MIN_SAMPLES pairs.
+def auto_defer_classes(decisions=None, ctx=None, cache=None, senseless=None):
+    """{rel_class}: defer-classes the log proves are >=85% not-written on >=GATE_MIN_SAMPLES pairs
+    IN THE LANE BEING REVIEWED (senseless — sense creation — or the monosemous write stream).
 
     These are hidden from the pending queue. Buckets each decided pair by its LIVE verify-cache
     relation (live_rel) — the SAME basis calibrate uses — so the gate that HIDES pairs and the
@@ -627,15 +635,25 @@ def auto_defer_classes(decisions=None, ctx=None, cache=None):
     a re-verify changed the live relations — e.g. NARROWER read 90% not-written frozen but 73%
     live.) A pair the cache now rates not-'yes' drops out (not write-eligible, not a defer-class
     member). ctx (from demonym_context) keeps it gloss-aware so a demonym→ethnic pair buckets as
-    its own class rather than hiding inside EQUAL."""
+    its own class rather than hiding inside EQUAL.
+
+    Lane scoping: pooling the lanes let a class hide pairs in a lane that had never voted on
+    it — LATERAL cleared the gate 3/41 written with all 41 monosemous and zero senseless, and
+    hid 11 senseless pairs on that basis. The gate now speaks only for the lane it measured, so
+    a lane with fewer than GATE_MIN_SAMPLES decided pairs auto-defers nothing and is reviewed by
+    hand until it has voted. `calibrate.py --lane X` reproduces exactly this set for lane X; the
+    pooled default table there matches no live gate — it is the readiness view, not the filter."""
     if decisions is None:
         decisions = load_decisions()
     if cache is None:
         cache = load_verify_cache()
+    want = bool(SENSELESS if senseless is None else senseless)
     buckets = collections.defaultdict(collections.Counter)
     for key, d in decisions.items():
         st = (d.get("status") or "").strip()
         if st not in ("approved", "rejected", "deferred", "written"):
+            continue
+        if decided_lane(d) is not want:  # another lane's votes don't gate this one
             continue
         cls = live_rel(key, d.get("reason"), cache, ctx)
         if cls is None:                 # verifier no longer says 'yes' — not a defer-class member

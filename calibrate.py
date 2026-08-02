@@ -134,6 +134,9 @@ def main():
 
     print(f"decision log: {rq.DECISIONS}"
           + (f"   [LANE: {args.lane} only]" if args.lane else ""))
+    if not args.lane:
+        print("pooled over both review lanes — the live auto-defer gate is measured per lane; "
+              "run --lane senseless|monosemous to see the set actually enforced")
     if args.occupancy:
         print(f"{OCCUPIED} = the anchor's same-language slot is already filled by an exact-label "
               "match (advisory split; nothing live keys on it)")
