@@ -1148,3 +1148,49 @@ ts,target_lid,anchor_qid,target_lemma,target_lang,target_n_senses,verdict,reason
 2026-08-02 13:19:57,L789289,Q131401,Kalifat,de,0,yes,EQUAL: 'Kalifat' directly matches caliphate concept,sonnet,approved,local,
 2026-08-02 15:50:20,L825212,Q67439188,Chronologie,de,0,yes,BROADER: 'Chronologie' is the science/arrangement; concept is specifically a document,sonnet,deferred,manual,
 2026-08-02 15:50:20,L882787,Q867132,Diva,de,0,yes,"EQUAL: celebrated female performer, descriptions agree",sonnet,approved,manual,
+2026-08-02 16:27:26,L822742,Q6301005,Klugscheißer,de,0,yes,INCOHERENT: DE/EN describe a person; IT label/description describe a behavior/quality,sonnet,approved,local,
+2026-08-02 19:05:36,L317367,Q188008,breathlessness,en,1,yes,EQUAL: exact synonym of dyspnea,sonnet,written,write.py b/CB/4d23366bdde0,2526391678
+2026-08-02 19:05:38,L1336067,Q213713,developmental biology,en,1,yes,"EQUAL: exact match, developmental biology discipline",sonnet,written,write.py b/CB/4d23366bdde0,2526391702
+2026-08-02 19:05:41,L31817,Q843958,digitalization,en,1,yes,EQUAL: same digitization process,sonnet,written,write.py b/CB/4d23366bdde0,2526391723
+2026-08-02 19:05:43,L31868,Q23924989,distiller,en,1,yes,EQUAL: distiller occupation matches distillery worker/owner,sonnet,written,write.py b/CB/4d23366bdde0,2526391735
+2026-08-02 19:05:45,L320515,Q362547,fearlessness,en,1,yes,EQUAL: fearlessness = opposite of fear/boldness,sonnet,written,write.py b/CB/4d23366bdde0,2526391748
+2026-08-02 19:05:48,L14825,Q876391,fop,en,1,yes,EQUAL: fop synonym for dandy,sonnet,written,write.py b/CB/4d23366bdde0,2526391758
+2026-08-02 19:05:50,L321323,Q1411871,godliness,en,1,yes,EQUAL: piety matches religious virtue,sonnet,written,write.py b/CB/4d23366bdde0,2526391781
+2026-08-02 19:05:53,L321422,Q39614,graveyard,en,1,yes,EQUAL: burial ground synonym for cemetery,sonnet,written,write.py b/CB/4d23366bdde0,2526391799
+2026-08-02 19:05:55,L313586,Q327496,hairdo,en,1,yes,EQUAL: exact synonym of hairstyle,sonnet,written,write.py b/CB/4d23366bdde0,2526391813
+2026-08-02 19:05:58,L321727,Q213753,harvesting,en,1,yes,EQUAL: harvesting matches crop-gathering process,sonnet,written,write.py b/CB/4d23366bdde0,2526391829
+2026-08-02 19:06:00,L35838,Q190429,hollow,en,1,yes,EQUAL: hollow is a depression landform,sonnet,written,write.py b/CB/4d23366bdde0,2526391849
+2026-08-02 19:12:12,L41302,Q1329012,probity,en,1,yes,EQUAL: probity = ethical integrity; same anchor as approved uprightness (consistency),sonnet,written,write.py b/CB/4d23366bdde0,2526394325
+2026-08-02 19:12:15,L326611,Q160070,remissness,en,1,yes,EQUAL: remissness is negligence/carelessness,sonnet,written,write.py b/CB/4d23366bdde0,2526394346
+2026-08-02 19:12:17,L56460,Q1281618,sculptress,en,1,yes,"EQUAL: gendered sculptor, sex recorded separately",sonnet,written,write.py b/CB/4d23366bdde0,2526394359
+2026-08-02 19:12:20,L677902,Q3054208,scumbag,en,1,yes,EQUAL: contemptible/insulting person term,sonnet,written,write.py b/CB/4d23366bdde0,2526394380
+2026-08-02 19:12:23,L10913,Q3199915,slaughter,en,1,yes,EQUAL: wanton killing of a group matches massacre,sonnet,written,write.py b/CB/4d23366bdde0,2526394405
+2026-08-02 19:12:25,L327928,Q1869874,sleeplessness,en,1,yes,EQUAL: sleeplessness is insomnia,sonnet,written,write.py b/CB/4d23366bdde0,2526394421
+2026-08-02 19:12:28,L1531848,Q777671,sowing,en,1,yes,EQUAL: act of scattering seed = sowing process,sonnet,written,write.py b/CB/4d23366bdde0,2526394432
+2026-08-02 19:12:30,L45138,Q1062803,ubiquity,en,1,yes,EQUAL: present everywhere matches omnipresence,sonnet,written,write.py b/CB/4d23366bdde0,2526394446
+2026-08-02 19:12:33,L329966,Q1329012,uprightness,en,1,yes,EQUAL: moral uprightness matches integrity concept,sonnet,written,write.py b/CB/4d23366bdde0,2526394457
+2026-08-02 19:12:35,L330672,Q182180,yawning,en,1,yes,EQUAL: yawning act matches yawn reflex,sonnet,written,write.py b/CB/4d23366bdde0,2526394470
+2026-08-02 19:12:38,L36103,Q4290,investering,sv,1,yes,EQUAL: gloss and concept both describe investment of resources for future benefit,sonnet,written,write.py b/CB/4d23366bdde0,2526394485
+2026-08-02 19:12:41,L588199,Q397297,iranier,sv,1,yes,EQUAL: person from Iran matches people from/residents of Iran,sonnet,written,write.py b/CB/4d23366bdde0,2526394496
+2026-08-02 19:12:43,L1020941,Q131361,ironi,sv,1,yes,EQUAL: irony as implicit negation matches rhetorical incongruity concept,sonnet,written,write.py b/CB/4d23366bdde0,2526394508
+2026-08-02 19:12:46,L1215707,Q843909,islamologi,sv,1,yes,EQUAL: gloss matches concept description verbatim,sonnet,written,write.py b/CB/4d23366bdde0,2526394527
+2026-08-02 19:12:48,L1508344,Q99766936,ivorian,sv,1,yes,"EQUAL: national demonym, blessed target",sonnet,written,write.py b/CB/4d23366bdde0,2526394557
+2026-08-02 19:12:51,L1023280,Q17951,jargong,sv,1,yes,re-adjudicated 2026-07-05 (was approved): approved stands — jargong=jargon Q17951 is EQUAL (verifier 'yes'); the cross-check abstained on the near-synonym cluster (slang Q8102 / argot Q3462602 / specialized terminology Q1391494). Jargon is the right concept; stands.,sonnet,written,write.py b/CB/4d23366bdde0,2526394585
+2026-08-02 19:12:54,L1083563,Q1062396,kakaopulver,sv,1,yes,re-adjudicated 2026-07-05 (was approved): approved stands — kakaopulver=cocoa powder Q1062396 is EQUAL (verifier 'yes'); competitors are the related-but-distinct cocoa bean Q208008 and cacao tree Q42385.,sonnet,written,write.py b/CB/4d23366bdde0,2526394609
+2026-08-02 19:12:56,L1083564,Q42385,kakaoträd,sv,1,yes,EQUAL: cacao tree species matches,sonnet,written,write.py b/CB/4d23366bdde0,2526394631
+2026-08-02 19:12:59,L1414157,Q100249818,kamerunare,sv,1,yes,"EQUAL: national demonym, blessed nationality target",sonnet,written,write.py b/CB/4d23366bdde0,2526394654
+2026-08-02 19:13:01,L1414879,Q100249818,kamerunier,sv,1,yes,"EQUAL: national demonym, citizens of Cameroon",sonnet,written,write.py b/CB/4d23366bdde0,2526394677
+2026-08-02 19:13:03,L247007,Q3264451,kardiolog,sv,1,yes,EQUAL: heart/vascular specialist = cardiologist,sonnet,written,write.py b/CB/4d23366bdde0,2526394703
+2026-08-02 19:13:06,L32232,Q1735282,kassörska,sv,1,yes,EQUAL: kassörska is feminine of cashier; gender rule applies,sonnet,written,write.py b/CB/4d23366bdde0,2526394733
+2026-08-02 19:13:08,L33044,Q2352616,katalog,sv,1,yes,EQUAL: sorted list of items matches catalog concept,sonnet,written,write.py b/CB/4d23366bdde0,2526394756
+2026-08-02 19:13:11,L46297,Q2976603,klassiker,sv,1,yes,EQUAL: lasting value and recognized quality ≈ outstanding example of a style,sonnet,written,write.py b/CB/4d23366bdde0,2526394780
+2026-08-02 19:13:14,L1143179,Q114732050,klasskompis,sv,1,yes,"EQUAL: same concept, person in the same school class",sonnet,written,write.py b/CB/4d23366bdde0,2526394799
+2026-08-02 19:13:16,L33621,Q113552121,knarkare,sv,1,yes,EQUAL: drug addict/junkie; register difference only,sonnet,written,write.py b/CB/4d23366bdde0,2526394825
+2026-08-02 19:13:19,L33588,Q12713481,knegare,sv,1,yes,EQUAL: knegare (pejorative worker) = low-skilled manual laborer,sonnet,written,write.py b/CB/4d23366bdde0,2526394852
+2026-08-02 19:13:21,L33577,Q26913,knubbsäl,sv,1,yes,EQUAL: knubbsäl is the harbour seal (Phoca vitulina),sonnet,written,write.py b/CB/4d23366bdde0,2526394879
+2026-08-02 19:13:24,L1157467,Q775570,kobjällra,sv,1,yes,EQUAL: both are bells attached to cows,sonnet,written,write.py b/CB/4d23366bdde0,2526394898
+2026-08-02 19:13:27,L1414971,Q97135168,komorier,sv,1,yes,"EQUAL: national demonym, citizens of Comoros",sonnet,written,write.py b/CB/4d23366bdde0,2526394921
+2026-08-02 19:13:29,L1559108,Q63967171,konspiratör,sv,1,yes,"EQUAL: person in a conspiracy, exact match",sonnet,written,write.py b/CB/4d23366bdde0,2526394938
+2026-08-02 19:13:32,L32092,Q483501,konstnär,sv,1,yes,re-adjudicated 2026-07-05 (was approved): approved stands — konstnär=artist Q483501 is EQUAL (verifier 'yes'); the cross-check abstained on related person-type pollution (entertainer/performing-artist/theatrical-producer/painter-decorator).,sonnet,written,write.py b/CB/4d23366bdde0,2526394952
+2026-08-02 19:13:35,L34435,Q1414531,korrigering,sv,1,yes,EQUAL: rättelse/ändring matches subsequent remediation of error,sonnet,written,write.py b/CB/4d23366bdde0,2526394971
+2026-08-02 19:13:37,L246894,Q11748378,kossa,sv,1,yes,"re-adjudicated 2026-07-05 (was approved): approved stands — kossa=cow Q11748378 well-supported (de/en/fr + 9 langs). Flagging cluster pollution (dominant stitched member Q726 horse) as a data-quality issue, not a verdict change.",sonnet,written,write.py b/CB/4d23366bdde0,2526394989
