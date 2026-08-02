@@ -13,7 +13,6 @@ verifier rating in the direction the live gate would get wrong — so they can b
 
     uv run calibrate.py                   # print the table + contradictions
     uv run calibrate.py --occupancy       # each class split by same-language slot occupancy
-    uv run calibrate.py --support         # each class split by sole-anchor vs 2+ anchor lexemes
     uv run calibrate.py --lane senseless  # calibrate ONE review lane (see --lane below)
 
 The two review lanes are calibrated separately, not split into sub-classes: the senseless
@@ -31,6 +30,11 @@ the bucket's human-decided pairs (approved + rejected + deferred):
         >=85% not written (reject+defer).
 Every gate also needs at least MIN_SAMPLES decided pairs.
 
+Rows suffixed '·sole-anchor' are the subset of a class whose gate-A support clusters all trace
+to one anchoring lexeme (rq.rel_tokens) — nested, so their n is INCLUDED in the parent row's.
+They are live: a refinement that clears the auto-defer gate hides its pairs even when the parent
+class does not (BROADER, 2026-08-02).
+
 'written' folds into the approve count (write.py only writes approved pairs). 'deferred'
 is a hold (nothing written): it counts TOWARD the safety floor (a defer is not a wrong
 write) but AGAINST the approve floor (a defer is not a confirmation).
@@ -40,11 +44,11 @@ import argparse
 import collections
 
 import review_queue as rq
-from review_queue import REL_ACTION as ACTION   # single-sourced taxonomy + auto-defer gate
 
 # The auto-approve / auto-hide floors below are calibrate-only (the instrument). The auto-defer gate
-# (MIN_SAMPLES, NOWRITE_AUTO) and the relation taxonomy (rq.live_rel / ACTION) are imported from
-# review_queue — the live pending-filter there enforces the SAME gate, so they can't drift apart.
+# (MIN_SAMPLES, NOWRITE_AUTO), the relation taxonomy (rq.live_rel / rq.rel_action) and the bucket
+# keys it reads (rq.rel_tokens) all come from review_queue — the live pending-filter there enforces
+# the SAME gate on the SAME buckets, so the instrument and the filter can't drift apart.
 MIN_SAMPLES = rq.GATE_MIN_SAMPLES
 NOWRITE_AUTO = rq.AUTO_DEFER_NOWRITE   # (reject+defer)/decided >= this -> auto-defer (reversible)
 SAFE_FLOOR = 0.98      # (approve+defer)/decided >= this  -> <=2% human-rejected (auto-approve)
@@ -52,23 +56,15 @@ APPROVE_FLOOR = 0.80   # approve/decided >= this          -> bulk are real appro
 REJECT_FLOOR = 0.80    # reject/decided >= this           -> safe to auto-hide a reject-rated class
 
 
-# Advisory split suffixes. --occupancy: the anchor's same-language slot is already filled by an
-# exact-label match (rq.occupancy_context). --support: the pair's gate-A clusters all trace to a
-# single anchoring lexeme (rq.anchor_support_index). A split bucket faces the SAME gate as its
-# parent class, so strip any suffixes before the ACTION lookup.
+# --occupancy suffix: the anchor's same-language slot is already filled by an exact-label
+# match (rq.occupancy_context). A split bucket faces the SAME gate as its parent class, so
+# strip the suffix before the ACTION lookup — rq.rel_action does the same for '·sole-anchor',
+# which is not a flag here but a live refinement of the gate (rq.rel_tokens).
 OCCUPIED = "·occupied"
-SOLE = "·sole-anchor"
-SPLITS = (OCCUPIED, SOLE)
 
 
 def action_of(cls):
-    while True:
-        for s in SPLITS:
-            if cls.endswith(s):
-                cls = cls[:-len(s)]
-                break
-        else:
-            return ACTION.get(cls)
+    return rq.rel_action(cls[:-len(OCCUPIED)] if cls.endswith(OCCUPIED) else cls)
 
 
 def readiness(cls, appr, rej, defer):
@@ -113,9 +109,6 @@ def main():
     ap.add_argument("--occupancy", action="store_true",
                     help="split each class by whether the anchor's same-language slot is already "
                          "filled by an exact-label match (advisory measurement)")
-    ap.add_argument("--support", action="store_true",
-                    help="split each class by whether every gate-A support cluster traces to a "
-                         "single anchoring lexeme (advisory measurement)")
     ap.add_argument("--lane", choices=("senseless", "monosemous"),
                     help="calibrate only the sense-creation lane (target_n_senses 0) or only "
                          "the monosemous write stream (1); default pools both")
@@ -130,7 +123,6 @@ def main():
     pairs = [(k[0], k[1], d.get("target_lang")) for k, d in decisions.items()]
     ctx = rq.demonym_context(pairs)
     occ = rq.occupancy_context(pairs) if args.occupancy else {}
-    sup = rq.anchor_support_index() if args.support else {}
     buckets = collections.defaultdict(collections.Counter)
     rows_by_cls = collections.defaultdict(list)
     for k, d in decisions.items():
@@ -140,12 +132,12 @@ def main():
         cls = rq.live_rel(k, d.get("reason"), cache, ctx)
         if cls is None:               # the live verifier no longer says 'yes' — not write-eligible
             continue
-        if occ.get(k):
-            cls += OCCUPIED
-        if sup.get(k) == 1:           # missing (rebuilt-away pair) is NOT evidence of sole support
-            cls += SOLE
-        buckets[cls][st] += 1
-        # show the live rating (the basis we bucketed on) in the contradiction list, not the frozen one
+        # A pair counts under its class AND its ·sole-anchor refinement — the same nested keys the
+        # live gate reads (rq.rel_tokens), so a refinement row here IS a subset of its parent row.
+        for t in rq.rel_tokens(k, cls):
+            buckets[t + (OCCUPIED if occ.get(k) else "")][st] += 1
+        # Contradictions list PAIRS, so file each one once, under its base class — the nested
+        # refinement would otherwise print it twice. show the live rating, not the frozen one.
         rows_by_cls[cls].append({**d, "reason": cache.get(k, (None, d.get("reason")))[1]})
 
     print(f"decision log: {rq.DECISIONS}"
@@ -156,10 +148,9 @@ def main():
     if args.occupancy:
         print(f"{OCCUPIED} = the anchor's same-language slot is already filled by an exact-label "
               "match (advisory split; nothing live keys on it)")
-    if args.support:
-        print(f"{SOLE} = every gate-A support cluster traces to ONE anchoring lexeme, so the "
-              ">=2 clusters are not two independent P5137 statements (advisory split)")
-    width = 20 + len(OCCUPIED) * args.occupancy + len(SOLE) * args.support
+    print(f"{rq.SOLE_ANCHOR} = the SUBSET of its parent class (not a separate bucket — the n's "
+          "overlap) whose gate-A clusters all trace to ONE anchoring lexeme")
+    width = 20 + len(rq.SOLE_ANCHOR) + len(OCCUPIED) * args.occupancy
     print(f"{'class':<{width}}{'gate':>8}{'n':>5}{'appr':>6}{'rej':>5}{'defer':>6}   readiness")
     for cls, c in sorted(buckets.items(), key=lambda kv: -sum(kv[1].values())):
         appr = c["approved"] + c["written"]   # written == approved-then-written

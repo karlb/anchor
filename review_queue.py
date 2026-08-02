@@ -165,7 +165,7 @@ def counts(view=None, senseless=None):
     decisions, undecided, ctx, ad, _ = view or pending_view()
     c = collections.Counter(d["status"] for d in decisions.values()
                             if decided_lane(d) is want)
-    c["auto_deferred"] = sum(1 for r in undecided if rel_of((r[0], r[1]), r[6], ctx) in ad)
+    c["auto_deferred"] = sum(1 for r in undecided if is_auto_deferred((r[0], r[1]), r[6], ctx, ad))
     c["pending"] = len(undecided) - c["auto_deferred"]
     return c
 
@@ -184,7 +184,7 @@ def status(args):
         print(f"  ↳ auto-deferred classes (≥85% not-written, hidden from review): "
               f"{', '.join(sorted(ad))} — a better prompt/approach re-surfaces them")
     n_scope = sum(1 for r in undecided
-                  if rel_of((r[0], r[1]), r[6], ctx) not in ad
+                  if not is_auto_deferred((r[0], r[1]), r[6], ctx, ad)
                   and action_of((r[0], r[1]), r[6], ctx) in ("defer", "reject"))
     if n_scope:
         print(f"  ⚠ of pending, {n_scope:,} are broader/narrower/lateral scope mismatches "
@@ -479,9 +479,10 @@ def polysemy_hint(idx, lid, qid, lang, lemma, gloss):
 # independent statements agreed: 43% of the High tier (616/1448) and 35% of the senseless lane
 # (3078/8888) rest on a single anchor lexeme. The decided log separates on it — sole-anchor
 # pairs run 53% approved / 18% rejected against 74% / 8% for two-or-more (n=753, 2026-08-02).
-# NEUTRAL reviewer context like alias_match: nothing live keys on it (no gate, no auto-defer,
-# no re-sort — a third of the pool would swamp the concern band the queue floats to the top),
-# and calibrate.py --support splits the classes by it to see whether it deserves more.
+# It is NEUTRAL on its own — EQUAL is 93% approved with one anchor or five, so this never floats a
+# row or re-sorts the queue (a third of the pool would swamp the concern band). What it does key is
+# the auto-defer gate, as a REFINEMENT of the scope classes, where the same split is decisive: see
+# SOLE_ANCHOR / rel_tokens below.
 _ANCHOR_IDX = None
 
 
@@ -514,8 +515,17 @@ def anchor_support_index():
 # gate by importing these names, so the readiness table and the live filter can't drift apart —
 # `calibrate.py --lane X` is the matching view now that the gate is measured per review lane
 # (auto_defer_classes); calibrate's pooled default deliberately corresponds to no live gate.
+#
+# A class can also gate on its ·sole-anchor REFINEMENT (anchor_support_index: every gate-A support
+# cluster traces to one anchoring lexeme). BROADER pooled is 78% not-written and stays manual, but
+# its sole-anchor half is 90% on 42 pairs while the two-or-more half approves 21 of 73 — one class
+# token hiding two populations. Refinements are NESTED, not a partition: a pair counts under both
+# its class and its refinement, and is hidden if EITHER cleared the gate. So enforcement only ever
+# grows by splitting — a refinement too small to clear (LATERAL·sole-anchor, 18) never un-hides
+# what its parent already gates, which a partition would have done.
 GATE_MIN_SAMPLES = 30
 AUTO_DEFER_NOWRITE = 0.85
+SOLE_ANCHOR = "·sole-anchor"
 KNOWN_RELS = ("EQUAL", "BROADER", "NARROWER", "LATERAL", "INCOHERENT", "DIFFERENT")
 # class -> the action scope_hint suggests for it (which gate that class faces). Only a 'defer' class
 # can auto-defer; a 'keep'/'reject' class never does, even if its not-written rate is high.
@@ -553,6 +563,25 @@ def rel_of(key, reason, ctx=None):
     one gloss-aware classifier is reused at every call site."""
     gloss, _glang, adesc = (ctx or {}).get(key, (None, None, None))
     return rel_class(reason, gloss, adesc)
+
+
+def rel_tokens(key, cls):
+    """The class token(s) a pair counts under: its relation class, plus the '·sole-anchor'
+    refinement when a single lexeme anchors it. Nested, so the decided counts a gate reads and
+    the pending rows it hides are keyed identically at every site (auto_defer_classes, the
+    queue filter, calibrate)."""
+    return (cls, cls + SOLE_ANCHOR) if anchor_support_index().get(key) == 1 else (cls,)
+
+
+def rel_action(cls):
+    """The gate a class token faces. A ·sole-anchor refinement faces the SAME gate as its parent
+    class — the refinement says who is in the bucket, not what may be done with it."""
+    return REL_ACTION.get(cls[:-len(SOLE_ANCHOR)] if cls.endswith(SOLE_ANCHOR) else cls)
+
+
+def is_auto_deferred(key, reason, ctx, ad):
+    """Whether the gate hides this pending pair: its class OR its ·sole-anchor refinement cleared."""
+    return any(t in ad for t in rel_tokens(key, rel_of(key, reason, ctx)))
 
 
 def action_of(key, reason, ctx=None):
@@ -675,7 +704,10 @@ def auto_defer_classes(decisions=None, ctx=None, cache=None, senseless=None):
     hid 11 senseless pairs on that basis. The gate now speaks only for the lane it measured, so
     a lane with fewer than GATE_MIN_SAMPLES decided pairs auto-defers nothing and is reviewed by
     hand until it has voted. `calibrate.py --lane X` reproduces exactly this set for lane X; the
-    pooled default table there matches no live gate — it is the readiness view, not the filter."""
+    pooled default table there matches no live gate — it is the readiness view, not the filter.
+
+    Returns class tokens, which include the ·sole-anchor refinements (rel_tokens) — a pair is
+    hidden when EITHER its class or its refinement is in the set (is_auto_deferred)."""
     if decisions is None:
         decisions = load_decisions()
     if cache is None:
@@ -691,10 +723,11 @@ def auto_defer_classes(decisions=None, ctx=None, cache=None, senseless=None):
         cls = live_rel(key, d.get("reason"), cache, ctx)
         if cls is None:                 # verifier no longer says 'yes' — not a defer-class member
             continue
-        buckets[cls][st] += 1
+        for t in rel_tokens(key, cls):  # the class AND its ·sole-anchor refinement, if any
+            buckets[t][st] += 1
     out = set()
     for cls, c in buckets.items():
-        if REL_ACTION.get(cls) != "defer":
+        if rel_action(cls) != "defer":
             continue
         n = c["approved"] + c["written"] + c["rejected"] + c["deferred"]
         if n >= GATE_MIN_SAMPLES and (c["rejected"] + c["deferred"]) / n >= AUTO_DEFER_NOWRITE:
@@ -721,8 +754,8 @@ def render(limit, lang_filter=None, senseless=None):
     if senseless is None:
         senseless = SENSELESS
     decisions, undecided, ctx, ad, _ = pending_view(senseless)
-    auto_def = [r for r in undecided if rel_of((r[0], r[1]), r[6], ctx) in ad]
-    pending = [r for r in undecided if rel_of((r[0], r[1]), r[6], ctx) not in ad]
+    auto_def = [r for r in undecided if is_auto_deferred((r[0], r[1]), r[6], ctx, ad)]
+    pending = [r for r in undecided if not is_auto_deferred((r[0], r[1]), r[6], ctx, ad)]
     # Selector counts are over the unfiltered (human-)pending set, so they don't change as you filter.
     lang_counts = collections.Counter(r[3] for r in pending)
     # Lexeme-centric review (senseless lane, scope_roadmap amendment): a senseless lexeme can
