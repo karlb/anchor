@@ -21,6 +21,11 @@ majority-voted to damp LLM nondeterminism.
     uv run ab_concept.py --samples 3                # full run (pricey)
     uv run ab_concept.py --count                     # just size the job
 
+The same rig also ablates the GLOSS (`--arms prod,-gloss`): the -gloss arm withholds the
+target's own sense gloss and scores the loss against the decided pairs. Read it as "what does
+the gloss contribute", NOT as a senseless-lane simulation — see the -gloss note in ARMS for the
+measurement that ruled that reading out.
+
 Resumable: every completed batch is cached to data/ab_concept_cache.jsonl keyed by
 (arm, sample, lid, qid), so a kill / quota stall loses nothing — re-run the SAME command
 and it pays only for batches not yet cached. On a quota / rate-limit error it ABORTS
@@ -53,7 +58,34 @@ ARMS = {
     # candidate. The gold retest (score_approaches) compares the two. Don't delete the cache or the
     # baseline is lost. Run with --gold to keep the retest to the curated set.
     "+nudge": dict(langs=config.CONCEPT_LANGS_VERIFY),
+    # GLOSS ABLATION. Same production prompt and concept format as +nudge, but the target's own
+    # CC0 sense gloss is withheld, so verify.run_batch and every gloss-keyed hint downstream
+    # (the demonym->ethnic nudge) go blind together. Measures what the gloss contributes,
+    # population held fixed.
+    #
+    # It was BUILT as a senseless-lane simulation — the senseless verifier input is identical,
+    # since verify.load_glosses returns nothing at n_senses = 0 — and that reading was WRONG.
+    # Measured 2026-08-02 on the 534 decided pairs: false-keeps 28 -> 83. But the lane's own
+    # decisions (`calibrate.py --lane senseless`, 47 reviewed then) run 6% reject vs the
+    # monosemous lane's 13% — the human rejects LESS there, not 3x more. The two lanes are
+    # asked different questions: monosemous is "does THIS sense denote X", senseless is "is X
+    # A meaning worth creating a first sense for". Most of the ablation's defer -> keep flips
+    # are the second question's correct answer, scored against the first question's rubric.
+    # Two further biases, both flattering to prod: the reviewer saw prod's verdict + hints in
+    # the queue when deciding, and the eval set is 18% de where the senseless pool is 73%.
+    # So: use this arm for the gloss's contribution. For the senseless lane use its real
+    # decisions — they exist, they carry the right rubric, and they cost nothing to read.
+    "-gloss": dict(langs=config.CONCEPT_LANGS_VERIFY, nogloss=True),
+    # The with-gloss baseline for that ablation, served FREE from the live verify cache rather
+    # than re-run (seed_prod_arm): those verdicts already ARE the production verifier on these
+    # exact pairs under the current prompt fingerprint, so re-running them would pay full price
+    # to reproduce them and, being a fresh draw, would fold LLM nondeterminism into the delta.
+    # samples=1 only — one cached verdict replayed 3x would fake a unanimous vote.
+    "prod": dict(langs=config.CONCEPT_LANGS_VERIFY),
 }
+# Arms a bare `uv run ab_concept.py` scores. -gloss is opt-in (--arms +nudge,-gloss): it answers a
+# different question than the concept-format A/B and shouldn't silently add a 4th arm's cost.
+DEFAULT_ARMS = ("base", "+multi", "+nudge")
 HUMAN = {"approved": "keep", "written": "keep", "rejected": "reject", "deferred": "defer"}
 # The scope/coherence relations: the cases where the concept boundary is contested and
 # multilingual context could plausibly help. --suspect restricts the eval set to these, so the
@@ -124,7 +156,31 @@ def load_cache():
     return cache
 
 
+def seed_prod_arm(cache, rows):
+    """Fill the 'prod' arm from the live verify cache so run_arm finds it done and pays nothing.
+
+    Only verdicts under the CURRENT prompt fingerprint count (verify.PROMPT_VER) — a stale one
+    would silently baseline the ablation against a retired prompt. Seeded in memory only, never
+    appended to the jsonl: the A/B cache stays a record of what this script actually ran.
+    Anything missing is simply left uncached, so run_arm verifies it normally."""
+    db = sqlite3.connect(config.VERIFY)
+    have = {(lid, qid): (v, reason) for lid, qid, v, reason in db.execute(
+        "SELECT target_lid, anchor_qid, verdict, reason FROM verdict WHERE prompt_ver = ?",
+        [verify.PROMPT_VER])}
+    db.close()
+    seeded = 0
+    for r in rows:
+        if (r[0], r[3]) in have:
+            cache[("prod", 0, r[0], r[3])] = have[(r[0], r[3])]
+            seeded += 1
+    return seeded
+
+
 def run_arm(name, kwargs, rows, gmap, model, samples, cache, il_map, batch=8):
+    kwargs = dict(kwargs)
+    if kwargs.pop("nogloss", False):
+        gmap = {}   # senseless simulation: no sense means no gloss in the prompt AND none for
+                    # the demonym nudge below — both go blind together, as they do in that lane
     votes = collections.defaultdict(collections.Counter)
     cf = open(CACHE, "a")
     try:
@@ -182,6 +238,21 @@ def score(pred, truth):
     return dict(n=n, exact=exact / n, binary=binary / n, fk=false_keep, fd=false_drop)
 
 
+def flip_report(pa, pb, truth, names, a, b):
+    """Every pair where arm `a` and arm `b` chose different actions, scored against the human.
+
+    'toward human' / 'away from human' are directional a -> b: for base -> +multi that reads as
+    the format helping or hurting; for +nudge -> -gloss it reads as what the gloss was holding up.
+    """
+    flips = [(k, pa[k], pb[k], truth[k]) for k in pa if k in pb and pa[k] != pb[k]]
+    fixed = sum(1 for _, x, y, t in flips if y == t and x != t)
+    broke = sum(1 for _, x, y, t in flips if x == t and y != t)
+    print(f"\n{a} -> {b}: {len(flips)} flips  ({fixed} toward human, {broke} away from human)")
+    for k, x, y, t in flips[:30]:
+        mark = "OK " if (y == t and x != t) else ("BAD" if (x == t and y != t) else " . ")
+        print(f"  {mark} {names.get(k, k[0])} {k[1]}: {x} -> {y}  (human={t})")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--model", default="sonnet")
@@ -195,10 +266,14 @@ def main():
                     help="restrict eval set to the curated gold pairs "
                          "(notes/problematic_cases.csv) — the cheap retest set")
     ap.add_argument("--arms", default="", help="comma-list of arm names to run "
-                    "(default base,+multi); e.g. 'base' to score base alone")
+                    f"(default {','.join(DEFAULT_ARMS)}); e.g. 'base' to score base alone, or "
+                    "'prod,-gloss' for the senseless-lane ablation")
     args = ap.parse_args()
-    sel = args.arms.split(",") if args.arms else list(ARMS)
+    sel = args.arms.split(",") if args.arms else list(DEFAULT_ARMS)
     arms = [(n, ARMS[n]) for n in sel if n in ARMS]
+    if "prod" in sel and args.samples != 1:
+        ap.error("--arms prod requires --samples 1: it replays ONE cached production verdict per "
+                 "pair, so more samples would just fake a unanimous vote rather than resample.")
 
     rows, truth = load_eval_rows(suspect=args.suspect)
     if args.gold:
@@ -211,6 +286,8 @@ def main():
     il_map = (verify.load_item_lang({r[3] for r in rows})
               if any(kw.get("langs") for _, kw in arms) else {})
     cache = load_cache()
+    if "prod" in sel:      # before the count, so --count prices the ablation honestly
+        print(f"prod arm seeded from the live verify cache: {seed_prod_arm(cache, rows)}/{len(rows)}")
     total = len(rows) * args.samples * len(arms)
     cached = sum((name, s, r[0], r[3]) in cache
                  for name, _ in arms for s in range(args.samples) for r in rows)
@@ -234,16 +311,11 @@ def main():
         print(f"   progress is cached in {CACHE} — re-run the SAME command to resume.")
         return
 
-    # flip analysis: base vs +multi
-    if "base" in preds and "+multi" in preds:
-        base, w = preds["base"], preds["+multi"]
-        flips = [(k, base[k], w[k], truth[k]) for k in base if base[k] != w[k]]
-        fixed = sum(1 for _, b, l, t in flips if l == t and b != t)
-        broke = sum(1 for _, b, l, t in flips if b == t and l != t)
-        print(f"\nbase -> +multi: {len(flips)} flips  ({fixed} fixed toward human, {broke} broke away)")
-        for (lid, qid), b, l, t in flips[:30]:
-            mark = "OK " if (l == t and b != t) else ("BAD" if (b == t and l != t) else " . ")
-            print(f"  {mark} {lid} {qid}: {b} -> {l}  (human={t})")
+    # flip analysis, pairwise: the concept-format A/B, and the senseless ablation
+    names = {(r[0], r[3]): f"{r[1]}:{r[2]}" for r in rows}
+    for a, b in (("base", "+multi"), ("prod", "-gloss"), ("+nudge", "-gloss")):
+        if a in preds and b in preds:
+            flip_report(preds[a], preds[b], truth, names, a, b)
 
 
 if __name__ == "__main__":
