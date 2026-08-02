@@ -470,6 +470,39 @@ def polysemy_hint(idx, lid, qid, lang, lemma, gloss):
     return n if n >= 2 and undifferentiated_gloss(gloss, lemma) else 0
 
 
+# ---- anchor-independence advisory -------------------------------------------
+# Gate A ('>=2 agreeing anchor clusters') counts CLUSTERS, not anchors — and several clusters
+# can all trace back to ONE anchoring lexeme, i.e. one editor's single P5137 statement. A
+# polysemous source headword even manufactures its own support: de Chronologie → Q67439188
+# passed gate A with 4 clusters that are 3 collapsed senses of deu/Chronologie plus one Polish
+# one, every last one anchored by sv L1529730 alone. So support_clusters >= 2 does NOT mean two
+# independent statements agreed: 43% of the High tier (616/1448) and 35% of the senseless lane
+# (3078/8888) rest on a single anchor lexeme. The decided log separates on it — sole-anchor
+# pairs run 53% approved / 18% rejected against 74% / 8% for two-or-more (n=753, 2026-08-02).
+# NEUTRAL reviewer context like alias_match: nothing live keys on it (no gate, no auto-defer,
+# no re-sort — a third of the pool would swamp the concern band the queue floats to the top),
+# and calibrate.py --support splits the classes by it to see whether it deserves more.
+_ANCHOR_IDX = None
+
+
+def anchor_support_index():
+    """{(target_lid, anchor_qid): n distinct anchoring LEXEMES} — how many separate P5137-bearing
+    lexemes actually back a pair, as against candidate.support_clusters, which counts clusters and
+    so can count one anchor several times. Scanned ONCE per process (a 125k-row join over 706k
+    clean_anchor rows, ~4s) like polysemy_index, and cached on the same premise: candidates.sqlite3
+    is immutable while a server runs — match.py rebuilds the whole DB."""
+    global _ANCHOR_IDX
+    if _ANCHOR_IDX is None:
+        cn = sqlite3.connect(config.CANDIDATES)
+        _ANCHOR_IDX = {(lid, qid): n for lid, qid, n in cn.execute(
+            "SELECT r.target_lid, r.anchor_qid, COUNT(DISTINCT a.lid) "
+            "FROM candidate_raw r JOIN clean_anchor a "
+            "  ON a.lexentry = r.lexentry AND a.sense_num = r.sense_num AND a.qid = r.anchor_qid "
+            "GROUP BY r.target_lid, r.anchor_qid")}
+        cn.close()
+    return _ANCHOR_IDX
+
+
 # ---- data-gated auto-defer (enforcement) ------------------------------------
 # A relation CLASS whose decided history is >=85% "not written" (reject+defer) on a big enough
 # sample is one the human almost never approves — so we stop bothering the human with it: auto-defer
@@ -705,6 +738,7 @@ def render(limit, lang_filter=None, senseless=None):
     # Target sense gloss (from ctx — already batch-loaded by pending_view) + polysemy-collapse
     # flag, computed once per row and reused by both the sort below and the render loop.
     poly_idx = polysemy_index(cand)
+    sup = anchor_support_index()   # neutral: how many distinct lexemes anchor each pair
     meta = {}
     for r in rows:
         gl, glang, _ad = ctx.get((r[0], r[1]), ("", None, ""))
@@ -723,6 +757,7 @@ def render(limit, lang_filter=None, senseless=None):
     n_scope = sum(1 for r in rows if action_of((r[0], r[1]), r[6], ctx) in ("defer", "reject"))
     n_poly = sum(1 for r in rows if meta[(r[0], r[1])][2])
     n_multi = sum(1 for r in rows if lid_counts[r[0]] > 1)  # rows on a multi-candidate lexeme
+    n_sole = sum(1 for r in rows if sup.get((r[0], r[1])) == 1)
     head = " · ".join(f"{k}: {v}" for k, v in sorted(c.items())) or "empty"
     if senseless:
         head = "MODE: senseless (creating first sense) · " + head
@@ -735,10 +770,13 @@ def render(limit, lang_filter=None, senseless=None):
         head += f" · ⚠ {n_poly} polysemy-collapse"
     if senseless and n_multi:
         head += f" · ⚠ {n_multi} on multi-candidate lexemes (review as a set)"
+    if n_sole:
+        head += f" · {n_sole} on a single anchor lexeme"
     if lang_filter:
         head += f" · filtered to {html.escape(lang_filter)} ({len(rows)})"
     trs = []
-    for (lid, qid, lemma, lang, _ns, _v, reason, _m, *_descs) in rows[:limit]:
+    for (lid, qid, lemma, lang, _ns, _v, reason, _m,
+         _dde, _den, _dsv, n_clusters, *_rest) in rows[:limit]:
         gl, glang, n_poly_row = meta[(lid, qid)]
         rel, sug, scls = scope_hint(reason, gl, ctx.get((lid, qid), ("", None, ""))[2])
         scope_html = (f"<span class=rel>{rel}</span><br><span class={scls}>{html.escape(sug)}</span>"
@@ -757,6 +795,11 @@ def render(limit, lang_filter=None, senseless=None):
         if aka:
             anchor_html += (f"<div class=akahit>“{html.escape(aka)}” is a listed "
                             "“also known as” of this item</div>")
+        # NEUTRAL evidence, the other way: gate A passed on cluster count, but all of those
+        # clusters can hang off ONE anchoring lexeme — one editor's single P5137 statement.
+        if sup.get((lid, qid)) == 1:
+            anchor_html += (f"<div class=sole>one anchor lexeme backs this — its {n_clusters} "
+                            "gate-A support clusters all trace to that single P5137 statement</div>")
         if senseless:
             # No existing sense to show — preview the sense we would CREATE (approval covers
             # this gloss text, not just the link), using the exact policy write.py will apply.
@@ -809,7 +852,7 @@ button{{font-size:.85rem;padding:3px 8px;cursor:pointer;border:1px solid #ccc;bo
 .ok{{color:#197a19}} .no{{color:#b00}} .hold{{color:#a60}} a{{color:#36c;text-decoration:none}}
 .rel{{font-weight:600;font-size:.78rem;letter-spacing:.02em}}
 .al{{margin:1px 0}} .alc{{display:inline-block;min-width:1.5rem;color:#999;font-size:.72rem;text-transform:uppercase}}
-.akahit{{margin-top:3px;color:#36c;font-size:.78rem}}
+.akahit,.sole{{margin-top:3px;color:#36c;font-size:.78rem}}
 .poly{{margin-top:3px;color:#a60;font-size:.78rem}}
 .create{{color:#197a19;font-weight:600;font-size:.82rem}} .multi{{margin-top:3px;color:#a60;font-size:.78rem}}
 .bar{{margin:.4rem 0 1rem}} .lsel{{padding:1px 4px;border-radius:3px}} .lsel.sel{{background:#eef;font-weight:700;color:#000}}</style>

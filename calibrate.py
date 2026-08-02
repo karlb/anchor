@@ -13,6 +13,7 @@ verifier rating in the direction the live gate would get wrong — so they can b
 
     uv run calibrate.py                   # print the table + contradictions
     uv run calibrate.py --occupancy       # each class split by same-language slot occupancy
+    uv run calibrate.py --support         # each class split by sole-anchor vs 2+ anchor lexemes
     uv run calibrate.py --lane senseless  # calibrate ONE review lane (see --lane below)
 
 The two review lanes are calibrated separately, not split into sub-classes: the senseless
@@ -51,14 +52,23 @@ APPROVE_FLOOR = 0.80   # approve/decided >= this          -> bulk are real appro
 REJECT_FLOOR = 0.80    # reject/decided >= this           -> safe to auto-hide a reject-rated class
 
 
-# --occupancy suffix: the anchor's same-language slot is already filled by an exact-label
-# match (rq.occupancy_context). A split bucket faces the SAME gate as its parent class, so
-# strip the suffix before the ACTION lookup.
+# Advisory split suffixes. --occupancy: the anchor's same-language slot is already filled by an
+# exact-label match (rq.occupancy_context). --support: the pair's gate-A clusters all trace to a
+# single anchoring lexeme (rq.anchor_support_index). A split bucket faces the SAME gate as its
+# parent class, so strip any suffixes before the ACTION lookup.
 OCCUPIED = "·occupied"
+SOLE = "·sole-anchor"
+SPLITS = (OCCUPIED, SOLE)
 
 
 def action_of(cls):
-    return ACTION.get(cls[:-len(OCCUPIED)] if cls.endswith(OCCUPIED) else cls)
+    while True:
+        for s in SPLITS:
+            if cls.endswith(s):
+                cls = cls[:-len(s)]
+                break
+        else:
+            return ACTION.get(cls)
 
 
 def readiness(cls, appr, rej, defer):
@@ -103,6 +113,9 @@ def main():
     ap.add_argument("--occupancy", action="store_true",
                     help="split each class by whether the anchor's same-language slot is already "
                          "filled by an exact-label match (advisory measurement)")
+    ap.add_argument("--support", action="store_true",
+                    help="split each class by whether every gate-A support cluster traces to a "
+                         "single anchoring lexeme (advisory measurement)")
     ap.add_argument("--lane", choices=("senseless", "monosemous"),
                     help="calibrate only the sense-creation lane (target_n_senses 0) or only "
                          "the monosemous write stream (1); default pools both")
@@ -117,6 +130,7 @@ def main():
     pairs = [(k[0], k[1], d.get("target_lang")) for k, d in decisions.items()]
     ctx = rq.demonym_context(pairs)
     occ = rq.occupancy_context(pairs) if args.occupancy else {}
+    sup = rq.anchor_support_index() if args.support else {}
     buckets = collections.defaultdict(collections.Counter)
     rows_by_cls = collections.defaultdict(list)
     for k, d in decisions.items():
@@ -128,6 +142,8 @@ def main():
             continue
         if occ.get(k):
             cls += OCCUPIED
+        if sup.get(k) == 1:           # missing (rebuilt-away pair) is NOT evidence of sole support
+            cls += SOLE
         buckets[cls][st] += 1
         # show the live rating (the basis we bucketed on) in the contradiction list, not the frozen one
         rows_by_cls[cls].append({**d, "reason": cache.get(k, (None, d.get("reason")))[1]})
@@ -140,7 +156,10 @@ def main():
     if args.occupancy:
         print(f"{OCCUPIED} = the anchor's same-language slot is already filled by an exact-label "
               "match (advisory split; nothing live keys on it)")
-    width = 20 + len(OCCUPIED) * args.occupancy
+    if args.support:
+        print(f"{SOLE} = every gate-A support cluster traces to ONE anchoring lexeme, so the "
+              ">=2 clusters are not two independent P5137 statements (advisory split)")
+    width = 20 + len(OCCUPIED) * args.occupancy + len(SOLE) * args.support
     print(f"{'class':<{width}}{'gate':>8}{'n':>5}{'appr':>6}{'rej':>5}{'defer':>6}   readiness")
     for cls, c in sorted(buckets.items(), key=lambda kv: -sum(kv[1].values())):
         appr = c["approved"] + c["written"]   # written == approved-then-written
