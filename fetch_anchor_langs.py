@@ -21,7 +21,8 @@ Stored in data/wd_items.sqlite3 (alongside the de/en/sv `item` table):
   * item_lang_fetched(qid)             — resumability marker (an item may legitimately
   * item_alias_fetched(qid)              have zero rows, so presence != fetched)
 
-Reuses fetch_items.py's API etiquette (UA, maxlag, backoff, serial 50/batch). Needs
+Reuses fetch_items.py's API etiquette (UA, 429/503 backoff, serial 50/batch — no maxlag on
+reads, see the fetch_items docstring for why that one is a write-path setting). Needs
 network access to www.wikidata.org (allow it).
 
     uv run fetch_anchor_langs.py            # fetch all uncached anchors
@@ -90,7 +91,7 @@ def main():
         batch = todo[i : i + fi.BATCH]
         data = fi.http_get({
             "action": "wbgetentities", "ids": "|".join(batch),
-            "props": "labels|descriptions|aliases", "format": "json", "maxlag": 5,
+            "props": "labels|descriptions|aliases", "format": "json",
         })
         ents = data.get("entities", {})
         rows, arows, ncov = [], [], []

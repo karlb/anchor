@@ -20,9 +20,15 @@ re-run fetches nothing already stored.
 Good-API-citizen behaviour (Wikimedia API etiquette):
   * descriptive User-Agent with a contact address;
   * serial requests only (no parallelism), 50 ids per batch;
-  * ``maxlag=5`` so we back off when the servers are under replication lag;
-  * honour ``Retry-After`` and exponential backoff on 429/503/maxlag;
+  * honour ``Retry-After`` and exponential backoff on 429/503;
   * gzip transfer; a small inter-batch sleep.
+
+No ``maxlag`` on these READ requests. maxlag throttles clients against server lag so that
+WRITES queue behind replication — write.py sends maxlag=5 on every edit and that is where it
+belongs. On a read it only blocks us, and the lag the API compares against includes the QUERY
+SERVICE: with WDQS 48 minutes behind (queryserviceLag 2899, 2026-08-02) every retry was refused
+for hours while the same request without maxlag served the entity instantly. Rate limiting is
+what actually protects the servers here, and 429/503 + Retry-After still honour it.
 
 Run after match.py (allow www.wikidata.org):
     uv run fetch_items.py            # fetch all uncached anchor items
@@ -60,7 +66,10 @@ CREATE INDEX IF NOT EXISTS item_type_qid ON item_type(qid);
 
 
 def http_get(params):
-    """GET with gzip + maxlag-aware retry/backoff. Returns parsed JSON."""
+    """GET with gzip + rate-limit-aware retry/backoff. Returns parsed JSON.
+
+    Callers do not send maxlag (see the module docstring), so a maxlag rejection cannot arrive
+    here and is not handled — write.py's api() owns that back-off for the edit path."""
     url = API + "?" + urllib.parse.urlencode(params)
     backoff = 1.0
     for attempt in range(MAX_RETRIES):
@@ -73,11 +82,6 @@ def http_get(params):
                 if resp.headers.get("Content-Encoding") == "gzip":
                     raw = gzip.GzipFile(fileobj=io.BytesIO(raw)).read()
                 data = json.loads(raw)
-            if isinstance(data, dict) and data.get("error", {}).get("code") == "maxlag":
-                wait = float(data["error"].get("lag", backoff)) or backoff
-                time.sleep(min(wait, 30))
-                backoff *= 2
-                continue
             if isinstance(data, dict) and "error" in data:
                 # any other API error: fail loudly — the response has no 'entities', so
                 # returning it would make callers permanently cache the whole batch as
@@ -125,7 +129,6 @@ def fetch_batch(ids):
         "props": "labels|descriptions|claims",
         "languages": "|".join(LANGS),
         "format": "json",
-        "maxlag": 5,
     })
     return data.get("entities", {})
 
