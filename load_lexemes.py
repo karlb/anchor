@@ -44,8 +44,9 @@ import config
 LANG_QID = {
     # review languages (config.REVIEW_LANGS) — loaded in full (can be targets)
     "Q188": "de", "Q1860": "en", "Q9027": "sv", "Q150": "fr", "Q25167": "no",
+    "Q7737": "ru",
     # remaining WikDict languages — loaded anchor-only (P5137-bearing lexemes)
-    "Q652": "it", "Q9056": "cs", "Q7737": "ru", "Q9035": "da", "Q5287": "ja",
+    "Q652": "it", "Q9056": "cs", "Q9035": "da", "Q5287": "ja",
     "Q1321": "es", "Q5146": "pt", "Q397": "la", "Q809": "pl", "Q1412": "fi",
     "Q7411": "nl", "Q256": "tr", "Q727694": "zh", "Q9240": "id", "Q7026": "ca",
     "Q7918": "bg", "Q36510": "el", "Q9142": "ga", "Q36163": "ku", "Q7930": "mg",

@@ -53,13 +53,13 @@ NOUN_QID = "Q1084"
 # keeps non-review languages anchor-only, and match.py only emits candidates whose
 # *target* is a REVIEW_LANGS lexeme. So we widen the evidence freely without ever
 # queueing a language we are not ready to review.
-REVIEW_LANGS = ("de", "en", "sv", "fr", "no")
+REVIEW_LANGS = ("de", "en", "sv", "fr", "no", "ru")
 
 # English names of the review languages, for LLM prompts ("language=German"). A missing
 # entry silently degrades a prompt to the bare 2-letter code, so keep this covering
 # REVIEW_LANGS (asserted below) — one map, shared by verify/gender/audit prompts.
 LANGNAME = {"de": "German", "en": "English", "sv": "Swedish",
-            "fr": "French", "no": "Norwegian"}
+            "fr": "French", "no": "Norwegian", "ru": "Russian"}
 assert set(REVIEW_LANGS) <= set(LANGNAME), "LANGNAME must cover REVIEW_LANGS"
 
 

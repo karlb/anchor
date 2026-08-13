@@ -1,4 +1,4 @@
-# P5137 anchor-propagation (de/en/sv/fr/no pilot)
+# P5137 anchor-propagation (de/en/sv/fr/no/ru pilot)
 
 Generate reliable **P5137 ("item for this sense")** candidates for Wikidata lexemes by
 propagating an *existing* anchor concept across WikDict sense-grounded translation clusters.
@@ -48,7 +48,7 @@ latest-lexemes.json.gz ─load_lexemes.py──▶ wikidata.sqlite3 ─┘      
    which removes ~30% of naive lemma triples that would otherwise stitch different senses
    together (e.g. de *Bank* = bench vs. financial).
 2. **`load_lexemes.py`** — streams the Wikidata lexeme dump. Keeps **review-language**
-   (`config.REVIEW_LANGS` = de/en/sv/fr/no) lexemes in full (they can be write targets), and
+   (`config.REVIEW_LANGS` = de/en/sv/fr/no/ru) lexemes in full (they can be write targets), and
    **every other WikDict language anchor-only** (P5137-bearing lexemes, so any language can
    anchor a cluster). Extracts each sense's P5137 target and its **own CC0 Wikidata gloss**
    (`sense_gloss` table; DBnary's CC-BY-SA glosses are never touched). The 26-language
