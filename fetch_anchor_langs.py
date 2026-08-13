@@ -71,15 +71,36 @@ def needed_qids(cache):
     return [q for q in want if q not in done]
 
 
+def qids_from_file(path, cache):
+    """Q-ids listed one per line (or in a CSV column of them), minus the already-cached.
+
+    needed_qids() is scoped to the gate-A candidate set, so an anchor below the support
+    threshold is never fetched — which is correct for production and wrong for an
+    experiment that deliberately reaches under the gate. Without this, a support-1 anchor
+    reaches the grader as a bare label while its gate-A rival carries descriptions in a
+    dozen languages, and it loses on missing data rather than on meaning."""
+    want = sorted({tok.strip().strip('",')
+                   for line in open(path) for tok in line.split(",")
+                   if tok.strip().strip('",').startswith("Q")
+                   and tok.strip().strip('",')[1:].isdigit()})
+    lang_done = {r[0] for r in cache.execute("SELECT qid FROM item_lang_fetched")}
+    alias_done = {r[0] for r in cache.execute("SELECT qid FROM item_alias_fetched")}
+    done = lang_done & alias_done
+    return [q for q in want if q not in done]
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--limit", type=int, default=None, help="cap items (smoke test)")
+    ap.add_argument("--qids-from", metavar="FILE",
+                    help="fetch the Q-ids found in FILE instead of the gate-A candidate set "
+                         "(for experiments that reach below the support threshold)")
     args = ap.parse_args()
 
     cache = sqlite3.connect(config.ITEMS)
     cache.executescript(SCHEMA)
 
-    todo = needed_qids(cache)
+    todo = qids_from_file(args.qids_from, cache) if args.qids_from else needed_qids(cache)
     if args.limit:
         todo = todo[: args.limit]
     print(f"anchor items to fetch (uncached): {len(todo):,}  -> {config.ITEMS}")
