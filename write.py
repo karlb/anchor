@@ -32,9 +32,9 @@ See review_queue.anchor_gloss for why a foreign description beats a same-languag
 """
 
 import argparse
-import collections
 import datetime
 import http.cookiejar
+import itertools
 import json
 import os
 import random
@@ -132,19 +132,12 @@ def load_rows(args):
         rows = [(d["target_lid"], d["anchor_qid"], d["target_lemma"], d["target_lang"],
                  int(d["target_n_senses"]))
                 for d in load_decisions().values() if d["status"] == "approved"]
+    # Sorted so one lexeme's rows are contiguous (same lid ⇒ same lang+lemma), which is what
+    # lets main() group and cap by lexeme in a single pass. --limit is NOT applied here: the
+    # approved pool holds both lanes, and a plain run drops every senseless row at build time,
+    # so capping candidates would silently under-deliver edits (a --limit 20 that built none).
     rows.sort(key=lambda r: (r[3], r[2], r[0], r[1]))
-    # Limit by LEXEME, not row, keeping a lexeme's full inventory together: a split multi-item
-    # senseless lexeme would create some senses, then the "no longer senseless" guard would
-    # skip the rest forever. A monosemous lexeme is usually one row, but not always: several
-    # approved anchors can compete for its single sense (see the guard in main).
-    out, seen = [], set()
-    for r in rows:
-        if r[0] not in seen:
-            if len(seen) >= args.limit:
-                break
-            seen.add(r[0])
-        out.append(r)
-    return out
+    return rows
 
 
 # ---- Action API submission (stdlib only) -----------------------------------
@@ -337,7 +330,9 @@ def main():
     g.add_argument("--write", action="store_true", help="actually submit (needs credentials)")
     ap.add_argument("--preview", action="store_true",
                     help="read verifier-'yes' rows directly (inspect before any approval)")
-    ap.add_argument("--limit", type=int, default=10)
+    ap.add_argument("--limit", type=int, default=10,
+                    help="cap on lexeme EDITS built (not candidates read); live-state skips at "
+                         "submit time can still land fewer")
     ap.add_argument("--max-edits-per-min", type=int, default=30,
                     help="cap submission rate (0 = no cap); default 30")
     ap.add_argument("--include-senseless", action="store_true",
@@ -348,32 +343,36 @@ def main():
     today = datetime.date.today().isoformat()
     rows = load_rows(args)
     src = "verifier-'yes' (preview)" if args.preview else "approved"
-    print(f"{len(rows)} {src} candidate(s); mode={'WRITE' if args.write else 'dry-run'}; "
+    print(f"{len(rows)} {src} candidate(s), building ≤{args.limit} lexeme edit(s); "
+          f"mode={'WRITE' if args.write else 'dry-run'}; "
           f"reference=P887({HEURISTIC_ITEM})+P813({today})\n")
 
-    # Build one sense per candidate row, then GROUP by lexeme (lexeme-centric, scope_roadmap
+    # Build one sense per candidate row, GROUPED by lexeme (lexeme-centric, scope_roadmap
     # amendment): a senseless lexeme with 2–4 approved items becomes ONE wbeditentity creating
     # 2–4 senses, so near-synonym duplicates are caught in one human-approved inventory rather
     # than written blind pair-by-pair. Monosemous lexemes appear once, so grouping is a no-op there.
-    by_lid = collections.OrderedDict()
-    it = sqlite3.connect(config.ITEMS)  # shared by the senseless gloss lookups
-    for row in rows:
-        data, note = build_edit(row, today, args.include_senseless, it)
-        lid, qid, lemma, lang = row[0], row[1], row[2], row[3]
-        print(f"# {lang} {lemma!r}  Lexeme:{lid} → {qid}   [{note}]")
-        if data is None:
-            continue
-        by_lid.setdefault(lid, {"senses": []})["senses"].extend(data["senses"])
-
-    # A monosemous lexeme has exactly ONE live sense, so several approved anchors for it don't
-    # form an inventory — they all pile onto that one sense. Grouping them can't be written
-    # (there is a single live sense id to resolve, and the extra copies would go out carrying
-    # the unresolved placeholder), and writing several P5137 values on one sense would assert
-    # that the sense denotes each of them — exactly the pivot ambiguity gate A exists to keep
-    # out. Competing anchors are a human call: skip the lexeme, approve one and reject the rest.
+    # --limit counts EDITS BUILT, not candidates read: a run's cost is the edits it submits, and
+    # the rows that build nothing (senseless without --include-senseless, competing anchors) are
+    # exactly the ones a cap must not spend itself on.
     edits = []
-    for lid, e in by_lid.items():
-        senses = e["senses"]
+    it = sqlite3.connect(config.ITEMS)  # shared by the senseless gloss lookups
+    for lid, group in itertools.groupby(rows, key=lambda r: r[0]):
+        if len(edits) >= args.limit:
+            break
+        senses = []
+        for row in group:
+            data, note = build_edit(row, today, args.include_senseless, it)
+            print(f"# {row[3]} {row[2]!r}  Lexeme:{lid} → {row[1]}   [{note}]")
+            if data is not None:
+                senses.extend(data["senses"])
+        if not senses:
+            continue
+        # A monosemous lexeme has exactly ONE live sense, so several approved anchors for it don't
+        # form an inventory — they all pile onto that one sense. Grouping them can't be written
+        # (there is a single live sense id to resolve, and the extra copies would go out carrying
+        # the unresolved placeholder), and writing several P5137 values on one sense would assert
+        # that the sense denotes each of them — exactly the pivot ambiguity gate A exists to keep
+        # out. Competing anchors are a human call: skip the lexeme, approve one and reject the rest.
         if len(senses) > 1 and "add" not in senses[0]:
             print(f"# SKIP Lexeme:{lid} — {len(senses)} approved anchors "
                   f"{[sense_anchor(s) for s in senses]} compete for one monosemous sense; "
