@@ -1194,3 +1194,58 @@ ts,target_lid,anchor_qid,target_lemma,target_lang,target_n_senses,verdict,reason
 2026-08-02 19:13:32,L32092,Q483501,konstnär,sv,1,yes,re-adjudicated 2026-07-05 (was approved): approved stands — konstnär=artist Q483501 is EQUAL (verifier 'yes'); the cross-check abstained on related person-type pollution (entertainer/performing-artist/theatrical-producer/painter-decorator).,sonnet,written,write.py b/CB/4d23366bdde0,2526394952
 2026-08-02 19:13:35,L34435,Q1414531,korrigering,sv,1,yes,EQUAL: rättelse/ändring matches subsequent remediation of error,sonnet,written,write.py b/CB/4d23366bdde0,2526394971
 2026-08-02 19:13:37,L246894,Q11748378,kossa,sv,1,yes,"re-adjudicated 2026-07-05 (was approved): approved stands — kossa=cow Q11748378 well-supported (de/en/fr + 9 langs). Flagging cluster pollution (dominant stitched member Q726 horse) as a data-quality issue, not a verdict change.",sonnet,written,write.py b/CB/4d23366bdde0,2526394989
+2026-08-13 08:33:13,L36768,Q3150754,infirmary,en,1,yes,EQUAL: infirmary matches first aid/medical room,sonnet,written,write.py b/CB/d76a01a35372,2530808716
+2026-08-13 08:33:15,L322740,Q10301920,irresoluteness,en,1,yes,EQUAL: irresoluteness matches indecision,sonnet,written,write.py b/CB/d76a01a35372,2530808729
+2026-08-13 08:33:18,L1408907,Q12634515,kithara,en,1,yes,EQUAL: kithara is the ancient Greek lyre instrument,sonnet,written,write.py b/CB/d76a01a35372,2530808749
+2026-08-13 08:33:20,L37187,Q12136,malady,en,1,yes,EQUAL: malady is disease/ailment,sonnet,written,write.py b/CB/d76a01a35372,2530808760
+2026-08-13 08:33:23,L323783,Q192077,melancholy,en,1,yes,EQUAL: melancholic mood/temperament concept matches gloss,sonnet,written,write.py b/CB/d76a01a35372,2530808775
+2026-08-13 08:33:25,L324473,Q193607,nincompoop,en,1,yes,EQUAL: foolish/stupid person synonym set,sonnet,written,write.py b/CB/d76a01a35372,2530808794
+2026-08-13 08:33:28,L307278,Q168182,noontide,en,1,yes,EQUAL: noontide synonym for noon,sonnet,written,write.py b/CB/d76a01a35372,2530808810
+2026-08-13 08:33:31,L38452,Q2159907,offender,en,1,yes,EQUAL: offender is person who committed crime,sonnet,written,write.py b/CB/d76a01a35372,2530808827
+2026-08-13 08:33:33,L325323,Q557945,perplexity,en,1,yes,EQUAL: confusion/bewildered mental state matches,sonnet,written,write.py b/CB/d76a01a35372,2530808852
+2026-08-13 08:33:36,L325867,Q520667,premonition,en,1,yes,EQUAL: premonition and precognition denote same paranormal foresight,sonnet,written,write.py b/CB/d76a01a35372,2530808873
+2026-08-13 08:33:39,L33176,Q240673,kostnad,sv,1,yes,EQUAL: 'price paid for something' matches monetary cost concept,sonnet,written,write.py b/CB/d76a01a35372,2530808908
+2026-08-13 08:33:41,L1093998,Q8812109,kyrkomusik,sv,1,yes,EQUAL: church music / kyrkomusik exact match,sonnet,written,write.py b/CB/d76a01a35372,2530808935
+2026-08-13 08:33:44,L59701,Q81875,köttätare,sv,1,yes,"EQUAL: meat-eater is carnivore, same concept",sonnet,written,write.py b/CB/d76a01a35372,2530808965
+2026-08-13 08:33:46,L496793,Q4175034,lagstiftare,sv,1,yes,"BROADER: gloss includes organs/bodies, not only individual members",sonnet,written,write.py b/CB/d76a01a35372,2530808991
+2026-08-13 08:33:49,L247076,Q6343726,landsman,sv,1,yes,EQUAL: person from same homeland matches compatriot,sonnet,written,write.py b/CB/d76a01a35372,2530809020
+2026-08-13 08:33:51,L248501,Q816425,lantmäteri,sv,1,yes,EQUAL: land surveying/cadastral work matches concept labeled 'lantmäteri',sonnet,written,write.py b/CB/d76a01a35372,2530809035
+2026-08-13 08:33:54,L32885,Q2334804,leverans,sv,1,yes,EQUAL: delivery of goods/services matches concept exactly,sonnet,written,write.py b/CB/d76a01a35372,2530809054
+2026-08-13 08:33:56,L35402,Q1762621,leverantör,sv,1,yes,BROADER: any supplier/deliverer vs commercial vendor specifically,sonnet,written,write.py b/CB/d76a01a35372,2530809064
+2026-08-13 08:33:59,L46283,Q14972848,lexikograf,sv,1,yes,EQUAL: lexicographer researches/writes/compiles dictionaries,sonnet,written,write.py b/CB/d76a01a35372,2530809076
+2026-08-13 08:34:01,L1405176,Q3090865,lindanserska,sv,1,yes,EQUAL: feminine form of tightrope walker; gender recorded separately,sonnet,written,write.py b/CB/d76a01a35372,2530809086
+2026-08-13 08:34:04,L241565,Q29714270,list,sv,1,yes,EQUAL: 'list' (cunning/craftiness) matches concept 'slughet/cunning',sonnet,written,write.py b/CB/d76a01a35372,2530809102
+2026-08-13 08:34:07,L1415069,Q1092641,luxemburgare,sv,1,yes,re-adjudicated 2026-06-27 (was rejected): approved,sonnet,written,write.py b/CB/d76a01a35372,2530809117
+2026-08-13 08:34:09,L1506590,Q1456974,lydnad,sv,1,yes,EQUAL: act of obeying = obedience,sonnet,written,write.py b/CB/d76a01a35372,2530809135
+2026-08-13 08:34:11,L1405419,Q11190,läkarvetenskap,sv,1,yes,EQUAL: medical science = medicine,sonnet,written,write.py b/CB/d76a01a35372,2530809157
+2026-08-13 08:34:14,L46454,Q36253,längd,sv,1,yes,EQUAL: length as measurable physical extent,sonnet,written,write.py b/CB/d76a01a35372,2530809174
+2026-08-13 08:34:16,L32328,Q37226,lärarinna,sv,1,yes,EQUAL: feminine teacher = gender-neutral teacher concept (gender rule),sonnet,written,write.py b/CB/d76a01a35372,2530809189
+2026-08-13 08:34:19,L32382,Q26899865,läsare,sv,1,yes,EQUAL: reader person who reads matches,sonnet,written,write.py b/CB/d76a01a35372,2530809207
+2026-08-13 08:34:21,L493535,Q26899865,läsarinna,sv,1,yes,"EQUAL: female reader, gender recorded separately",sonnet,written,write.py b/CB/d76a01a35372,2530809220
+2026-08-13 08:34:24,L1420088,Q167131,långfinger,sv,1,yes,EQUAL: middle/longest finger = third finger of human hand,sonnet,written,write.py b/CB/d76a01a35372,2530809235
+2026-08-13 08:34:26,L63677,Q703534,löntagare,sv,1,yes,EQUAL: wage earner equals employee concept,sonnet,written,write.py b/CB/d76a01a35372,2530809250
+2026-08-13 08:34:29,L33601,Q115707279,mal,sv,1,yes,EQUAL: 'mal' = catfish; concept is catfish (ray-finned fish with barbels),sonnet,written,write.py b/CB/d76a01a35372,2530809272
+2026-08-13 08:34:31,L588193,Q19840401,malaysier,sv,1,yes,EQUAL: person from Malaysia = citizens of Malaysia,sonnet,written,write.py b/CB/d76a01a35372,2530809298
+2026-08-13 08:34:34,L1414937,Q1286876,maltes,sv,1,yes,EQUAL: 'person från Malta' matches citizens/residents of Malta,sonnet,written,write.py b/CB/d76a01a35372,2530809324
+2026-08-13 08:34:37,L1452917,Q1286876,maltesare,sv,1,yes,NARROWER: singular person from Malta vs collective Maltese people,sonnet,written,write.py b/CB/d76a01a35372,2530809347
+2026-08-13 08:34:39,L47109,Q1483709,markägare,sv,1,yes,EQUAL: landowner matches person owning land,sonnet,written,write.py b/CB/d76a01a35372,2530809377
+2026-08-13 08:34:42,L1505821,Q46999986,martyrium,sv,1,yes,BROADER: suffering for belief vs death for faith,sonnet,written,write.py b/CB/d76a01a35372,2530809407
+2026-08-13 08:34:44,L38282,Q15735983,medförfattare,sv,1,yes,EQUAL: co-writing a text and being listed as co-author denote the same role,sonnet,written,write.py b/CB/d76a01a35372,2530809440
+2026-08-13 08:34:47,L1525038,Q80149,melankoliker,sv,1,yes,EQUAL: melancholic person matches person prone to sadness/melancholy temperament,sonnet,written,write.py b/CB/d76a01a35372,2530809443
+2026-08-13 08:34:49,L245983,Q127956,mikro,sv,1,yes,EQUAL: mikrovågsugn gloss matches microwave oven concept exactly,sonnet,written,write.py b/CB/d76a01a35372,2530809466
+2026-08-13 08:34:52,L593235,Q496696,mjölkpulver,sv,1,yes,EQUAL: dried milk in powder form = dehydrated milk/milk powder,sonnet,written,write.py b/CB/d76a01a35372,2530809498
+2026-08-13 08:34:54,L1018782,Q23065481,mobilitet,sv,1,yes,EQUAL: gloss=property of being movable; concept=ability to move,sonnet,written,write.py b/CB/d76a01a35372,2530809528
+2026-08-13 08:34:57,L58488,Q100440056,moldavier,sv,1,yes,"re-adjudicated 2026-07-05 (was approved): approved stands — nationality demonym → 'Moldovans' (Q100440056, 'citizens or residents of X', P31 human population) is the codified/blessed P5137 target and KEEPS (contrast the ethnic-group demonyms deferred in the same cross-check batch — Irish/Georgian/French/Bulgarian/Kyrgyz). All-language anchor cross-check abstained only on uncached homograph anchors stitched into the cluster — cross-language homograph pollution, not a scope error.",sonnet,written,write.py b/CB/d76a01a35372,2530809535
+2026-08-13 08:34:59,L241112,Q2039972,monegask,sv,1,yes,EQUAL: singular demonym 'person from Monaco' matches Monegasques concept,sonnet,written,write.py b/CB/d76a01a35372,2530809559
+2026-08-13 08:35:02,L1519592,Q45787133,motorcykelförare,sv,1,yes,EQUAL: gloss and concept description are identical,sonnet,written,write.py b/CB/d76a01a35372,2530809583
+2026-08-13 08:35:04,L1097557,Q394,mätteknik,sv,1,yes,"EQUAL: metrology = science of measurement, exact match",sonnet,written,write.py b/CB/d76a01a35372,2530809607
+2026-08-13 08:35:07,L1404569,Q931260,mörderska,sv,1,yes,EQUAL: feminine form 'mörderska' = 'mördare'; gender recorded separately,sonnet,written,write.py b/CB/d76a01a35372,2530809627
+2026-08-13 08:35:09,L58489,Q97696014,namibier,sv,1,yes,EQUAL: person from Namibia = citizens/residents of Namibia,sonnet,written,write.py b/CB/d76a01a35372,2530809643
+2026-08-13 08:35:12,L244374,Q200569,nederländare,sv,1,yes,EQUAL: person from Netherlands = citizens/residents of Netherlands,sonnet,written,write.py b/CB/d76a01a35372,2530809656
+2026-08-13 08:35:14,L498525,Q1814990,nej,sv,1,yes,EQUAL: 'nej' is exactly the negation particle 'no' described,sonnet,written,write.py b/CB/d76a01a35372,2530809671
+2026-08-13 08:35:17,L242690,Q4317274,nepales,sv,1,yes,EQUAL: person from Nepal matches Nepalis/citizens of Nepal,sonnet,written,write.py b/CB/d76a01a35372,2530809682
+2026-08-13 08:35:20,L589821,Q659,nord,sv,1,yes,EQUAL: cardinal direction pointing away from south pole = north,sonnet,written,write.py b/CB/d76a01a35372,2530809694
+2026-08-13 08:35:22,L54454,Q4919820,nyckelord,sv,1,yes,BROADER: important-word gloss wider than statistical keyword,sonnet,written,write.py b/CB/d76a01a35372,2530809707
+2026-08-13 08:35:25,L55344,Q19267375,närhet,sv,1,yes,EQUAL: närhet and proximity denote the same state of nearness,sonnet,written,write.py b/CB/d76a01a35372,2530809717
+2026-08-13 08:35:27,L32391,Q7363,näsa,sv,1,yes,EQUAL: nose organ matches concept,sonnet,written,write.py b/CB/d76a01a35372,2530809732
+2026-08-13 08:35:30,L1093011,Q10301920,obeslutsamhet,sv,1,yes,EQUAL: 'state of being indecisive' matches 'inability to decide',sonnet,written,write.py b/CB/d76a01a35372,2530809745
