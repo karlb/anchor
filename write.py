@@ -62,6 +62,11 @@ def entity_snak(prop, qid):
             "datavalue": {"type": "wikibase-entityid", "value": {"id": qid}}}
 
 
+def sense_anchor(sense):
+    """The anchor qid a built sense dict carries (exactly one P5137 claim per sense)."""
+    return sense["claims"]["P5137"][0]["mainsnak"]["datavalue"]["value"]["id"]
+
+
 def build_statement(anchor_qid, today):
     """The P5137 claim dict with its mandatory reference (CC0-clean)."""
     time_snak = {"snaktype": "value", "property": "P813",
@@ -130,7 +135,8 @@ def load_rows(args):
     rows.sort(key=lambda r: (r[3], r[2], r[0], r[1]))
     # Limit by LEXEME, not row, keeping a lexeme's full inventory together: a split multi-item
     # senseless lexeme would create some senses, then the "no longer senseless" guard would
-    # skip the rest forever. Monosemous lexemes are one row each, so this equals a row limit.
+    # skip the rest forever. A monosemous lexeme is usually one row, but not always: several
+    # approved anchors can compete for its single sense (see the guard in main).
     out, seen = [], set()
     for r in rows:
         if r[0] not in seen:
@@ -262,10 +268,11 @@ def write_edits(edits, max_per_min):
     last_edit = 0.0  # monotonic time of the last submitted edit, for pacing
     for lid, data in edits:
         senses = data["senses"]
-        # One lexeme's edit is uniformly monosemous (one sense, {"id": ...}) or sense-creation
-        # (one or more {"add": ...} senses grouped lexeme-wise). Every sense carries its anchor.
+        # One lexeme's edit is either monosemous (exactly one sense, {"id": ...} — main() drops
+        # the multi-anchor case) or sense-creation (one or more {"add": ...} senses grouped
+        # lexeme-wise). Every sense carries its anchor.
         is_create = "add" in senses[0]
-        anchors = [s["claims"]["P5137"][0]["mainsnak"]["datavalue"]["value"]["id"] for s in senses]
+        anchors = [sense_anchor(s) for s in senses]
         try:
             if not is_create:  # monosemous: resolve the live sense id + guard
                 anchor = anchors[0]
@@ -357,7 +364,22 @@ def main():
         if data is None:
             continue
         by_lid.setdefault(lid, {"senses": []})["senses"].extend(data["senses"])
-    edits = [(lid, {"senses": e["senses"]}) for lid, e in by_lid.items()]
+
+    # A monosemous lexeme has exactly ONE live sense, so several approved anchors for it don't
+    # form an inventory — they all pile onto that one sense. Grouping them can't be written
+    # (there is a single live sense id to resolve, and the extra copies would go out carrying
+    # the unresolved placeholder), and writing several P5137 values on one sense would assert
+    # that the sense denotes each of them — exactly the pivot ambiguity gate A exists to keep
+    # out. Competing anchors are a human call: skip the lexeme, approve one and reject the rest.
+    edits = []
+    for lid, e in by_lid.items():
+        senses = e["senses"]
+        if len(senses) > 1 and "add" not in senses[0]:
+            print(f"# SKIP Lexeme:{lid} — {len(senses)} approved anchors "
+                  f"{[sense_anchor(s) for s in senses]} compete for one monosemous sense; "
+                  f"keep exactly one approved")
+            continue
+        edits.append((lid, {"senses": senses}))
 
     for lid, data in edits:
         n = len(data["senses"])
