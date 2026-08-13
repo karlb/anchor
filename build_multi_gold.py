@@ -151,16 +151,15 @@ def sample(cands):
 
 
 def gloss_of(cn, lid, lang):
-    """The existing sense's gloss — what the anchor actually has to match. Target language
-    first, then English, then whatever exists."""
+    """The existing sense's glosses — what the anchor actually has to match. Multi-language
+    like the anchor side: target language first, then English, then the rest; [lg]-prefixed,
+    max 3, ' · '-joined."""
     rows = cn.execute(
         """SELECT sg.lang, sg.gloss FROM wd.sense s JOIN wd.sense_gloss sg ON sg.sid = s.sid
            WHERE s.lid = ?""", [lid]).fetchall()
-    by = {lg: g for lg, g in rows}
-    for lg in (lang, "en"):
-        if by.get(lg):
-            return f"[{lg}] {by[lg]}"
-    return f"[{rows[0][0]}] {rows[0][1]}" if rows else ""
+    by = {lg: g for lg, g in rows if g}
+    order = sorted(by, key=lambda lg: (lg != lang, lg != "en", lg))
+    return " · ".join(f"[{lg}] {by[lg]}" for lg in order[:3])
 
 
 def anchor_text(cn, qid, lang):
