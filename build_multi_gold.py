@@ -81,6 +81,7 @@ def pool(cn):
                    EXISTS(SELECT 1 FROM it.item i WHERE i.qid = c.anchor_qid AND NOT i.missing)
             FROM candidate c
             WHERE {gates.clean_clause('c')} AND {gates.gate_b('c', 1)}
+              AND {gates.free_sense_clause('c', 'wd')}
               AND c.support_clusters >= 1""").fetchall()
     per = collections.defaultdict(list)
     cached = collections.defaultdict(list)

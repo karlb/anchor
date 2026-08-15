@@ -34,9 +34,11 @@ def main():
     conn.execute("ATTACH DATABASE ? AS cn", [config.CANDIDATES])
     conn.execute("ATTACH DATABASE ? AS it", [config.ITEMS])
     conn.execute("ATTACH DATABASE ? AS vf", [config.VERIFY])
+    conn.execute("ATTACH DATABASE ? AS wd", [config.WIKIDATA])  # gates.free_sense_clause reads this
     it_conn = sqlite3.connect(config.ITEMS)  # for the shared anchor_gloss preview
 
-    where = (gates.clean_clause("c") if args.all_clean
+    where = (gates.clean_clause("c") + " AND " + gates.admissible_clause("c", "wd")
+             if args.all_clean
              else gates.high_tier_where("c", "it", n_senses=0 if args.senseless else 1))
 
     rows = conn.execute(f"""

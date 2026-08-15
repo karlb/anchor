@@ -105,6 +105,7 @@ def pool(senseless=None, key=None):
     cn = sqlite3.connect(config.CANDIDATES)
     cn.execute("ATTACH DATABASE ? AS it", [config.ITEMS])
     cn.execute("ATTACH DATABASE ? AS vf", [config.VERIFY])
+    cn.execute("ATTACH DATABASE ? AS wd", [config.WIKIDATA])  # gates.free_sense_clause reads this
     rows = cn.execute(
         """
         SELECT c.target_lid, c.anchor_qid, c.target_lemma, c.target_lang,

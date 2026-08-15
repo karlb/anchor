@@ -143,21 +143,34 @@ CREATE TABLE IF NOT EXISTS verdict(
 """
 
 
-def candidates(gate="", min_support=1, senseless_only=False):
+def candidates(gate="", min_support=1, senseless_only=False, max_senses=None):
     """Clean candidates joined to the anchor Q's CC0 label/description.
 
     `gate` adds structural gates (the same SQL fragments gates.high_tier_where composes):
     A (>=2 anchors), B (monosemous target, n_senses==1), D (concrete in-scope anchor).
     ABD is the measured ~95.9%-precision High tier. (The measurement harnesses' Python
     gate D, precision.typed_qids, applies the same P31 + scope-exclusion definition.)
+
+    The ungated pool is a strict SUPERSET of what it was before admissibility moved out of
+    gates.clean_clause: measured 60,006 -> 63,275, losing none and gaining 3,269 polysemous
+    rows that `NOT cross_pivot_conflict` used to exclude for having a P5137 on some OTHER
+    sense. Both gated lanes (--gate ABD, --senseless-only) are byte-identical — see
+    `uv run gates.py`. `max_senses` caps the target's recorded sense count for a caller that
+    wants only the lanes with a write path today (None = no cap); note capping at 1 drops
+    937 wholly-unlinked polysemous rows the old clause did admit, so it is a deliberate
+    restriction rather than a way back to the old behaviour.
     """
     cn = sqlite3.connect(config.CANDIDATES)
     cn.execute("ATTACH DATABASE ? AS it", [config.ITEMS])
+    cn.execute("ATTACH DATABASE ? AS wd", [config.WIKIDATA])   # free_sense_clause reads this
     gate = gate.upper()
-    where = gates.clean_clause("c") + " AND " + gates.gate_a(
-        "c", max(min_support, 2) if "A" in gate else min_support)
+    where = (gates.clean_clause("c") + " AND " + gates.admissible_clause("c", "wd")
+             + " AND " + gates.gate_a(
+                 "c", max(min_support, 2) if "A" in gate else min_support))
+    if max_senses is not None:
+        where += f" AND c.target_n_senses <= {int(max_senses)}"
     if senseless_only:
-        where += " AND " + gates.gate_b("c", 0)
+        where += " AND " + gates.create_first_clause("c")
     if "B" in gate:
         where += " AND " + gates.gate_b("c", 1)
     if "D" in gate:
@@ -292,6 +305,24 @@ def load_glosses(lids):
     return out
 
 
+def sense_shape(lids):
+    """'0 senses: N, 1: N, 2+: N' for a set of target lexemes — the pool's lane mix."""
+    if not lids:
+        return "(empty)"
+    counts = {}
+    cn = sqlite3.connect(config.CANDIDATES)
+    lids = list(lids)
+    for i in range(0, len(lids), 500):
+        chunk = lids[i:i + 500]
+        q = ("SELECT DISTINCT target_lid, target_n_senses FROM candidate WHERE target_lid IN (%s)"
+             % ",".join("?" * len(chunk)))
+        for _lid, n in cn.execute(q, chunk):
+            key = "2+" if n >= 2 else str(n)
+            counts[key] = counts.get(key, 0) + 1
+    cn.close()
+    return ", ".join(f"{k} senses: {v:,}" for k, v in sorted(counts.items()))
+
+
 def pick_gloss(gmap, lid, lang):
     """The lexeme's gloss, target-language preferred, else any (en/de/sv); '' if none."""
     vals = gmap.get(lid, {})
@@ -372,6 +403,10 @@ def main():
     print(f"candidates to verify: {len(rows):,}  ({len(gmap):,} with a CC0 gloss"
           + (f"; {skipped:,} skipped — no item_lang concept" if skipped else "")
           + f"; batch={args.batch}, model={args.model})")
+    # Sense-count breakdown, so the polysemous rows that the action-level admissibility newly
+    # admits (gates.clean_clause no longer filters them out) are visible BEFORE the run spends
+    # anything, rather than showing up on the bill.
+    print(f"  target shape: {sense_shape({r[0] for r in rows})}")
 
     counts = {}
     for i in range(0, len(rows), args.batch):
