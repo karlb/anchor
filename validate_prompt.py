@@ -38,6 +38,12 @@ of the same cache, which is the A/B the additive cache exists to make free.
     uv run validate_prompt.py --baseline-ver 59d6f472 # vs an earlier prompt, same cache file
     uv run validate_prompt.py --baseline path.sqlite3 # explicit backup file
     uv run validate_prompt.py --keep-min 0.9 --catch-min 0.5
+    uv run validate_prompt.py --decisions notes/runs/senseless_sample.csv   # a measured lane
+
+--decisions grades against a different log of the same shape. A lane whose precision was
+measured by adjudicating a sample must keep those adjudications OUT of config.DECISIONS —
+write.py writes what is 'approved' there — but they are exactly the gold a prompt change
+should be graded on, so the instrument reads whichever file it is pointed at.
 """
 
 import argparse
@@ -140,6 +146,11 @@ def main():
     ap.add_argument("--baseline-ver",
                     help="compare against an earlier PROMPT_VER inside the live cache instead "
                          "of a backup file (the cache keeps every version)")
+    ap.add_argument("--decisions", default=config.DECISIONS,
+                    help="grade against a different decision log — same columns, not the live "
+                         "one. A lane measured by adjudicating a sample gets its own file (it "
+                         "must not authorize writes), and this makes that file a gold set for "
+                         "the next prompt at zero LLM cost.")
     ap.add_argument("--keep-min", type=float, default=0.90,
                     help="min fraction of confirmed-correct that must stay 'yes'")
     ap.add_argument("--catch-min", type=float, default=0.50,
@@ -147,7 +158,7 @@ def main():
                          "caught or would have written, the fraction it must catch")
     args = ap.parse_args()
 
-    gold = load_decisions()
+    gold = load_decisions(args.decisions)
     live = load_verify_cache(config.VERIFY)     # (verdict, reason) — live_rel needs the reason
     new = {k: v[0] for k, v in live.items()}
     base = (load_cache(config.VERIFY, ver=args.baseline_ver) if args.baseline_ver
@@ -155,13 +166,13 @@ def main():
     base_name = (f"{config.VERIFY} @ prompt {args.baseline_ver}" if args.baseline_ver
                  else args.baseline)
     if not gold:
-        raise SystemExit(f"no decisions at {config.DECISIONS}")
+        raise SystemExit(f"no decisions at {args.decisions}")
     if not new:
         raise SystemExit(f"no verdicts at {config.VERIFY} — rebuild the cache first")
 
     n_def = sum(1 for r in gold.values() if r["status"] == "deferred")
     defnote = f"; {n_def} deferred (held, excluded from scoring)" if n_def else ""
-    print(f"decision log : {config.DECISIONS}  ({len(gold)} gold rows, "
+    print(f"decision log : {args.decisions}  ({len(gold)} gold rows, "
           f"all verifier-'yes' under the old prompt{defnote})")
     print(f"new cache    : {config.VERIFY} @ prompt {verify.PROMPT_VER}  "
           f"({len(new)} verdicts; model: {models(config.VERIFY)})")

@@ -114,9 +114,15 @@ def main():
     ap.add_argument("--lane", choices=("senseless", "mono", "poly"),
                     help="calibrate only one review lane: senseless (target_n_senses 0), mono "
                          "(the monosemous write stream, 1) or poly (>=2); default pools all")
+    ap.add_argument("--decisions", default=rq.DECISIONS,
+                    help="read a different decision log — same columns, not the live one. For "
+                         "MEASUREMENT logs: a sample adjudicated to measure a lane must not be "
+                         "appended to config.DECISIONS, because write.py writes what is 'approved' "
+                         "there. Same shape, so the instrument reads it; separate file, so it "
+                         "authorizes nothing.")
     args = ap.parse_args()
 
-    decisions = rq.load_decisions()   # last event per (lid, anchor) wins
+    decisions = rq.load_decisions(args.decisions)   # last event per (lid, anchor) wins
     if args.lane:                     # filter, don't sub-class — see the module docstring
         # Lane names are review_queue's, not a private copy: rq.decided_lane reads the
         # count FROZEN in the log row, so a senseless target that has since been written
@@ -144,7 +150,7 @@ def main():
         # refinement would otherwise print it twice. show the live rating, not the frozen one.
         rows_by_cls[cls].append({**d, "reason": cache.get(k, (None, d.get("reason")))[1]})
 
-    print(f"decision log: {rq.DECISIONS}"
+    print(f"decision log: {args.decisions}"
           + (f"   [LANE: {args.lane} only]" if args.lane else ""))
     if not args.lane:
         print("pooled over all review lanes — the live auto-defer gate is measured per lane; "

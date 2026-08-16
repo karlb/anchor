@@ -31,10 +31,11 @@ changed prompt (tracked by its SHA1 fingerprint) auto-invalidates stale verdicts
 are re-verified rather than silently trusted.
 
 Run after fetch_items.py (defaults to a 40-candidate sample):
-    uv run verify.py                       # sample the highest-support clean candidates
+    uv run verify.py                       # the highest-support clean candidates
     uv run verify.py --senseless-only      # only candidates grounding senseless lexemes
     uv run verify.py --all --batch 8       # full run (costs add up — see note above)
     uv run verify.py --gate ABD --all --model sonnet   # the High tier
+    uv run verify.py --gate AD --senseless-only --sample 240 --seed s1   # measure a lane
 """
 
 import argparse
@@ -245,6 +246,24 @@ def candidates(gate="", min_support=1, senseless_only=False, max_senses=None, po
     return rows
 
 
+def sample_pairs(rows, n, seed=""):
+    """A reproducible uniform-random subset of `rows`, picked by hashing (seed, pair).
+
+    `candidates()` orders by support DESC, so a plain `--limit` run takes the EASIEST rows —
+    fine for a smoke test, wrong for measuring what a lane would actually write (the senseless
+    lane is ~half support-2, and its yes-rate falls with support). This draws instead.
+
+    The subset is defined by the pair keys alone, so it is stable under two things that break
+    `rows[:n]`: re-ordering the pool, and part of the sample already being cached. That is what
+    makes a measurement run resumable — an interrupted run re-draws the SAME sample and verifies
+    only the rest. It is also NESTED in n: --sample 240 is a superset of --sample 48 at the same
+    seed, so a pilot can be grown into the full sample without re-paying for it. Adding
+    candidates to the pool can still swap a row in or out, so quote a sample with the pool it
+    was drawn from."""
+    return sorted(rows, key=lambda r: hashlib.sha1(
+        f"{seed}|{r[0]}|{r[3]}".encode()).hexdigest())[:n]
+
+
 def load_item_lang(qids):
     """{qid: {lang: (label, desc)}} from the all-language CC0 cache (item_lang in
     wd_items.sqlite3, built by fetch_anchor_langs.py). Empty if the table is absent."""
@@ -409,6 +428,11 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--limit", type=int, default=40, help="max candidates (default 40 sample)")
     ap.add_argument("--all", action="store_true", help="verify every eligible candidate")
+    ap.add_argument("--sample", type=int, help="verify a reproducible RANDOM subset of N eligible "
+                    "candidates instead of the top --limit by support — the draw a precision "
+                    "measurement needs (see sample_pairs). Resumable and nested in N.")
+    ap.add_argument("--seed", default="", help="sample seed (any string): picks WHICH random "
+                    "subset --sample draws. Record it with the result.")
     ap.add_argument("--batch", type=int, default=8)
     ap.add_argument("--model", default="sonnet")
     ap.add_argument("--min-support", type=int, default=1)
@@ -447,10 +471,17 @@ def main():
             "SELECT target_lid, anchor_qid FROM verdict "
             "WHERE prompt_ver = ? AND verdict NOT IN ('error', 'parse_error')", [PROMPT_VER])}
 
-    pool = [r for r in candidates(args.gate, args.min_support, args.senseless_only,
-                                  poly_only=args.poly_only)
-            if (r[0], r[3]) not in done]
-    if not args.all:
+    eligible = candidates(args.gate, args.min_support, args.senseless_only,
+                          poly_only=args.poly_only)
+    # Sample BEFORE the cache check, not after: the sample is then a fixed set of pairs that a
+    # resumed run re-draws identically, instead of "N more rows that aren't done yet" — which
+    # would quietly grow the sample every time a run was interrupted.
+    if args.sample:
+        eligible = sample_pairs(eligible, args.sample, args.seed)
+        print(f"sample: {len(eligible):,} of the eligible pool, seed={args.seed!r} "
+              f"(reproducible; --sample is nested in N at a fixed seed)")
+    pool = [r for r in eligible if (r[0], r[3]) not in done]
+    if not args.all and not args.sample:
         pool = pool[: args.limit]
     # The live verifier's concept comes ONLY from item_lang (the +multi format) — de/en/sv is
     # no longer a grading fallback. So every anchor we intend to grade must have been fetched
