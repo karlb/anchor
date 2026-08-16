@@ -26,10 +26,21 @@ Two arms, because each is blind to the other's failure mode:
   --arm control  The complement, and the reason the gold alone is not enough. Monosemous
                  pairs the human already decided: an approved/written pair should come back
                  as the sole sense, a REJECTED pair should come back as "none". Measures the
-                 NONE escape — the over-assignment rate the gold cannot see.
+                 NONE escape — the over-assignment rate the gold cannot see. Small (18
+                 sense-level negatives in the whole decision log), which is why:
+
+  --arm absent   The gold arm with the correct sense DELETED from the offered list, so the
+                 right answer is "none". Self-grading like the gold, zero human labels, and
+                 it measures the exact failure that writes a bad edit: what the model does
+                 when no offered sense is right. Needs >= 3 senses so the remaining choice
+                 set still looks like an ordinary question. Runs half its batch as UNMODIFIED
+                 gold questions (arm `absent_intact`, drawn disjointly and interleaved) —
+                 without them every item in a batch has the same answer and the number is
+                 unreadable.
 
     uv run assign_eval.py --arm control --limit 200
     uv run assign_eval.py --arm gold    --limit 300
+    uv run assign_eval.py --arm absent  --limit 200
     uv run assign_eval.py --report
 """
 import argparse
@@ -68,6 +79,9 @@ PROMPT_VER = __import__("hashlib").sha1(SYSTEM.encode()).hexdigest()[:8]
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS assign(
+    -- `expected` is the sid the answer should be, or the literal 'none' (control/rejected).
+    -- The `absent` arm is the exception: there the right answer is always 'none', so the
+    -- column carries the sid that was DELETED instead — the gloss needed to adjudicate a miss.
     arm TEXT, target_lid TEXT, anchor_qid TEXT, answer TEXT, expected TEXT,
     reason TEXT, model TEXT, prompt_ver TEXT,
     -- how many senses were offered, and which position held the right answer. Recorded so
@@ -172,26 +186,46 @@ def concept_text(cn, qid, lang, il_map):
     return verify.fmt_concept(row, langs=config.CONCEPT_LANGS_VERIFY, il_map=il_map)
 
 
+def _drop_correct(p):
+    """Delete the sense that really carries the on-wiki link, making 'none' the right answer.
+
+    `expected` keeps the DELETED sid rather than becoming "none" — the arm scores on
+    `answer == "none"`, so the sid costs nothing to carry and is the one thing needed to
+    adjudicate a miss. Wikidata sometimes records two senses meaning the same thing, and the
+    dry run showed it is not rare: en drainage keeps "removal of fluids" after the concept
+    *emptying* loses its sense; fr queue keeps the fish-tail gloss after the animal-tail sense
+    goes. Naming the survivor is then defensible, but scored here as a confabulation — so the
+    raw rate is a LOWER bound on abstention, and reading the misses beside the deleted gloss
+    is what turns it into the real one. A gloss-overlap proxy cannot do that reading (it
+    scored the odontology pair at 0.06)."""
+    lid, lang, lemma, qid, expected, sen = p
+    return (lid, lang, lemma, qid, expected, [(s, t) for s, t in sen if s != expected])
+
+
+MIN_SENSES = {"control": 1, "gold": 2, "absent": 3}
+
+
 def run(arm, limit, model, batch, force):
     cn = connect_ro()
-    items = build_gold(cn) if arm == "gold" else build_control(cn)
+    items = build_control(cn) if arm == "control" else build_gold(cn)
     print(f"[{arm}] built {len(items):,} candidate questions")
 
     out = sqlite3.connect(DB)
     out.executescript(SCHEMA)
+    arms = ("absent", "absent_intact") if arm == "absent" else (arm,)
     done = set() if force else {
         (r[0], r[1]) for r in out.execute(
-            "SELECT target_lid, anchor_qid FROM assign WHERE arm = ? AND prompt_ver = ?",
-            [arm, PROMPT_VER])}
+            "SELECT target_lid, anchor_qid FROM assign WHERE prompt_ver = ? AND arm IN (%s)"
+            % ",".join("?" * len(arms)), [PROMPT_VER, *arms])}
 
     pool = []
     for lid, lang, lemma, qid, expected in items:
         if (lid, qid) in done:
             continue
         sen = senses_of(cn, lid, lang)
-        if len(sen) < (2 if arm == "gold" else 1):
+        if len(sen) < MIN_SENSES[arm]:
             continue                                   # no glosses -> nothing to choose from
-        if arm == "gold" and expected not in {s for s, _ in sen}:
+        if arm != "control" and expected not in {s for s, _ in sen}:
             continue                                   # the right answer must be answerable
         pool.append((lid, lang, lemma, qid, expected, sen))
     # The concept MUST render in the +multi format the live verifier grades on, and this
@@ -220,18 +254,30 @@ def run(arm, limit, model, batch, force):
         # wide interval on the number the arm exists for.
         neg = [p for p in pool if p[4] == "none"]
         pos = [p for p in pool if p[4] != "none"]
-        pool = neg[:limit] + pos[:max(0, limit - len(neg))]
+        tagged = [(p, arm) for p in neg[:limit] + pos[:max(0, limit - len(neg))]]
+    elif arm == "absent":
+        # Half again as many UNMODIFIED gold questions ride along, drawn DISJOINTLY (a pair
+        # asked both ways would leak — the intact form shows the answer exists) and shuffled
+        # in. Two reasons. A batch of 8 whose every answer is "none" measures the batch prior
+        # as much as the model, in whichever direction. And the intact rows re-measure top-1
+        # selection in the SAME context, so "abstains too little" can be told apart from
+        # "the prompt lost its grip here" without a second run.
+        tagged = ([(_drop_correct(p), "absent") for p in pool[:limit]]
+                  + [(p, "absent_intact") for p in pool[limit:limit + max(1, limit // 2)]])
+        rng.shuffle(tagged)
     else:
-        pool = pool[:limit]
-    if not pool:
+        tagged = [(p, arm) for p in pool[:limit]]
+    if not tagged:
         print("nothing to do (all cached, or nothing survived the item_lang filter)")
         return
-    print(f"[{arm}] asking {len(pool):,}  (model={model}, batch={batch}, prompt_ver={PROMPT_VER})")
+    mix = collections.Counter(t for _p, t in tagged)
+    print(f"[{arm}] asking {len(tagged):,} {dict(mix)}  "
+          f"(model={model}, batch={batch}, prompt_ver={PROMPT_VER})")
 
-    for i in range(0, len(pool), batch):
-        chunk = pool[i:i + batch]
+    for i in range(0, len(tagged), batch):
+        chunk = tagged[i:i + batch]
         lines = []
-        for n, (lid, lang, lemma, qid, _exp, sen) in enumerate(chunk, 1):
+        for n, ((lid, lang, lemma, qid, _exp, sen), _tag) in enumerate(chunk, 1):
             qid_, lab, desc = concept_text(cn, qid, lang, il_map)
             senses = "; ".join(f"({j}) {t}" for j, (_s, t) in enumerate(sen, 1))
             lines.append(
@@ -244,7 +290,7 @@ def run(arm, limit, model, batch, force):
             print(f"  batch {i // batch} failed: {e}")
             ans = [{"sense": "error", "reason": ""}] * len(chunk)
         recs = []
-        for (lid, lang, lemma, qid, expected, sen), a in zip(chunk, ans):
+        for ((lid, lang, lemma, qid, expected, sen), tag), a in zip(chunk, ans):
             raw = a.get("sense")
             if isinstance(raw, int) or (isinstance(raw, str) and raw.strip().isdigit()):
                 idx = int(raw)
@@ -252,12 +298,12 @@ def run(arm, limit, model, batch, force):
             else:
                 answer = str(raw).strip().lower()      # "none", "error", or junk
             sids = [s for s, _ in sen]
-            recs.append((arm, lid, qid, answer, expected, str(a.get("reason", ""))[:150],
+            recs.append((tag, lid, qid, answer, expected, str(a.get("reason", ""))[:150],
                          model, PROMPT_VER, len(sids),
                          sids.index(expected) + 1 if expected in sids else None))
         out.executemany("INSERT OR REPLACE INTO assign VALUES (?,?,?,?,?,?,?,?,?,?)", recs)
         out.commit()
-        print(f"  {min(i + batch, len(pool)):,}/{len(pool):,}")
+        print(f"  {min(i + batch, len(tagged)):,}/{len(tagged):,}")
 
     u = llm.usage_summary()
     if u["calls"]:
@@ -298,6 +344,17 @@ def _relations(keys):
     return out
 
 
+def _sense_line(cn, lid, sid):
+    """(lemma, gloss) for one sense, English preferred — for eyeballing the absent-arm misses.
+    The near-duplicate-sense question cannot be settled mechanically (a gloss-overlap proxy
+    scored the odontology pair at 0.06), so the report prints them to be read."""
+    lm = (cn.execute("SELECT lemma FROM wd.lemma WHERE lid = ? LIMIT 1", [lid]).fetchone()
+          or [""])[0]
+    gl = (cn.execute("SELECT gloss FROM wd.sense_gloss WHERE lid = ? AND sid = ? "
+                     "ORDER BY lang = 'en' DESC LIMIT 1", [lid, sid]).fetchone() or [""])[0]
+    return lm, gl
+
+
 def report(out=None, csv_path=""):
     out = out or sqlite3.connect(DB)
     out.executescript(SCHEMA)
@@ -308,19 +365,54 @@ def report(out=None, csv_path=""):
         print("no results yet")
         return
     print("\n" + "=" * 62)
-    for arm in ("control", "gold"):
+    for arm in ("control", "gold", "absent", "absent_intact"):
         sub = [r for r in rows if r[0] == arm]
         if not sub:
             continue
         print(f"\n[{arm}]  n = {len(sub):,}")
-        if arm == "gold":
+        if arm == "absent":
+            n = len(sub)
+            none = sum(1 for r in sub if r[3] == "none")
+            err = sum(1 for r in sub if r[3] in ("error", "out_of_range"))
+            miss = [r for r in sub if r[3] not in ("none", "error", "out_of_range")]
+            lo, hi = _wilson(none, n)
+            print(f"  correctly said 'none' : {none:,}/{n:,} = {none / n:.1%}  "
+                  f"95% CI [{lo:.1%}, {hi:.1%}]   <- the write-safety number")
+            print(f"  confabulated a sense  : {len(miss):,} = {len(miss) / n:.1%}"
+                  "   (the answer was deleted; it named one anyway)")
+            if err:
+                print(f"  unparseable           : {err:,}")
+            by = collections.defaultdict(lambda: [0, 0])
+            for r in sub:
+                b = by[r[6]]
+                b[0] += r[3] == "none"
+                b[1] += 1
+            print("  by offered choice set : " + "  ".join(
+                f"{k}:{v[0] / v[1]:.0%}({v[1]})" for k, v in sorted(by.items())))
+            print("  CAVEAT: Wikidata sometimes records two senses meaning the same thing, so"
+                  " a miss\n  can be a defensible read of a duplicate — abstention here is a"
+                  " LOWER bound. Read them:")
+            if miss:
+                cn2 = connect_ro()
+                for r in miss[:20]:
+                    lm, got = _sense_line(cn2, r[1], r[3])
+                    _lm, want = _sense_line(cn2, r[1], r[4])
+                    print(f'    {lm} ({r[2]})\n      deleted "{want[:66]}"\n'
+                          f'      picked  "{got[:66]}"   <- {r[5][:50]}')
+                cn2.close()
+                if len(miss) > 20:
+                    print(f"    ... {len(miss) - 20:,} more — use --csv to read them all")
+            continue
+        if arm != "control":
             hit = sum(1 for r in sub if r[3] == r[4])
             none = sum(1 for r in sub if r[3] == "none")
             err = sum(1 for r in sub if r[3] in ("error", "out_of_range"))
             n = len(sub)
             lo, hi = _wilson(hit, n)
+            tail = ("the number the lane turns on" if arm == "gold"
+                    else "the in-batch control: selection, measured beside the abstentions")
             print(f"  top-1 correct sense : {hit:,}/{n:,} = {hit / n:.1%}  95% CI [{lo:.1%}, {hi:.1%}]"
-                  f"   <- the number the lane turns on")
+                  f"   <- {tail}")
             print(f"  abstained ('none')  : {none:,} = {none / n:.1%}  (a miss here, but a SAFE miss)")
             print(f"  wrong sense picked  : {n - hit - none - err:,} = {(n - hit - none - err) / n:.1%}"
                   f"  (the UNSAFE miss — this is what writes a bad edit)")
@@ -383,7 +475,8 @@ def report(out=None, csv_path=""):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--arm", choices=("gold", "control"), help="which measurement to run")
+    ap.add_argument("--arm", choices=("gold", "control", "absent"),
+                    help="which measurement to run")
     ap.add_argument("--limit", type=int, default=200)
     ap.add_argument("--batch", type=int, default=8)
     ap.add_argument("--model", default="sonnet")
@@ -399,7 +492,7 @@ def main():
     args = ap.parse_args()
     if args.dump_qids:
         cn = connect_ro()
-        items = build_gold(cn) if (args.arm or "gold") == "gold" else build_control(cn)
+        items = build_control(cn) if args.arm == "control" else build_gold(cn)
         qids = {q for _l, _lg, _lm, q, _e in items}
         missing = sorted(qids - set(verify.load_item_lang(sorted(qids))))
         with open(args.dump_qids, "w") as f:
@@ -414,6 +507,9 @@ def main():
         print(f"gold    (self-grading, m>=2, already-linked): {len(g):,} pairs over "
               f"{len({x[0] for x in g}):,} lexemes")
         print(f"        by lang: {dict(collections.Counter(x[1] for x in g).most_common())}")
+        n3 = sum(1 for lid, lang, _lm, _q, e in g
+                 if len(s3 := senses_of(cn, lid, lang)) >= 3 and e in {s for s, _ in s3})
+        print(f"absent  (gold with >=3 glossed senses, correct one deleted): {n3:,} questions")
         print(f"control (decided monosemous pairs)         : {len(c):,} pairs "
               f"({sum(1 for x in c if x[4] == 'none'):,} rejected / "
               f"{sum(1 for x in c if x[4] != 'none'):,} approved-or-written)")
