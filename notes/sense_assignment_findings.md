@@ -177,18 +177,35 @@ gloss** — so it is structurally blind to the homograph class the gloss catches
 inherited monosemous precision is an assumption, not a measurement. Everything downstream — a
 proposal, a trial size, `create_add` — is waiting on this number.
 
-**2 — Write the 45 approved edits** (40 senseless, 5 mono). Payloads build cleanly; no permission
-needed. Three lanes are built and **only one has ever written** — this closes that gap and
-exercises sense creation on-wiki for the first time. Independent of (1), and it makes (1)'s
-review pass concrete rather than hypothetical.
-
-**3 — The prompt + cache revision** (`redo.md` #3 + #4, "the one move I'd make"). No external
+**2 — The prompt + cache revision** (`redo.md` #3 + #4, "the one move I'd make"). No external
 dependency, and it gets *more* expensive with every lane opened: the re-verify cost went from
-2,670 to 3,220 pairs when poly landed. Do it **before** the poly review push — reviewing bakes
-human decisions onto verdicts the revision invalidates, and `calibrate` re-buckets them
-afterwards on a basis nobody reviewed against.
+2,670 to 3,220 pairs when poly landed. It has been promoted from "the standing cleanup" to a
+**prerequisite**, because the plan is now to *refine* the senseless approach before writing
+anything — and every refinement is a prompt edit, which today wipes the whole verdict cache and
+buys a full paid re-verify. Iterating under that rule is prohibitively slow; with the cache keyed
+on `(pair, prompt_ver)` and both rows kept, each refinement is an A/B by construction. Note the
+read-side `prompt_ver` filter must land *before* the prompt edit, or the queue serves verdicts
+the verifier no longer trusts. Doing this before the poly review also stops that review baking
+human decisions onto verdicts the revision invalidates.
 
-**4 — Review the poly lane's 222 assigned rows, non-English first.** ~85% usable versus 52%.
+**3 — Refine the senseless lane against what (1) found, then re-measure.** Levers, in rough order
+of expected value: richer anchor-side evidence (measured to help most exactly where the target
+gloss is missing, which is this lane by definition); an **abstention-style question adapted to
+senseless targets** — not "which sense" but "does the anchor correspond to a meaning this lemma
+actually has?", the nearest available substitute for the missing gloss, and the mechanism that
+discriminated 60:1 in the poly arms; and a tighter slice (higher support) as the fallback if
+precision won't come up.
+
+**4 — Disclose sense creation on-wiki, then write.** In that order, and not before (1)–(3).
+Writing the currently-approved rows buys little — the monosemous lane has written hundreds
+already — while spending the first sense-creation edits on a lane whose error rate is unmeasured
+and whose approvals were made against a review surface we are about to change. Nothing is lost by
+waiting: `decisions.csv` is append-only, so a refined approach that disagrees with an earlier
+approval appends a `recheck` row. The only decay is on-wiki (a lexeme acquiring senses meanwhile),
+and `write.py`'s guard already catches that. The post carries the measured precision, the gloss
+policy, and an honest answer to the homograph question this lane re-opens.
+
+**5 — Review the poly lane's 222 assigned rows, non-English first.** ~85% usable versus 52%.
 Recording which rows a human rejects also yields the first sense-level human labels the project
 has ever had — as a side effect of reviewing, not a labelling exercise.
 

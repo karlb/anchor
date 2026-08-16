@@ -209,17 +209,31 @@ work is measurement before conversation. Reasoning in `notes/sense_assignment_fi
 1. **Measure the senseless lane's fresh-stream precision.** It has never been measured, and it
    is the one lane whose verifier runs *without* a target gloss — structurally blind to the
    homograph class the gloss catches elsewhere. Verify a sample, human-review the 'yes' rows,
-   compare against the monosemous stream's reviewed precision. This is the number every later
-   decision depends on.
-2. **Write the approved edits.** Assisted, human-approved, no permission needed. Three lanes are
-   built and only one has ever written; this exercises sense creation on-wiki and shows how the
-   created senses actually render.
-3. **The prompt + cache revision** — make the verifier return the fields the code branches on,
+   compare against the monosemous stream's reviewed precision. One pass on the current prompt,
+   no code change needed: the point is to learn **which** errors this lane makes before guessing
+   at fixes.
+2. **The prompt + cache revision** — make the verifier return the fields the code branches on,
    and key the verdict cache on `(pair, prompt_ver)` keeping both rows, so a prompt change is an
-   A/B instead of a paid full re-verify. Several deferred findings in `notes/simplify/` and
-   `notes/review/` are blocked on exactly this and should ride along.
-4. **Review the polysemous lane**, non-English first — it also yields the project's first
-   sense-level human labels, which no lane has today.
+   A/B instead of a paid full re-verify. This is the enabling step for (3): refining a verifier
+   whose every edit destroys the cache is prohibitively slow, and the cost grows with each lane
+   opened. Several deferred findings in `notes/simplify/` and `notes/review/` are blocked on
+   exactly this and should ride along. The read-side `prompt_ver` filter has to land *before* the
+   prompt edit to do its job.
+3. **Refine the lane against what (1) found, then re-measure.** Candidate levers, in rough order
+   of expected value: richer anchor-side evidence (it helps most exactly where the target gloss
+   is missing); an abstention-style question adapted to senseless targets — "does the anchor
+   correspond to a meaning this lemma actually has?" — which is the nearest available substitute
+   for the missing gloss and which discriminated sharply in the polysemous lane; and a tighter
+   slice (higher support) as the fallback if precision won't come up.
+4. **Disclose sense creation on-wiki, then write.** In that order. Sense creation is already
+   announced in the talk-page thread as in-progress with a promise to report back, and the
+   public answer given there about homographs does not cover a lane with no gloss — so the post
+   comes before the edits, carrying the measured precision and an honest account of what
+   replaces the gloss. Approved rows keep: `decisions.csv` is append-only, so a refined approach
+   that disagrees with an earlier approval appends a `recheck` row rather than losing it.
+5. **Review the polysemous lane**, non-English first — it also yields the project's first
+   sense-level human labels, which no lane has today. After (2), so that reviewing doesn't bake
+   human decisions onto verdicts the revision invalidates.
 
 **The method has been disclosed on-wiki and the licensing question is answered.**
 [[Wikidata talk:Lexicographical data]], posted 2026-06-29 (`notes/talkpage_post.wiki`): two

@@ -172,8 +172,15 @@ MachtSinn as precedent — bot-created glosses are the part reviewers will push 
    fall back to human-confirm-per-edit rather than a bot.
 4. **A first batch of live edits**, hand-approved, in its **own EditGroups batch** (so the
    sense-creation class can be reverted separately from statement-adds). Inspect the on-wiki
-   rendering of the created senses (gloss display, Ordia). Some rows are already approved and
-   waiting; this step needs no permission and can run before or alongside (1).
+   rendering of the created senses (gloss display, Ordia).
+   **Deliberately sequenced last (Karl, 2026-08-16), after the disclosure in step 5.** Rows are
+   already approved and this step needs no permission, but writing early buys little — the
+   monosemous lane has written hundreds of edits already — and it would spend the project's first
+   sense creations on a lane whose error rate is unmeasured, using approvals made against a review
+   surface steps 1–3 are about to change. Refining first is also expected to *catch* errors that
+   would otherwise go out. Waiting costs nothing: `decisions.csv` is append-only, so a refined
+   approach that disagrees appends a `recheck` row rather than losing the decision, and the only
+   real decay is a lexeme acquiring senses on-wiki meanwhile — which the live guard already skips.
 5. **Disclose the new edit class, then scale.** The 2026-06-29 talk-page post covered the
    monosemous lane only, and this lane is already **promised, not described**: Infovarius was
    told on 2026-08-13 that a senseless version was in the works and would be announced when
