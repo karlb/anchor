@@ -86,6 +86,17 @@ def match_clause(cand_alias="c", wd_alias="wd"):
             + free_sense_clause(cand_alias, wd_alias))
 
 
+def poly_match_clause(cand_alias="c", wd_alias="wd"):
+    """MATCH restricted to genuinely polysemous targets (>= 2 recorded senses, >= 1 of them
+    free). This is the NEW review lane, and it is deliberately not the same set as
+    `match_clause`: the m=1 half of that predicate is the monosemous write stream, which has
+    445 written decisions, its own calibration history and its own auto-defer gates. Pooling
+    the two would silently restate the established lane's precision over a population that has
+    never been reviewed. Same ACTION, separate LANE."""
+    return (f"{cand_alias}.target_n_senses >= 2 AND "
+            + free_sense_clause(cand_alias, wd_alias))
+
+
 def admissible_clause(cand_alias="c", wd_alias="wd"):
     """Admissible for SOME action: the lexeme has no senses (CREATE_FIRST) or has at least one
     free sense (MATCH). This is the union `clean_clause`'s cross_pivot_conflict term used to
@@ -114,19 +125,24 @@ def high_tier_where(cand_alias="c", it_alias="it", n_senses=1, wd_alias="wd"):
       a P31, in scope) ∩ the admissibility of the ACTION this tier feeds.
 
     `n_senses` selects the action:
-      0    -> CREATE_FIRST, the senseless sense-creation lane (target has no senses).
-      1    -> MATCH restricted to monosemous targets — today's pilot write stream.
-      None -> MATCH at any sense count, the general form. Reaches the polysemous targets
-              that no `target_n_senses = n` predicate can express. NOT yet wired to a
-              write path; gated on the per-sense measurement (see assign_eval.py).
+      0      -> CREATE_FIRST, the senseless sense-creation lane (target has no senses).
+      1      -> MATCH restricted to monosemous targets — today's pilot write stream.
+      "poly" -> MATCH restricted to polysemous targets (m >= 2), the new review lane. The
+                per-sense measurement it was gated on has now run (assign_eval.py: 93-95%
+                selection, abstention discriminating 60:1, ~9.5% conditional error), and the
+                verdict was human review, never auto-approve.
+      None   -> MATCH at any sense count, the general form — the union of the 1 and "poly"
+                lanes. For measuring and for consumers that are not selecting one lane.
 
-    Both existing lanes are byte-identical to the pre-refactor definition — `gates.py
+    Both pre-existing lanes are byte-identical to the pre-refactor definition — `gates.py
     --check` asserts it against the live databases. Requires `it_alias` and, for the MATCH
     forms, `wd_alias` attached."""
     c, it = cand_alias, it_alias
     parts = [clean_clause(c), gate_a(c), concrete_anchor_clause(c, it)]
     if n_senses is None:
         parts.append(match_clause(c, wd_alias))
+    elif n_senses == "poly":
+        parts.append(poly_match_clause(c, wd_alias))
     elif int(n_senses) == 0:
         parts.append(create_first_clause(c))
     else:                       # exact sense count, still MATCH: must have a free sense
@@ -192,6 +208,7 @@ def _check():
 
     general = pairs(high_tier_where("c", "it", None))
     mono = pairs(high_tier_where("c", "it", 1))
+    poly = pairs(high_tier_where("c", "it", "poly"))
     net = general - mono
     print(f"\ngeneral MATCH (any sense count): {len(general):,} pairs over "
           f"{len({l for l, _ in general}):,} lexemes")
@@ -200,6 +217,22 @@ def _check():
     if mono - general:
         ok = False
         print(f"  FAIL: the general form LOST {len(mono - general):,} monosemous pairs")
+    # The two review lanes must PARTITION the general form: every MATCH pair belongs to exactly
+    # one queue. If they overlapped, a pair would be reviewable twice and could be decided two
+    # ways; if they left a gap, a pair would be admissible and reachable by nobody.
+    if poly != net:
+        ok = False
+        print(f"  FAIL: the poly lane is not exactly the net-new set "
+              f"({len(poly ^ net):,} pairs differ)")
+    if poly & mono:
+        ok = False
+        print(f"  FAIL: {len(poly & mono):,} pairs are in BOTH review lanes")
+    if poly | mono != general:
+        ok = False
+        print(f"  FAIL: mono + poly do not cover the general form "
+              f"({len(general - (poly | mono)):,} uncovered)")
+    print(f"  poly lane (m>=2): {len(poly):,} pairs over {len({l for l, _ in poly}):,} lexemes "
+          f"— partitions the general form with the monosemous lane")
     cn.close()
     return ok
 
