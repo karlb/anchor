@@ -228,10 +228,18 @@ def run_arm(name, kwargs, rows, gmap, model, samples, cache, il_map, batch=8):
                 verdict, reason = cache[(name, s, r[0], r[3])]
                 gloss = verify.pick_gloss(gmap, r[0], r[1])
                 adesc = rq.anchor_desc(*r[8:11])  # de/en/sv anchor descs
+                if verdict in ("error", "parse_error"):
+                    continue   # a failed batch is not a vote — see below
                 votes[(r[0], r[3])][predicted_action(verdict, reason, gloss, adesc)] += 1
     finally:
         cf.close()
-    return {k: c.most_common(1)[0][0] for k, c in votes.items()}
+    # Failures are dropped rather than voted. predicted_action maps error/parse_error to
+    # 'defer', so a timed-out batch used to enter the arm's score as a real (conservative)
+    # verdict — an outage moved the metric the arm exists to measure. load_cache already
+    # refuses to REPLAY them; this is the same rule inside the run that produced them. A pair
+    # whose every sample failed has no votes at all and drops out of the arm, so it can't be
+    # scored on nothing; score() reports n, which is where that shows up.
+    return {k: c.most_common(1)[0][0] for k, c in votes.items() if c}
 
 
 def score(pred, truth):

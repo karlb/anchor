@@ -99,18 +99,24 @@ def gloss_audit(dec, it, model, batch, il_map):
             continue
         lab, desc = cc0(it, qid, d["target_lang"], il_map)
         rows.append((d, g, lab, desc))
-    flagged = []
+    flagged, audited = [], 0
     for i in range(0, len(rows), batch):
         b = rows[i:i + batch]
         try:
             verdicts = run_gloss_batch(b, model)
         except Exception as e:  # noqa: BLE001 — one bad batch shouldn't kill the run
-            print(f"  batch {i // batch} failed: {e}")
+            print(f"  batch {i // batch} failed: {e} — {len(b)} link(s) NOT audited")
             continue
         for (d, g, lab, desc), v in zip(b, verdicts):
+            if v.get("verdict") in ("error", "parse_error"):
+                continue        # a failed item is not a clean bill of health
+            audited += 1
             if v.get("verdict") == "contradiction":
                 flagged.append((d, g, lab, desc, v.get("reason", "")))
-    return rows, flagged
+    # Report what was actually judged, not what was queued: a dropped batch used to vanish into
+    # a summary that still claimed every row had been audited, so an outage read as "nothing
+    # contradicts" — the most reassuring possible way to fail.
+    return rows, flagged, audited
 
 
 def main():
@@ -132,9 +138,11 @@ def main():
     il_map = verify.load_item_lang({qid for _, qid in dec})
 
     if args.gloss:
-        rows, flagged = gloss_audit(dec, it, args.model, args.batch, il_map)
-        print(f"gloss-contradiction audit: {len(rows)} confirmed links with a CC0 gloss "
-              f"(model={args.model})")
+        rows, flagged, audited = gloss_audit(dec, it, args.model, args.batch, il_map)
+        print(f"gloss-contradiction audit: {audited} of {len(rows)} confirmed links with a CC0 "
+              f"gloss audited (model={args.model})"
+              + (f"  ⚠ {len(rows) - audited} NOT audited — failed batches, re-run to cover them"
+                 if audited < len(rows) else ""))
         print(f"\n=== FLAGGED for re-review — lexeme gloss contradicts anchor: {len(flagged)} ===")
         for d, g, lab, desc, reason in sorted(flagged, key=lambda x: (x[0]["target_lang"], x[0]["target_lemma"])):
             print(f"  {d['target_lang']} {d['target_lemma']:<16} {d['target_lid']}/{d['anchor_qid']}  "
