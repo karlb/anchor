@@ -479,6 +479,11 @@ def main():
                     "measurement needs (see sample_pairs). Resumable and nested in N.")
     ap.add_argument("--seed", default="", help="sample seed (any string): picks WHICH random "
                     "subset --sample draws. Record it with the result.")
+    ap.add_argument("--recache", action="store_true",
+                    help="re-verify exactly the pairs that already hold a verdict under an OLDER "
+                         "prompt version — what makes the cache whole again after a prompt change, "
+                         "since every read filters on the current version. Resumable; ignores "
+                         "--limit; combines with the lane flags to do one lane at a time.")
     ap.add_argument("--batch", type=int, default=8)
     ap.add_argument("--model", default="sonnet")
     ap.add_argument("--min-support", type=int, default=1)
@@ -526,8 +531,23 @@ def main():
         eligible = sample_pairs(eligible, args.sample, args.seed)
         print(f"sample: {len(eligible):,} of the eligible pool, seed={args.seed!r} "
               f"(reproducible; --sample is nested in N at a fixed seed)")
+    if args.recache:
+        # A prompt edit no longer destroys old verdicts, but consumers read only the current
+        # version — so after one, the queue sees just what has been re-verified. This selects the
+        # previously-verified set rather than a gate, because that IS the set the queue, the
+        # calibration and the graders were reading before the change. Pairs that have since left
+        # the candidate pool are dropped, and said so: nothing reads them, and re-verifying them
+        # would be paying to refresh rows no consumer joins to.
+        prior = {(r[0], r[1]) for r in out.execute(
+            "SELECT DISTINCT target_lid, anchor_qid FROM verdict WHERE prompt_ver <> ?",
+            [PROMPT_VER])}
+        eligible = [r for r in eligible if (r[0], r[3]) in prior]
+        stale = len(prior) - len(eligible)
+        print(f"recache: {len(eligible):,} pairs held a verdict under an earlier prompt and are "
+              f"still candidates" + (f"; {stale:,} are no longer in the pool and are left behind"
+                                     if stale else ""))
     pool = [r for r in eligible if (r[0], r[3]) not in done]
-    if not args.all and not args.sample:
+    if not args.all and not args.sample and not args.recache:
         pool = pool[: args.limit]
     # The live verifier's concept comes ONLY from item_lang (the +multi format) — de/en/sv is
     # no longer a grading fallback. So every anchor we intend to grade must have been fetched
