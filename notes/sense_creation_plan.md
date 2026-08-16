@@ -2,22 +2,29 @@
 
 *Extend the P5137 pipeline to targets with **zero** senses: create the sense (CC0 gloss)
 and attach the P5137 in one edit. Plan drafted 2026-07-02; companion to
-`p5137_anchor_propagation.md`. **Amended 2026-07-05** by `scope_roadmap.md`: review and
-write must be lexeme-centric, not pair-wise — 135 senseless lexemes have 2–4 candidate
-items, and independent per-pair sense creation risks duplicate senses the live guard
-can't catch. Group all candidate items per lexeme in the review lane; one edit per
-lexeme in `write.py`.*
+`p5137_anchor_propagation.md`.*
+
+> **Status 2026-08-16 — this is the critical path.** The lane is fully built (gates, verify,
+> review UI, write path, duplicate-sense preflight) and has approved rows waiting, but it has
+> **never written an edit and its precision has never been measured**. It holds the large
+> majority of the gated pool, so it is also the only lane where a bot request would be worth
+> filing — and the request cannot be written until the measurement below exists. The staging
+> section is therefore the live part of this document; the code sections are history.
+
+*Amendment folded in 2026-07-05: review and write are **lexeme-centric, not pair-wise**. Some
+senseless lexemes have several candidate items, and independent per-pair sense creation would
+create near-duplicate senses that the live same-P5137 guard cannot see. So the review lane groups
+all candidate items per lexeme and approval covers the resulting inventory including each gloss;
+`write.py` builds one edit per lexeme, and `--limit` is lexeme-aware so an inventory is never
+split.*
 
 ## Why this is the main prize
 
 The pilot writes only monosemous targets (add P5137 to the one existing sense). But the
-candidate stream is dominated by **senseless** lexemes — the ones whose first meaning we
-would create:
-
-| Tier | Candidates | of which senseless |
-|---|---|---|
-| All clean | 34,821 | 31,260 (90%) |
-| High tier minus gate B (clean ∩ A ∩ D ∩ scope) | 7,400 | 6,679 |
+candidate stream is **dominated by senseless lexemes** — the ones whose first meaning we would
+create. They are the large majority of the gated pool at every tier, and the gap is not close;
+the monosemous and polysemous lanes together are a small fraction of it. (Live sizes:
+`uv run gates.py`.)
 
 Gate B (monosemous) is meaningless here — the senseless tier is **clean ∩ A (≥2 anchors)
 ∩ D (concrete, in-scope anchor) ∩ n_senses = 0**. Grounding a senseless lexeme is the
@@ -33,24 +40,25 @@ Exists:
   inside it, **skip when no CC0 label exists** (the `or lemma` degenerate fallback is
   already removed).
 - Live-write guard: skip if any live sense already carries this P5137 (crash-replay safe).
-- Early signal: the original 48-candidate senseless sample verified 36 yes / 9 no / 3
-  uncertain, with correct rejections (`Schützin`→"alcoholic mixed drink").
+- Early signal: the original small senseless sample verified with a solid yes-rate and
+  *correct* rejections (`Schützin`→"alcoholic mixed drink").
 
 Blocks:
-1. ~~`gates.high_tier_where()` hard-codes `target_n_senses = 1`~~ **— DONE 2026-07-05.**
-   Parameterized `high_tier_where(c, it, n_senses=1)`; the senseless tier passes `n_senses=0`.
-   One definition, consumed by review_queue/export_review/write, so the tiers can't drift.
-2. ~~Gloss policy implemented~~ **— DONE 2026-07-05.** `review_queue.anchor_gloss(it, qid, lang)`
+1. ~~`gates.high_tier_where()` hard-codes `target_n_senses = 1`~~ **— DONE.** Parameterized by
+   lane, one definition consumed by every stage, so the tiers can't drift. (It has since become a
+   three-way lane selector, with a self-check asserting the lanes partition the pool.)
+2. ~~Gloss policy implemented~~ **— DONE.** `review_queue.anchor_gloss(it, qid, lang)`
    is the single source: description-primary, label fallback, skip if neither, plus an en gloss
    for legibility. The review UI (`--senseless` lane) previews the *exact* text write.py will
    write — both call this one function.
-3. ~~Gloss language-key bug~~ **— DONE 2026-07-05.** `anchor_gloss` returns `{gloss_lang: text}`
+3. ~~Gloss language-key bug~~ **— DONE.** `anchor_gloss` returns `{gloss_lang: text}`
    keyed by the language the text is actually in, and `build_edit()` writes each under its own
    key — an en fallback is now keyed `en`, never as the target language.
-4. No fresh-stream precision number (and none can come from held-out data — senseless
-   targets have no P5137 to hide, *by construction*). **Still open — this is the next step**
-   (measurement staging below): the lane and write path are ready; what's unmeasured is the
-   stream's precision. Verify a sample → human-review → gate before scaling.
+4. **No fresh-stream precision number — STILL OPEN, and now the project's critical path.**
+   None can come from held-out data: senseless targets have no P5137 to hide, *by construction*.
+   The lane, the review UI and the write path are all ready; what is unmeasured is whether the
+   stream is accurate enough to propose at volume. Verify a sample → human-review the 'yes' rows
+   → gate, per the staging section below.
 
 ## Risk model — how this stream differs from monosemous
 
@@ -61,6 +69,13 @@ Blocks:
   demonym/ethnic scope-hint nudge is deterministic (no gloss needed), and `item_lang`
   multi-language labels give the reviewer (and optionally the +multi verifier) a
   cross-language consistency check.
+  **This is the one risk the community has already asked about.** On the talk page, the answer
+  to "how do you deal with homographs?" was: the LLM sees the sense gloss and the item
+  descriptions, plus heuristics "like excluding lexemes that have multiple senses". This lane
+  removes *both* of those safeguards — no gloss exists, and the monosemous restriction is
+  exactly what the lane lifts. So the disclosure in staging step 5 must say so plainly and say
+  what replaces them; quietly shipping a lane that voids a public answer is the one thing that
+  would actually damage trust here.
 - **Minor sense as S1 — a gloss concern, not a rules one.** "Senseless" ≠ "monosemous in
   reality". If the cluster sense is a polysemous word's *minor* meaning, we create S1 =
   the minor sense. That breaks no requirement (`wikidata-policy/lexeme-data-model.md`:
@@ -68,10 +83,11 @@ Blocks:
   worth engineering around). The real exposure is that later editors pile dominant-meaning
   data onto an under-specific gloss. Mitigation: the gloss makes the sense self-describing,
   and every pre-BRFA edit is human-approved *including the gloss text*.
-- **Precision is an assumption until measured.** The monosemous 95.7% (180/188) is
-  inherited, not demonstrated; the 48-sample yes-rate (75%) sits between the held-out
-  85% and the fresh-monosemous 51%, so the stream's difficulty is genuinely unknown.
-  The staging below makes measuring it the first deliverable.
+- **Precision is an assumption until measured.** The monosemous lane's reviewed precision is
+  *inherited* here, not demonstrated, and the one early sample's yes-rate landed between the
+  (easy, enriched) held-out population and the fresh monosemous stream — so this stream's
+  difficulty is genuinely unknown, in both directions. The staging below makes measuring it the
+  first deliverable.
 
 ## Relationship to MachtSinn (why we keep our own pipeline)
 
@@ -130,12 +146,10 @@ MachtSinn as precedent — bot-created glosses are the part reviewers will push 
 3. ~~**review_queue.py / export_review.py** — a `--senseless` lane.~~ Done.
    `review_queue.py {serve,status} --senseless` and `export_review.py --senseless` use the
    parameterized gate; each row shows **"will CREATE sense — gloss: '…'"** (exact policy text)
-   and, for lexemes with 2–4 candidate items, a ⚠ **multi-candidate** flag with same-lexeme
+   and, for lexemes with several candidate items, a ⚠ **multi-candidate** flag with same-lexeme
    rows sorted adjacent (lexeme-centric review — approve/prune the inventory as a set).
    Existing hints apply (the polysemy-collapse hint is repurposed to the wrong-first-sense
-   warning; the demonym→ethnic nudge is inactive without a target gloss — a known gap). Live
-   pool today: **258** verified-`yes` senseless candidates pending; **8,888** in the senseless
-   tier overall (grew from 6,679 after the all-language rebuild).
+   warning; the demonym→ethnic nudge is inactive without a target gloss — a known gap).
 4. ~~**write.py** — gloss keying fix + description-primary policy + guard tightening.~~ Done.
    Plus **lexeme-centric writes**: all approved items for one lexeme are grouped into ONE
    `wbeditentity` creating one sense each (`--limit` is lexeme-aware so an inventory is never
@@ -145,30 +159,36 @@ MachtSinn as precedent — bot-created glosses are the part reviewers will push 
 
 ## Measurement & staging (cost-gated)
 
-1. **Verify a sample first, not the pool.** ~250 of the 6,679 (random), current
-   tolerant prompt, sonnet. Record yes-rate + actual token cost; extrapolate the full
-   ~6.7k run and get sign-off before running it (>100k-token job).
-2. **Human-review the sample's "yes" rows** in the senseless lane (~150–190 expected).
-   This yields the stream's first real precision number with a Wilson CI — the same
-   measurement design that produced 180/188 on the monosemous stream.
-3. **Gate to proceed:** reviewed precision comparable to the monosemous stream
-   (CI overlapping ~95%). If it lands clearly lower (plausible — no gloss net), do NOT
-   scale; options then are +multi/GUIDED re-verify of the sample (measured on gold to
-   help exactly when target glosses are absent) or restricting to a tighter slice
-   (e.g. support ≥3) before re-measuring.
-4. **~10 pre-BRFA live edits**, hand-approved, in their **own EditGroups batch** (easy
-   one-click revert of the sense-creation class separately from statement-adds).
-   Inspect on-wiki rendering of the created senses (gloss display, Ordia).
-5. **Disclose, then scale.** Talk-page post update + BRFA must state explicitly that
-   this phase *creates senses* (a bigger edit class than adding a statement), with the
-   gloss policy and the measured sample precision. **Frame these as MachtSinn-class
-   edits:** MachtSinn already creates senses (gloss = item description) + P5137 with no
-   BRFA because it's human-confirm, and our pre-BRFA edits are human-approved too — so
-   the edit class is *established*, and the only novel thing we ask the community to
-   accept is **LLM verification substituting for one human confirm, spot-checked**. That
-   rides a precedent instead of pitching "bot creates senses" cold. Frame the trial so it
-   measures senseless-write precision — the assumption becomes the trial's deliverable.
-   Full verify + queue of the 6,679 only after that and after the cost sign-off.
+1. **Verify a sample first, not the pool.** A few hundred random candidates on the current
+   prompt. Record the yes-rate *and* the actual token cost, extrapolate the full-pool run, and
+   get sign-off before spending it.
+2. **Human-review the sample's "yes" rows** in the senseless lane. This yields the stream's
+   first real precision number with a Wilson CI — the same measurement design that produced the
+   monosemous stream's reviewed precision, so the two are directly comparable.
+3. **Gate to proceed:** reviewed precision comparable to the monosemous stream (overlapping
+   CIs). If it lands clearly lower — plausible, since this lane has no gloss net — do NOT scale.
+   Options then: re-verify the sample with richer anchor evidence (it helps most exactly when
+   the target has no gloss), restrict to a tighter slice (higher support) and re-measure, or
+   fall back to human-confirm-per-edit rather than a bot.
+4. **A first batch of live edits**, hand-approved, in its **own EditGroups batch** (so the
+   sense-creation class can be reverted separately from statement-adds). Inspect the on-wiki
+   rendering of the created senses (gloss display, Ordia). Some rows are already approved and
+   waiting; this step needs no permission and can run before or alongside (1).
+5. **Disclose the new edit class, then scale.** The 2026-06-29 talk-page post covered the
+   monosemous lane only, and this lane is already **promised, not described**: Infovarius was
+   told on 2026-08-13 that a senseless version was in the works and would be announced when
+   ready. So step 5 has a waiting audience and a specific shape — report back in that thread
+   with the gloss policy, the measured sample precision, and an explicit answer to the
+   homograph question this lane re-opens (see the risk model). Infovarius also offered to review
+   Russian results, which matters because Russian lexemes are overwhelmingly senseless: this
+   lane is what turns that offer into usable review capacity for a language Karl can't read. **Frame it as MachtSinn-class:**
+   MachtSinn already creates senses (gloss = item description) + P5137 with no BRFA because it
+   is human-confirm, and our pre-BRFA edits are human-approved too — so the edit class is
+   *established*, and the only novel thing we ask the community to accept is **LLM verification
+   substituting for one human confirm, spot-checked**. That rides a precedent instead of
+   pitching "bot creates senses" cold. Scope any eventual request at the **action** — "create a
+   sense for a translation-attested meaning Wikidata does not record" — so it doesn't have to be
+   refiled when the same action is applied to a lexeme that already has senses (`create_add`).
 
 ## Open decisions (Karl)
 
@@ -177,10 +197,25 @@ MachtSinn as precedent — bot-created glosses are the part reviewers will push 
   See the gloss-policy section.
 - **Scale fallback if precision lands low**: if the sample gate (steps 1–3) shows
   precision clearly below the monosemous stream, the fallback is *not* a home-grown bot —
-  it's running these as MachtSinn-style human confirms. Name this in the talk-page post.
-- **+multi/GUIDED for this stream**: on gold it strictly wins and its marginal value is
-  highest exactly when the target has no gloss — but it needs `item_lang` for all
-  senseless anchors + the guided prompt (cache invalidation). Cost call; the sample
-  measurement (step 3) tells us whether it's needed.
-- **Scale sign-off**: full-pool verify (~6.7k candidates) after the sample cost
-  extrapolation.
+  it's running these as MachtSinn-style human confirms. Name this in the disclosure.
+- **Richer anchor evidence for this stream**: it wins on gold and its marginal value is highest
+  exactly when the target has no gloss, but it costs a prompt revision (cache invalidation).
+  The sample measurement tells us whether it's needed — don't pay for it blind.
+- **Scale sign-off**: full-pool verify only after the sample's cost extrapolation.
+
+## Beyond the first sense: `create_add`, and why it is a harder sell
+
+Creating a sense on a lexeme that **already has senses** is the same action applied to a
+different target, and it is not hypothetical — the polysemous lane's abstentions are exactly
+this case, and an abstention is strong evidence that the sense really is missing. `write.py`
+refuses it today. Two arguments (carried over from the retired scope roadmap) say why it should
+stay behind the senseless lane rather than ship with it:
+
+- **The licensing surface grows.** Creating one first sense reproduces no partition. Deriving a
+  *sense inventory* for a polysemous word comes much closer to republishing DBnary's editorial
+  sense segmentation — the weakest point in the "we only use facts" story. A defence exists (the
+  partition is re-derived through Wikidata's own item space; clusters merge onto one item or drop
+  out) but it has to be *argued*, not assumed.
+- **There is no precedent.** MachtSinn establishes "first sense on a senseless lexeme,
+  human-confirmed". "A bot appends senses to lexemes humans already curated" has none, and is a
+  much harder request. Senseless-first is also the polite sequencing.

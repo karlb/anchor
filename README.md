@@ -5,9 +5,10 @@ propagating an *existing* anchor concept across WikDict sense-grounded translati
 The LLM only does a constrained yes/no, verified against the anchor Q-item's **own CC0**
 label/description plus the target lexeme's **own CC0 Wikidata sense gloss** (which pins *which*
 sense is meant — e.g. *sheet* = paper vs. the nautical line). No DBnary gloss text (CC-BY-SA) is
-ever read or written. See the full method and
-license rationale in `notes/p5137_anchor_propagation.md` and the plan in
-`~/.claude/plans/i-want-to-improve-twinkling-puppy.md`.
+ever read or written. See the original method and license rationale in
+`notes/p5137_anchor_propagation.md`, the generalisation to per-sense assignment in
+`notes/sense_assignment_findings.md`, and a critical read of the whole pipeline in
+`notes/redo.md`.
 
 All data lives in `data/` (git-ignored). That includes **local copies** of the wikdict-gen
 inputs — `infer.sqlite3` and `de/en/sv/fr/no.sqlite3` — kept here so other jobs rebuilding the
@@ -31,14 +32,19 @@ and is excluded.
 ```
 infer.sqlite3 ──build_clusters.py──▶ clusters.sqlite3 ─┐
                                                        ├─match.py──▶ candidates.sqlite3 ─┬─ precision.py / ablation.py (held-out eval)
-latest-lexemes.json.gz ─load_lexemes.py──▶ wikidata.sqlite3 ─┘                          ├─ fetch_items.py ─▶ wd_items.sqlite3 (CC0 labels)
-                                                                                        ├─ verify.py ─▶ verify.sqlite3 (LLM yes/no)
-                                                                                        ├─ measure_lift.py (verifier-lift eval)
+latest-lexemes.json.gz ─load_lexemes.py──▶ wikidata.sqlite3 ─┘                          ├─ fetch_items.py / fetch_anchor_langs.py ─▶ wd_items.sqlite3 (CC0 labels)
+                                                                                        ├─ verify.py ─▶ verify.sqlite3 (LLM yes/no, per lexeme)
+                                                                                        ├─ assign.py ─▶ assign.sqlite3 (LLM: WHICH sense — poly lane)
+                                                                                        ├─ measure_lift.py / calibrate.py (eval + gate readiness)
                                                                                         ├─ export_review.py ─▶ data/review.html
                                                                                         ├─ review_queue.py ─▶ notes/runs/decisions.csv (human approve/reject log)
+                                                                                        ├─ game_export.py / import_crowd.py (crowd votes ⇄ the same log)
                                                                                         ├─ gender.py ─▶ gender.sqlite3 (LLM semantic gender → P10339; phase 2, not in v1 write path)
                                                                                         └─ write.py ─▶ wbeditentity: P5137 only (gated on approval)
 ```
+
+`gates.py` is the shared definition of the tiers every one of those consumers filters on — one
+`high_tier_where()` per lane, so the streams can't drift apart.
 
 **Build the candidate stream:**
 1. **`build_clusters.py`** — sense-grounded clusters from `dictionaries/infer.sqlite3`, built
@@ -62,27 +68,50 @@ latest-lexemes.json.gz ─load_lexemes.py──▶ wikidata.sqlite3 ─┘      
 **Evaluate, verify, review, write:**
 4. **`precision.py`** / **`ablation.py`** — held-out leave-one-out precision and structural-gate
    ablation (the A/B/D gates; see notes for the de-bias).
-5. **`fetch_items.py`** — polite Wikidata Action API client; caches anchor Q **CC0**
-   labels/descriptions + P31/P279 into `wd_items.sqlite3`.
+5. **`fetch_items.py`** / **`fetch_anchor_langs.py`** — polite Wikidata Action API clients; cache
+   anchor Q **CC0** labels/descriptions + P31/P279 into `wd_items.sqlite3`. The all-language
+   `item_lang` cache is the verifier's only concept source, so a stale fetch fails loud.
 6. **`verify.py`** — LLM yes/no verifier over `claude -p` (CC0 anchor label/description + the
    target lexeme's own CC0 gloss; tolerant criterion — broader/narrower count as yes, only a
-   genuinely different concept is 'no'). `--gate ABD` runs the High tier. Verdicts are cached in
-   `data/verify.sqlite3` (`--force` re-verifies after a prompt change); `--csv` exports them.
-7. **`measure_lift.py`** — measures the verifier's precision lift on held-out ground truth.
-8. **`export_review.py`** / **`review_queue.py`** — browsable HTML + a stdlib approve/reject/defer UI
+   genuinely different concept is 'no'). Verdicts are cached in `data/verify.sqlite3` (`--force`
+   re-verifies after a prompt change); `--csv` exports them.
+7. **`assign.py`** — the per-*sense* question, for targets that have several senses: which of
+   this lexeme's senses does the anchor belong to, or none? Runs downstream of `verify.py`;
+   an abstention is strong evidence the sense is missing from Wikidata altogether.
+8. **`measure_lift.py`** / **`calibrate.py`** — verifier precision lift on held-out truth, and
+   per-relation human-verdict precision against the pinned auto-approve/auto-defer gates.
+9. **`export_review.py`** / **`review_queue.py`** — browsable HTML + a stdlib approve/reject/defer UI
    (the authorization gate). Decisions are an append-only, git-committed log at
    `notes/runs/decisions.csv` (the single source of truth — there is no review DB; "pending" is
    computed as the verifier-'yes' pool minus what the log covers).
-9. **`gender.py`** *(phase 2 — not wired into the v1 write path)* — LLM semantic-gender tagger
+10. **`game_export.py`** / **`import_crowd.py`** — the same pool as pre-rendered tiles for the
+   Wikidata Distributed Game, and the return path: crowd votes are scored per voter, promoted
+   into the same decision log, and never write on their own (`notes/crowd_review_plan.md`).
+11. **`gender.py`** *(phase 2 — not wired into the v1 write path)* — LLM semantic-gender tagger
    (CC0: bare lemma only) over approved candidates; supplies the **P10339** value for the
    two-part gendered-lexeme convention (P5137 → the gender-neutral concept, the word's sex
    recorded separately). A gendered form denotes the *same* concept as its neutral counterpart
    (an EQUAL link, valid and constraint-clean without the qualifier), so v1 writes the P5137 link
    alone and leaves P10339 as an additive phase-2 enrichment — not a v1 precondition. Cached in
    `gender.sqlite3`.
-10. **`write.py`** — builds the `wbeditentity` payload (**P5137** + mandatory P887/P813 reference),
+12. **`write.py`** — builds the `wbeditentity` payload (**P5137** + mandatory P887/P813 reference),
    reads only approved rows from that log, appends a `written` event with the revid, and defaults
    to `--dry-run`.
+
+### Three lanes
+
+Every stage above is parameterised by how many senses the *target* lexeme has, because that
+decides what the edit does. `gates.py` asserts that the lanes partition the pool:
+
+| lane | target | the edit | flag |
+|---|---|---|---|
+| **mono** | exactly one sense | add P5137 to that sense | *(default)* |
+| **poly** | several senses | add P5137 to the *assigned* sense (`assign.py`) | `--include-poly` |
+| **senseless** | no senses at all | create a first sense (CC0 gloss) + P5137 | `--include-senseless` |
+
+The lanes are deliberately kept separate: a lane's measured precision must not be restated over
+a population nobody has reviewed. `review_queue.py`, `export_review.py`, `calibrate.py`,
+`game_export.py` and `write.py` all take the same lane selector.
 
 **QA tooling:** **`audit_decisions.py`** surfaces human/verifier disagreements and runs an optional
 CC0 gloss-contradiction audit (`--gloss`); **`validate_prompt.py`** checks a verifier-prompt change
@@ -107,15 +136,21 @@ uv run match.py
 # 4. evaluate + fetch CC0 anchor items (needs www.wikidata.org)
 uv run precision.py
 uv run fetch_items.py
+uv run fetch_anchor_langs.py            # the all-language concept cache verify.py reads
 
-# 5. verify the High tier (clean ∩ ≥2 anchors ∩ monosemous ∩ concrete) and measure lift
-uv run verify.py --gate ABD --all --model sonnet
-uv run measure_lift.py --gate ABD --sample 350 --model sonnet
+# 5. verify the High tier (clean ∩ ≥2 anchors ∩ concrete ∩ an admissible sense to write into)
+uv run gates.py                         # assert the lanes are non-empty and partition the pool
+uv run verify.py --gate ABD --all --model sonnet          # mono lane
+uv run verify.py --gate AD --senseless-only --all         # senseless lane
+uv run verify.py --gate AD --poly-only --all              # poly lane, then:
+uv run assign.py --all                  # ...which sense of the target does the anchor mean?
 
 # 6. review, then write  (decisions logged to notes/runs/decisions.csv — source of truth)
 uv run export_review.py                 # data/review.html
 uv run review_queue.py serve            # http://localhost:8731  approve/reject/defer
 uv run review_queue.py status           # pending (computed) / approved / deferred / rejected / written
+#   ...both take --senseless / --poly to switch lanes
+uv run calibrate.py                     # per-relation precision vs the pinned automation gates
 uv run write.py --dry-run               # print payloads for approved rows (submits nothing)
 # gender.py (P10339, two-part gendered-lexeme convention) is phase 2 — not part of the v1 write path
 
@@ -137,33 +172,71 @@ The fixture models the *Bank* case: `bench@en` anchored to Q123 propagates to `B
 `bänk@sv`, while financial `bank` only attaches to the financial cluster — demonstrating
 sense-specific candidates.
 
-## Status (2026-06, de/en/sv)
+## Status
 
-**French and Norwegian (Bokmål) were just added** to the pilot (`load_lexemes.py` +
-`build_clusters.py`); the headline numbers below are still the measured de/en/sv results.
-fr/no candidates are generated by the local stages (clusters → match) but have not yet been
-verified/reviewed, and the eval tooling (`precision.py`/`ablation.py`/`measure_lift.py`,
-`problematic_cases.csv`) remains scoped to the de/en/sv gold.
+Deliberately numbers-free — every count below moves, and the live ones come from the tools:
 
-Pipeline validated end-to-end on the real dump. Headline results (full detail in
-`notes/p5137_anchor_propagation.md`):
+```bash
+uv run review_queue.py status [--senseless|--poly]   # pending / approved / written per lane
+uv run calibrate.py                                  # per-relation precision vs the gates
+uv run gates.py                                      # lane sizes + the partition assertion
+```
 
-- **34,821** clean candidates; **High tier** (clean ∩ ≥2 anchors ∩ concrete) = **7,400**
-  (~6,700 grounding a currently-senseless lexeme).
-- **Structural precision** caps ~81% honestly (held-out, de-biased); the LLM verifier is required.
-- **Verifier lift** on the High tier (held-out, strict-Q truth): pre-gloss lemma-only ~86% →
-  **95.9%** (pooled n=470); the current **gloss·tolerant** verifier ~86% → **93.8% at 100% recall**
-  (n=350) — the small dip is tolerance accepting broader/narrower near-synonyms that exact-Q truth
-  scores as misses. On the **human-reviewed gold set** it keeps **98.3%** and catches every genuine
-  homograph (*sheet*=paper, *hov*=court) the lemma-only verifier missed.
-- Verifying all **669** High-tier *candidates* with the gloss·tolerant verifier: **470 yes / 198 no
-  / 1 uncertain** (~70% / 30%); the rejections include true homograph catches the lemma-only verifier
-  waved through (e.g. *sheet*→nautical line, *hov*→hoof).
+Where things stand:
 
-## What's left before the BRFA
+- **The pipeline is validated end-to-end** on the real dump, and the **monosemous lane writes
+  live** — every edit so far is an assisted edit, individually approved by a human against the
+  anchor's CC0 description. Measured precision on that write stream is reported by
+  `review_queue.py status`; the method-level measurements are in
+  `notes/p5137_anchor_propagation.md`.
+- **Structure alone caps around 81%** (held-out, de-biased), so the LLM verifier is load-bearing,
+  and the human gate behind it is what the precision claim actually rests on.
+- **The senseless and polysemous lanes are built but have never written.** Both have approved or
+  assigned rows waiting; sense creation is the larger edit class and the one that needs the
+  community conversation.
+- **The crowd game is live** (`notes/crowd_review_plan.md`); crowd consensus is promoted into the
+  same decision log under a `crowd:*` reviewer and still writes only through `write.py`.
+- **Automation is gated, not on.** `calibrate.py` measures per-relation human-verdict precision
+  against pinned thresholds; auto-*defer* is enforced for classes humans almost never write,
+  auto-*approve* is not enabled for any class.
 
-- **P887 heuristic item** "inferred from translation" — created as **Q140308675** and pinned in
-  `write.py` (done). ~11 pre-BRFA assisted edits already written (see `notes/runs/decisions.csv`).
-- **Senseless gloss policy** — the pilot writes monosemous targets only; sense-creation
-  (`--include-senseless`) needs a CC0 gloss decision first.
-- **Talk-page post** (method + license rationale) → **BRFA** (a few more pre-BRFA edits, then a 50–250 trial).
+## What's next
+
+The gating question is **whether sense creation is accurate enough to propose at all**, so the
+work is measurement before conversation. Reasoning in `notes/sense_assignment_findings.md` §4,
+`notes/sense_creation_plan.md` (measurement staging) and `notes/redo.md`.
+
+1. **Measure the senseless lane's fresh-stream precision.** It has never been measured, and it
+   is the one lane whose verifier runs *without* a target gloss — structurally blind to the
+   homograph class the gloss catches elsewhere. Verify a sample, human-review the 'yes' rows,
+   compare against the monosemous stream's reviewed precision. This is the number every later
+   decision depends on.
+2. **Write the approved edits.** Assisted, human-approved, no permission needed. Three lanes are
+   built and only one has ever written; this exercises sense creation on-wiki and shows how the
+   created senses actually render.
+3. **The prompt + cache revision** — make the verifier return the fields the code branches on,
+   and key the verdict cache on `(pair, prompt_ver)` keeping both rows, so a prompt change is an
+   A/B instead of a paid full re-verify. Several deferred findings in `notes/simplify/` and
+   `notes/review/` are blocked on exactly this and should ride along.
+4. **Review the polysemous lane**, non-English first — it also yields the project's first
+   sense-level human labels, which no lane has today.
+
+**The method has been disclosed on-wiki and the licensing question is answered.**
+[[Wikidata talk:Lexicographical data]], posted 2026-06-29 (`notes/talkpage_post.wiki`): two
+editors reviewed it, neither objected to the licence boundary or the P887 reference scheme, and
+the thread since covered French/English examples, homographs and Russian. Two obligations came
+out of it — the public answer about homographs relies on safeguards the newer lanes don't have,
+and sense creation has been *announced* to a waiting reviewer but not yet described. Details in
+that file's header; don't re-argue the licence case, it was already accepted.
+
+**The BRFA itself is deliberately held** until there is a proposal worth making. Monosemous and
+polysemous writes are assisted, human-confirmed edits that need no bot flag, and the monosemous
+lane is too small to be worth a task description; the volume — and the licensing conversation —
+are both in sense creation, which is not yet mature enough to propose. When it is: scope the
+request at the *action* ("create a sense for a translation-attested meaning Wikidata does not
+record"), not at "senseless lexemes". The long method + licence write-up for that request is
+parked in `notes/talkpage_draft.wiki`.
+
+Already settled, so they don't reappear as blockers: the P887 heuristic item *inferred from
+translation* (**Q140308675**) is created and pinned in `write.py`, and the senseless gloss policy
+is decided (anchor description first, label fallback, skip if neither — `notes/sense_creation_plan.md`).

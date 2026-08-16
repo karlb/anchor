@@ -152,22 +152,45 @@ This is the part that changed the plan.
 
 ## 4. Next steps
 
-**1 — Post the talk-page draft.** `notes/talkpage_post.wiki` already asks the decisive question
-("should I push <100 items/week as assisted writes?"). Cheapest information available, commits
-to no task description, and gets `redo.md` §7's benefit — learn what the community requires
-*before* building more — without a BRFA to outgrow.
+> **Corrected and reordered 2026-08-16 (Karl).** This section originally opened with "post the
+> talk-page draft" — **that step was already done**: `talkpage_post.wiki` ("Adding P5137 to
+> lexemes by using Wiktionary translation clusters") was posted 2026-06-29. It is a record of
+> what went out, not a to-do.
+>
+> The thread answered questions 1 and 2 — licensing and the P887 scheme drew no objection from
+> either respondent — but **question 3, how to proceed at volume, was never answered by anyone.**
+> And there is no good BRFA plan to press it with: mono is too small to be worth a task
+> description and needs no permission anyway; senseless is where the volume is but is nowhere
+> near mature — its fresh-stream precision has never been measured. So the follow-up waits on
+> evidence, and the long `talkpage_draft.wiki` stays parked.
+>
+> The thread does leave one dated commitment: sense creation was announced there as in-progress,
+> with a promise to report back. That is step 5 of `sense_creation_plan.md`, and it now has a
+> named audience — including a volunteer to review Russian, the language this project cannot
+> review in-house.
 
-**2 — Write the 45 approved edits** (40 senseless, 5 mono). Payloads build cleanly; no BRFA
+**1 — Measure the senseless lane.** `sense_creation_plan.md`'s staging steps 1–3, still the
+oldest open item in the project: verify a sample, human-review the 'yes' rows, compare the
+reviewed precision against the monosemous stream. It is the lane holding ~85% of the gated pool,
+it has never written an edit, and it is the only lane whose verifier runs **without a target
+gloss** — so it is structurally blind to the homograph class the gloss catches elsewhere, and the
+inherited monosemous precision is an assumption, not a measurement. Everything downstream — a
+proposal, a trial size, `create_add` — is waiting on this number.
+
+**2 — Write the 45 approved edits** (40 senseless, 5 mono). Payloads build cleanly; no permission
 needed. Three lanes are built and **only one has ever written** — this closes that gap and
-exercises sense creation on-wiki for the first time.
+exercises sense creation on-wiki for the first time. Independent of (1), and it makes (1)'s
+review pass concrete rather than hypothetical.
 
-**3 — Review the poly lane's 222 assigned rows, non-English first.** ~85% usable versus 52%.
+**3 — The prompt + cache revision** (`redo.md` #3 + #4, "the one move I'd make"). No external
+dependency, and it gets *more* expensive with every lane opened: the re-verify cost went from
+2,670 to 3,220 pairs when poly landed. Do it **before** the poly review push — reviewing bakes
+human decisions onto verdicts the revision invalidates, and `calibrate` re-buckets them
+afterwards on a basis nobody reviewed against.
+
+**4 — Review the poly lane's 222 assigned rows, non-English first.** ~85% usable versus 52%.
 Recording which rows a human rejects also yields the first sense-level human labels the project
 has ever had — as a side effect of reviewing, not a labelling exercise.
-
-**4 — The prompt + cache revision** (`redo.md` #3 + #4, "the one move I'd make"). No external
-dependency, and it gets *more* expensive with every lane opened: the re-verify cost went from
-2,670 to 3,220 pairs when poly landed.
 
 ### Deferred, with reasons
 

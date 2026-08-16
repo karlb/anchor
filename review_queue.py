@@ -881,8 +881,8 @@ def render(limit, lang_filter=None, lane=None):
     pending = [r for r in undecided if not is_auto_deferred((r[0], r[1]), r[6], ctx, ad)]
     # Selector counts are over the unfiltered (human-)pending set, so they don't change as you filter.
     lang_counts = collections.Counter(r[3] for r in pending)
-    # Lexeme-centric review (senseless lane, scope_roadmap amendment): a senseless lexeme can
-    # have 2–4 candidate items → 2–4 senses we'd create. Count candidate items per lexeme over
+    # Lexeme-centric review (senseless lane, per sense_creation_plan): a senseless lexeme can
+    # have several candidate items → several senses we'd create. Count candidate items per lexeme over
     # the FULL pending set so the flag/grouping is stable under language filtering, and sort
     # same-lexeme rows adjacent so the reviewer approves/prunes the inventory as a set, not blind.
     lid_counts = collections.Counter(r[0] for r in pending)

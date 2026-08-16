@@ -519,8 +519,8 @@ def main():
           f"mode={'WRITE' if args.write else 'dry-run'}; "
           f"reference=P887({HEURISTIC_ITEM})+P813({today})\n")
 
-    # Build one sense per candidate row, GROUPED by lexeme (lexeme-centric, scope_roadmap
-    # amendment): a senseless lexeme with 2–4 approved items becomes ONE wbeditentity creating
+    # Build one sense per candidate row, GROUPED by lexeme (lexeme-centric, per
+    # sense_creation_plan): a senseless lexeme with several approved items becomes ONE wbeditentity creating
     # 2–4 senses, so near-synonym duplicates are caught in one human-approved inventory rather
     # than written blind pair-by-pair. Monosemous lexemes appear once, so grouping is a no-op there.
     # --limit counts EDITS BUILT, not candidates read: a run's cost is the edits it submits, and

@@ -1,6 +1,16 @@
 # Crowdsourcing the human review: Distributed Game plan
 
-Status: PLAN (2026-07-07). Nothing implemented yet.
+**Status: LIVE.** Plan written 2026-07-07; phases 0–2 shipped. The game runs on Karl's server,
+`game_export.py` publishes the feed, `import_crowd.py` pulls votes into
+`notes/runs/crowd_decisions.csv`, scores voters into spammer/normal/reliable tiers off the trap
+tiles, and promotes consensus into `decisions.csv` with a `crowd:<names>` reviewer that survives
+into the edit summary as approver credit. Refuted pairs are report-only. Real voters have earned
+reliable status and real pairs have been promoted and written.
+
+**What is still open is phase 3** — the measurement that decides whether the crowd can be trusted
+to promote without a per-batch human sign-off: is trap accuracy good enough, is k=2 right, which
+classes (if any) graduate, and how does the crowd compare with Karl on a double-labelled subset.
+Sections 1–7 below are a record of the design as built; §8 phases 3–4 and §9 are the live parts.
 
 Goal: move the bulk confirm/reject work now done one person at a time in
 `review_queue.py` out to volunteer reviewers, without giving up the two things the
@@ -262,35 +272,29 @@ of expected value:
 
 ## 8. Phases
 
-**Phase 0 — verify externals (½ day, no code in main).**
-Register a hello-world game (3 hardcoded tiles, log-only) on the hub, served
-from the server over HTTPS. Confirms: registration is still self-serve, JSONP details, how
-`item` sections render, what `log_action` actually sends (exact params, whether
-`lang` arrives), and that log-only buttons behave as the wikiloop source implies.
-Abort criterion: if registration is dead or the hub has no lexeme-tolerant
-rendering path, pivot to the MachtSinn-fork fallback (§1) before building more.
+**Phase 0 — verify externals.** ✅ DONE. The hub is live and self-serve; the fallback was not
+needed.
 
-**Phase 1 — exporter (repo side).** ✅ DONE 2026-07-07: `game_export.py`
-(schema doc = its docstring until the service repo exists; always-on per-row
-contract check instead of a separate test; stdlib only). Reuses the queue
-composers, so crowd tiles show exactly what the local queue shows. One
-data-driven amendment to §6: keep-class *rejections* are too rare to catch
-yes-spammers (the log runs 359/360 approved on keep classes), so rejected
-traps are sourced from ANY class — the human's confident 'rejected' is the
-gold label, the class is invisible in the tile, and the importer buckets
-trap accuracy by class so judgment-call rejections (BROADER/LATERAL) don't
-over-penalize good-faith players. Traps split ~half rejected / half approved.
+**Phase 1 — exporter (repo side).** ✅ DONE: `game_export.py` (schema doc = its docstring until
+the service repo exists; always-on per-row contract check instead of a separate test; stdlib
+only). Reuses the queue composers, so crowd tiles show exactly what the local queue shows. One
+data-driven amendment to §6: keep-class *rejections* are far too rare to catch yes-spammers (the
+log is almost unanimously 'approved' on keep classes), so rejected traps are sourced from ANY
+class — the human's confident 'rejected' is the gold label, the class is invisible in the tile,
+and the importer buckets trap accuracy by class so judgment-call rejections (BROADER/LATERAL)
+don't over-penalize good-faith players. Traps split roughly half rejected / half approved.
 
-**Phase 2 — pilot (service side).**
-Service on the server, Mode B, k=2. Pilot slice: ~200 live pairs (de/en/sv first —
-richest CC0 display data) + ~30 trap tiles. Announce on Wikidata:Lexicographical
-data + project chat. Run until the slice is consensus-complete or 4 weeks.
+**Phase 2 — pilot (service side).** ✅ DONE. Service live on the server, Mode B, k=2, de/en/sv
+first. `import_crowd.py` scores each voter off the traps (spammer / normal / reliable), promotes
+consensus into `decisions.csv` under a `crowd:<names>` reviewer with approver credit in the edit
+summary, and treats refutations as report-only rather than as rejections.
 
-**Phase 3 — measure, then decide.**
-`import_crowd.py` + an analysis notebook/script over §7's metrics. Decisions due:
-is trap accuracy good enough to trust promotion (target: ≥ the ~96% the High tier
-already delivers)? right k? which classes (if any) graduate to auto-promotion?
-Do a full Karl-vs-crowd comparison on a ~50-pair double-labeled subset.
+**Phase 3 — measure, then decide.** ⬅ **the open phase.**
+An analysis pass over §7's metrics. Decisions due: is trap accuracy good enough to trust
+promotion without the per-batch sign-off (target: at least what the High tier already delivers)?
+Right k? Which classes (if any) graduate to auto-promotion? Plus a full Karl-vs-crowd comparison
+on a double-labelled subset. Until this lands, promotion keeps its human batch sign-off — which
+is the safe default, not a blocker.
 
 **Phase 4 — scale and extend.**
 Full keep-class pool across all REVIEW_LANGS; auto-promotion for gated classes;
@@ -299,13 +303,10 @@ gloss creation — MachtSinn UX as prior art) as its own follow-up plan.
 
 ## 9. Risks / open questions
 
-- **Hub liveness & throughput.** The hub is up but its `action=games` API
-  returned an empty list on today's probe (possibly a wrong/renamed param — the
-  hub UI clearly lists games). Phase 0 exists to settle this. Lexeme games are
-  niche; if weekly vote volume is too low for k=2 to converge, that is itself a
-  cheap, useful negative result — the exporter and vote-log design carry over to
-  any other review frontend (including a public copy of `review_queue.py` with
-  OAuth).
+- ~~**Hub liveness.**~~ Settled — the hub works and the game runs. **Throughput** is still the
+  real risk: lexeme games are niche, and if weekly vote volume is too low for k=2 to converge,
+  that is itself a cheap, useful negative result — the exporter and vote-log design carry over
+  to any other review frontend (including a public copy of `review_queue.py` with OAuth).
 - **Crowd quality on P5137 subtleties.** The keep-class restriction plus trap
   tiles plus promotion sign-off bound the damage; the real answer arrives with
   Phase-3 data. Do not widen to defer-classes on optimism.

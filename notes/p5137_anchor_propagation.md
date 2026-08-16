@@ -1,7 +1,17 @@
 # P5137 anchor-propagation: method and pilot results
 
-*WikDict/DBnary → Wikidata lexeme sense-linking (de/en/sv pilot). Measured 2026-06-20
+*WikDict/DBnary → Wikidata lexeme sense-linking (de/en/sv pilot). Measured 2026-06-20/25
 against the weekly `latest-lexemes.json.gz` dump and `infer.sqlite3`.*
+
+> **How to read this document.** The **method**, the **license boundary**, the **negative
+> results**, and the **reviewer guidance** below are current and load-bearing — the reviewer
+> section is the project's working rubric.
+>
+> Every **number** is a frozen measurement of the *original* de/en/sv, monosemous-only,
+> few-language corpus. Do not quote them as current: clusters and anchors were since rebuilt
+> over all WikDict languages, three more review languages were added, and two further lanes
+> (sense creation, per-sense assignment) opened. For live counts run the tools (see the README);
+> for what the later measurements changed, read `sense_assignment_findings.md`.
 
 ## Problem
 
@@ -385,20 +395,23 @@ Created as **Q140308675** (2026-06, `P31 → heuristic Q201413`, constraint-clea
 
 ## Reproduce
 
-```bash
-uv run build_clusters.py
-uv run load_lexemes.py --dump data/latest-lexemes.json.gz
-uv run match.py
-uv run precision.py          # structural precision (+ P279 tolerance once items fetched)
-uv run fetch_items.py        # CC0 labels/descriptions + P31/P279 (needs www.wikidata.org)
-uv run verify.py --senseless-only
-uv run measure_lift.py --sample 120
-uv run measure_lift.py --gate ABD --sample 120 --model sonnet   # ≥95% High tier
-```
+The run order lives in the README (it has drifted since — extra fetch stages, the lane
+selectors, `assign.py`) and is not duplicated here so the two can't disagree. The measurement
+entry points are `precision.py` (structural, held-out), `ablation.py` (the gate table) and
+`measure_lift.py` (verifier lift).
 
-## Next
+## What happened to this doc's "Next" list
 
-1. (optional) 2-of-3 verifier voting to push the High tier safely above 95% (pooled is at 95.9%).
-2. Review queue + `wbeditentity` writer with the P887 reference → ~10 pre-BRFA edits.
-3. P887 provenance extraction to de-bias the precision baseline.
-4. Talk-page post (this doc + the plan's license rationale).
+All four items are settled; kept here so they aren't re-proposed.
+
+1. **2-of-3 verifier voting** — never needed. The per-edit human gate is what the precision claim
+   rests on, so voting stayed optional and was not built.
+2. **Review queue + `wbeditentity` writer** — built, and the monosemous lane has been writing
+   assisted edits ever since. The append-only decision log is the authorization chain.
+3. **P887 provenance de-bias** — **empirically dead.** Barely any existing P5137 statement carries
+   a reference of any kind, and essentially none carries P887, so there is no statistical power to
+   de-bias with. Don't re-open it.
+4. **Talk-page post** — drafted (`talkpage_draft.wiki`, `talkpage_post.wiki`); posting the short
+   question is the current next step.
+
+For where the project goes from here, see `sense_assignment_findings.md` §4.
