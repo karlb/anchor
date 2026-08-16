@@ -177,3 +177,59 @@ decomposition above, not the headline, is what made this run interpretable.
    Nothing should auto-approve here on the strength of a 240-pair sample adjudicated by one
    reviewer, but the disagreement is real and worth resolving deliberately rather than by
    whichever instrument gets run first.
+
+## Postscript: the full-pool re-verify contradicts the 240-pair read
+
+The whole cached pool was re-verified at `32e24a6f` (3,152 pairs, 182 batches, **$33.49**) to
+restore the live queue, which reads only the current prompt version. That produced a second,
+much larger read on the same prompt change — 490 human decisions instead of 240 measurement
+adjudications — and it does not agree with the first.
+
+**Against the human decision log, the structured prompt is worse, not better.** Of the pairs each
+prompt would write, the share the human approved or wrote:
+
+| prompt | write-lane precision |
+|---|---|
+| `59d6f472` (prose) | 409/441 = **92.7%** |
+| `32e24a6f` (structured) | 413/467 = **88.4%** |
+
+It keeps 26 more pairs and is right about fewer of them. Grading every action change individually:
+**63 right / 60 wrong** — indistinguishable from a coin flip, exactly the noise floor this
+document already reported, now confirmed on 5× the data.
+
+The flag-carrying decomposition, which was the reason to believe the fix worked (4/4 correct on
+the sample), **inverts at scale: 11 right / 18 wrong.** Both halves are informative:
+
+- **Right, and the fix is doing its job:** Kirgise, belarusier, lett, gitan, Chinese, Irishman,
+  fransyska all moved keep → defer. These are the genuinely contested ethnic-minority demonyms —
+  the Lappin/Zigeunerin/aztek class the change was built for.
+- **Wrong, and it is one systematic class:** Asiat, Asiatin, afrikan, afroamerikan, europé,
+  Philippine moved keep → defer. `anchor_is_ethnic_group` fires on *continent- and
+  nation-scale origin terms*, which this project has already decided are blessed keeps — these
+  are among the 19 written rows that closed the deterministic P31 route (same failure mode, new
+  mechanism). The model draws the ethnic/nationality line in a different place than Wikidata's
+  codified "citizens or residents of X" convention does.
+- **Wrong, and unanticipated:** Neuseeländerin, Österreicherin, Néo-Zélandaise, filippinska,
+  maltes now come out `INCOHERENT` — *"sv says ethnic group, others say citizens/residents"*.
+  Asking the model to separate ethnic groups from citizens taught it to notice that many
+  demonym items conflate the two across their multilingual descriptions, and it now refuses to
+  judge them instead of choosing. That is a real observation about those items and the wrong
+  response to it: the queue defers a class Karl has been writing.
+
+Scale of the drift overall: 139/3,152 verdict flips (4.4%); of the 2,343 pairs both prompts call
+'yes', the relation changed on 15.7% and the **triage action on 12.2%** — 11.0% among the 1,697
+still-undecided pairs, so the queue's composition really does move. 42 approved/written decisions
+would no longer be kept, 22 of them newly (the rest were already human overrides of a defer).
+
+**Reverting is free.** The cache is additive and keyed by prompt version; the 3,451 rows under
+`59d6f472` are still there, and `PROMPT_VER` is `sha1(SYSTEM)[:8]`, so restoring the prose
+prompt byte-for-byte makes them live again with no re-verify. Verified by recomputing the hash
+from `115596b~1`. The structured-reply plumbing (`compose_reason`, `parse_reason`,
+`scope_kind`'s structured branch) is version-agnostic and can stay either way.
+
+**The methodological lesson is the durable part, and it is sharper than before:** a 240-pair
+sample adjudicated in one pass endorsed a change that 490 real decisions say is a regression.
+The sample was not wrong about the four pairs it saw — it was too small to see the class the
+change would break, because the senseless lane it was drawn from is 73% de/ru common nouns and
+almost none of the affected demonyms live there. **Measure a prompt change on the population it
+will be applied to, not on the lane that motivated it.**
