@@ -131,7 +131,8 @@ def scope_rel_map():
     db = sqlite3.connect(config.VERIFY)
     return {(lid, qid): rq.scope_hint(reason)[0]
             for lid, qid, reason in db.execute(
-                "SELECT target_lid, anchor_qid, reason FROM verdict")}
+                "SELECT target_lid, anchor_qid, reason FROM verdict WHERE prompt_ver = ?",
+                [verify.PROMPT_VER])}
 
 
 def load_eval_rows(suspect=False):
@@ -147,11 +148,19 @@ def load_eval_rows(suspect=False):
 
 
 def load_cache():
+    """The jsonl A/B cache, minus failures.
+
+    error/parse_error entries are skipped rather than loaded: they are what a timeout or a
+    quota stall leaves behind, and a cached failure is not a measurement. Loading them made
+    them permanent (nothing retries a present key) AND scored them — predicted_action maps
+    them to 'defer', so an infrastructure failure entered the metric as a real verdict."""
     cache = {}
     if os.path.exists(CACHE):
         with open(CACHE) as f:
             for line in f:
                 e = json.loads(line)
+                if e["verdict"] in ("error", "parse_error"):
+                    continue
                 cache[(e["arm"], e["sample"], e["lid"], e["qid"])] = (e["verdict"], e["reason"])
     return cache
 

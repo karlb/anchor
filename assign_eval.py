@@ -302,8 +302,9 @@ def _relations(keys):
         return out
     vf = sqlite3.connect("file:" + config.VERIFY + "?mode=ro", uri=True)
     for lid, qid in keys:
-        r = vf.execute("SELECT reason FROM verdict WHERE target_lid=? AND anchor_qid=?",
-                       [lid, qid]).fetchone()
+        r = vf.execute("SELECT reason FROM verdict "
+                       "WHERE target_lid=? AND anchor_qid=? AND prompt_ver=?",
+                       [lid, qid, verify.PROMPT_VER]).fetchone()
         m = re.match(r"\s*(EQUAL|BROADER|NARROWER|LATERAL|DIFFERENT|INCOHERENT)",
                      (r or [""])[0] or "")
         if m:

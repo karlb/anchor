@@ -42,7 +42,12 @@ def batch_json(system, prompt, model, n, default, timeout=300):
         _usage[k] += usage.get(k, 0)
     result = resp["result"].strip()
     if result.startswith("```"):
-        result = result.split("\n", 1)[1].rsplit("```", 1)[0]
+        # A fenced reply normally spans lines ("```json\n[...]\n```"), but a one-line
+        # "```[...]```" has nothing to split on and used to raise IndexError from inside the
+        # parser — which callers record as a permanent error row rather than a transient batch
+        # failure, and which killed an ab_concept arm outright. Strip defensively instead.
+        body = result.split("\n", 1)
+        result = (body[1] if len(body) > 1 else body[0].lstrip("`")).rsplit("```", 1)[0]
     parsed = json.loads(result)
     # Reindex by the model's own "i" labels (tolerating "3" for 3), NEVER by position — a
     # dropped/merged item would silently shift later verdicts onto the wrong pairs. A reply

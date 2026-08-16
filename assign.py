@@ -131,6 +131,7 @@ def pool(cn):
         "FROM candidate c "
         "JOIN it.item i ON i.qid = c.anchor_qid AND NOT i.missing "
         "JOIN vf.verdict v ON v.target_lid = c.target_lid AND v.anchor_qid = c.anchor_qid "
+        "                 AND " + verify.current_ver("v") + " "
         "WHERE v.verdict = 'yes' AND "
         + gates.high_tier_where("c", "it", n_senses="poly")
         + " ORDER BY c.target_lang, c.target_lemma").fetchall()

@@ -32,6 +32,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 import assign
 import config
 import gates
+import verify  # for PROMPT_VER/current_ver — the verdict cache is keyed by prompt version
 
 DECISIONS = config.DECISIONS
 PORT = 8731
@@ -169,6 +170,7 @@ def pool(lane=None, key=None):
                c.support_clusters, v.prompt_ver
         FROM candidate c
         JOIN vf.verdict v ON v.target_lid = c.target_lid AND v.anchor_qid = c.anchor_qid
+                         AND """ + verify.current_ver("v") + """
         JOIN it.item i ON i.qid = c.anchor_qid AND NOT i.missing
         WHERE """ + gates.high_tier_where("c", "it", n_senses=LANE_N_SENSES[lane])
         + """ AND v.verdict = 'yes'"""
@@ -682,13 +684,20 @@ def action_of(key, reason, ctx=None):
     return HINTS[scope_kind(reason, gloss, adesc)[1]][0]
 
 
-def load_verify_cache(path=config.VERIFY):
-    """{(target_lid, anchor_qid): (verdict, reason)} from the live verify cache."""
+def load_verify_cache(path=config.VERIFY, ver=verify.PROMPT_VER):
+    """{(target_lid, anchor_qid): (verdict, reason)} from a verify cache.
+
+    `ver` selects ONE prompt version — the live one by default, since every caller here
+    (auto-defer, calibrate, the drift warning) means "what does the current prompt say".
+    Pass ver=None to read a cache regardless of version, which is what an old single-prompt
+    backup file needs; on the live cache that would silently mix versions per pair."""
     if not os.path.exists(path):
         return {}
     cn = sqlite3.connect(path)
+    sql = "SELECT target_lid, anchor_qid, verdict, reason FROM verdict"
     out = {(lid, qid): (verd, reason) for lid, qid, verd, reason in
-           cn.execute("SELECT target_lid, anchor_qid, verdict, reason FROM verdict")}
+           (cn.execute(sql) if ver is None else
+            cn.execute(sql + " WHERE prompt_ver = ?", [ver]))}
     cn.close()
     return out
 

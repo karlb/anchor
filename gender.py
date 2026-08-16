@@ -77,7 +77,10 @@ def main():
 
     out = sqlite3.connect(config.GENDER)
     out.executescript(SCHEMA)
-    done = {r[0] for r in out.execute("SELECT target_lid FROM gender")}
+    # A failed batch writes error/parse_error rows; those do NOT count as done, or one timeout
+    # would remove those lexemes from every future run with no recovery path short of manual SQL.
+    done = {r[0] for r in out.execute(
+        "SELECT target_lid FROM gender WHERE gender NOT IN ('error', 'parse_error')")}
     rows = [r for r in approved_lexemes() if r[0] not in done]
     if not args.all:
         rows = rows[: args.limit]

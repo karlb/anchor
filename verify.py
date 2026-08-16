@@ -138,9 +138,61 @@ SCHEMA = """
 CREATE TABLE IF NOT EXISTS verdict(
     target_lid TEXT, anchor_qid TEXT, target_lemma TEXT, target_lang TEXT,
     verdict TEXT, reason TEXT, model TEXT, prompt_ver TEXT,
-    PRIMARY KEY (target_lid, anchor_qid)
+    PRIMARY KEY (target_lid, anchor_qid, prompt_ver)
 ) WITHOUT ROWID;
 """
+
+# The cache is ADDITIVE in the prompt version: one row per (pair, prompt_ver), and a prompt
+# change adds rows instead of destroying them. It used to be keyed on the pair alone, so every
+# SYSTEM edit orphaned the whole cache and cost a full paid re-verify — which is why prompt
+# improvements kept being deferred to "the next revision that happens anyway" (notes/redo.md #4).
+# Keeping both versions makes a prompt change an A/B by construction: the old verdicts are still
+# there to compare against, and validate_prompt can grade two versions out of the one file.
+#
+# The cost of that is a rule every consumer must follow: a pair verified under two prompts is
+# now TWO rows, so any read must say which version it means or it joins/counts twice. Use
+# current_ver() for "what the live prompt says" — the answer the review queue, the gates and the
+# write path all want.
+
+
+def current_ver(alias="v"):
+    """SQL predicate restricting a verdict read to the CURRENT prompt's rows.
+
+    A literal, not a bound parameter, so it composes into the gates.py-style SQL fragments the
+    consumers already build (PROMPT_VER is a locally computed sha1 hex — nothing user-supplied
+    reaches the string)."""
+    return f"{alias}.prompt_ver = '{PROMPT_VER}'"
+
+
+def ensure_schema(cn):
+    """Create the verdict cache if absent, and migrate an older one in place (idempotent).
+
+    Two historical shapes are handled: a pre-fingerprint cache with no prompt_ver column at all,
+    and the pair-keyed cache described above. Both migrations preserve every row — the point of
+    the change is that verdicts stop being thrown away."""
+    cn.executescript(SCHEMA)
+    try:
+        cn.execute("ALTER TABLE verdict ADD COLUMN prompt_ver TEXT")  # pre-fingerprint cache
+        cn.commit()
+    except sqlite3.OperationalError:
+        pass  # column already present
+    pk = [name for _, name in sorted((r[5], r[1]) for r in
+                                     cn.execute("PRAGMA table_info(verdict)") if r[5])]
+    if pk == ["target_lid", "anchor_qid"]:
+        n = cn.execute("SELECT count(*) FROM verdict").fetchone()[0]
+        cn.executescript("""
+            BEGIN;
+            CREATE TABLE verdict_new(
+                target_lid TEXT, anchor_qid TEXT, target_lemma TEXT, target_lang TEXT,
+                verdict TEXT, reason TEXT, model TEXT, prompt_ver TEXT,
+                PRIMARY KEY (target_lid, anchor_qid, prompt_ver)
+            ) WITHOUT ROWID;
+            INSERT INTO verdict_new SELECT target_lid, anchor_qid, target_lemma, target_lang,
+                   verdict, reason, model, coalesce(prompt_ver, '') FROM verdict;
+            DROP TABLE verdict;
+            ALTER TABLE verdict_new RENAME TO verdict;
+            COMMIT;""")
+        print(f"verify cache: re-keyed on (pair, prompt_ver); {n:,} verdicts kept")
 
 
 def candidates(gate="", min_support=1, senseless_only=False, max_senses=None, poly_only=False):
@@ -381,17 +433,19 @@ def main():
         ap.error("--poly-only and --senseless-only select disjoint lanes; pick one")
 
     out = sqlite3.connect(config.VERIFY)
-    out.executescript(SCHEMA)
-    try:
-        out.execute("ALTER TABLE verdict ADD COLUMN prompt_ver TEXT")  # migrate a pre-fingerprint cache
-        out.commit()
-    except sqlite3.OperationalError:
-        pass  # column already present
-    # Only verdicts produced by the CURRENT prompt count as done; a prompt edit (new PROMPT_VER)
-    # auto-invalidates the rest so they are re-verified without needing --force.
+    ensure_schema(out)
+    # Only verdicts produced by the CURRENT prompt count as done; rows from other prompt versions
+    # are kept (see the SCHEMA note) but don't satisfy this run.
+    #
+    # error/parse_error rows do NOT count as done either. They are written when a batch fails —
+    # a timeout, a quota stall, a malformed reply — and presence-only done-sets used to make that
+    # permanent: the affected pairs were never retried, and the only recovery was --force, i.e.
+    # re-paying for the entire cache. On a measurement run that silently punches holes in the
+    # sample rather than failing loudly.
     done = set() if args.force else {
         (r[0], r[1]) for r in out.execute(
-            "SELECT target_lid, anchor_qid FROM verdict WHERE prompt_ver = ?", [PROMPT_VER])}
+            "SELECT target_lid, anchor_qid FROM verdict "
+            "WHERE prompt_ver = ? AND verdict NOT IN ('error', 'parse_error')", [PROMPT_VER])}
 
     pool = [r for r in candidates(args.gate, args.min_support, args.senseless_only,
                                   poly_only=args.poly_only)
@@ -441,9 +495,15 @@ def main():
         out.commit()
         print(f"  {min(i + args.batch, len(rows)):,}/{len(rows):,}  {counts}")
 
-    print("\nverdict distribution:")
-    for v, n in out.execute("SELECT verdict, count(*) FROM verdict GROUP BY verdict ORDER BY 2 DESC"):
+    print("\nverdict distribution (this prompt):")
+    for v, n in out.execute("SELECT verdict, count(*) FROM verdict WHERE prompt_ver = ? "
+                            "GROUP BY verdict ORDER BY 2 DESC", [PROMPT_VER]):
         print(f"  {v:<12} {n:,}")
+    others = out.execute("SELECT count(*) FROM verdict WHERE prompt_ver <> ?",
+                         [PROMPT_VER]).fetchone()[0]
+    if others:
+        print(f"  ({others:,} verdicts from earlier prompt versions kept for comparison — "
+              f"validate_prompt.py --baseline-ver)")
 
     u = llm.usage_summary()
     if u["calls"]:
@@ -454,7 +514,7 @@ def main():
 
     if args.csv:
         cols = ["target_lid", "anchor_qid", "target_lemma", "target_lang",
-                "verdict", "reason", "model"]
+                "verdict", "reason", "model", "prompt_ver"]  # ver: the cache holds several
         with open(args.csv, "w", newline="") as f:
             w = csv.writer(f)
             w.writerow(cols)

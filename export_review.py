@@ -18,6 +18,7 @@ import sqlite3
 import config
 import gates
 import review_queue  # anchor_gloss + pick: the one gloss/language-fallback policy, shared with the live UI
+import verify  # current_ver: the verdict cache holds one row per (pair, prompt version)
 
 
 def main():
@@ -49,6 +50,7 @@ def main():
         FROM cn.candidate c
         LEFT JOIN it.item i ON i.qid = c.anchor_qid AND NOT i.missing
         LEFT JOIN vf.verdict v ON v.target_lid = c.target_lid AND v.anchor_qid = c.anchor_qid
+                              AND {verify.current_ver("v")}
         WHERE {where}
         ORDER BY c.support_clusters DESC, c.target_lang, c.target_lemma
     """).fetchall()

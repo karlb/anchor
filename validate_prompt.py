@@ -18,8 +18,13 @@ A row absent from the new cache is OUT-OF-SCOPE (a structural-gate change, e.g.
 QW-A's scope tightening), not a prompt rejection, so it is reported separately
 and excluded from the keep/catch rates (which isolate the prompt's effect).
 
+Since the verdict cache keeps one row per (pair, prompt version), the baseline no longer has
+to be a separate backup FILE: --baseline-ver grades the live prompt against an earlier one out
+of the same cache, which is the A/B the additive cache exists to make free.
+
     uv run validate_prompt.py                         # vs data/verify.pre-rec4.sqlite3
-    uv run validate_prompt.py --baseline path.sqlite3 # explicit backup
+    uv run validate_prompt.py --baseline-ver 59d6f472 # vs an earlier prompt, same cache file
+    uv run validate_prompt.py --baseline path.sqlite3 # explicit backup file
     uv run validate_prompt.py --keep-min 0.9 --catch-min 0.5
 """
 
@@ -29,14 +34,18 @@ import os
 import sqlite3
 
 import config
+import verify
 from review_queue import CONFIRMED, load_decisions, load_verify_cache
 
 ABSENT = "(out-of-scope)"            # gold row not present in the new cache
 
 
-def load_cache(path):
-    """{(target_lid, anchor_qid): verdict} from a verify.sqlite3, or {} if missing."""
-    return {k: v[0] for k, v in load_verify_cache(path or "").items()}
+def load_cache(path, ver=verify.PROMPT_VER):
+    """{(target_lid, anchor_qid): verdict} from a verify.sqlite3, or {} if missing.
+
+    ver=None reads every row regardless of prompt version — right for an old single-prompt
+    backup file, wrong for the live cache, which now holds several versions at once."""
+    return {k: v[0] for k, v in load_verify_cache(path or "", ver=ver).items()}
 
 
 def models(path):
@@ -69,7 +78,10 @@ def fmt(counts):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--baseline", default=os.path.join(config.DATA, "verify.pre-rec4.sqlite3"),
-                    help="pre-change cache backup for the whole-cache flip count")
+                    help="pre-change cache backup file for the whole-cache flip count")
+    ap.add_argument("--baseline-ver",
+                    help="compare against an earlier PROMPT_VER inside the live cache instead "
+                         "of a backup file (the cache keeps every version)")
     ap.add_argument("--keep-min", type=float, default=0.90,
                     help="min fraction of confirmed-correct that must stay 'yes'")
     ap.add_argument("--catch-min", type=float, default=0.50,
@@ -78,7 +90,10 @@ def main():
 
     gold = load_decisions()
     new = load_cache(config.VERIFY)
-    base = load_cache(args.baseline)
+    base = (load_cache(config.VERIFY, ver=args.baseline_ver) if args.baseline_ver
+            else load_cache(args.baseline, ver=None))
+    base_name = (f"{config.VERIFY} @ prompt {args.baseline_ver}" if args.baseline_ver
+                 else args.baseline)
     if not gold:
         raise SystemExit(f"no decisions at {config.DECISIONS}")
     if not new:
@@ -88,9 +103,10 @@ def main():
     defnote = f"; {n_def} deferred (held, excluded from scoring)" if n_def else ""
     print(f"decision log : {config.DECISIONS}  ({len(gold)} gold rows, "
           f"all verifier-'yes' under the old prompt{defnote})")
-    print(f"new cache    : {config.VERIFY}  ({len(new)} verdicts; model: {models(config.VERIFY)})")
+    print(f"new cache    : {config.VERIFY} @ prompt {verify.PROMPT_VER}  "
+          f"({len(new)} verdicts; model: {models(config.VERIFY)})")
     if base:
-        print(f"baseline     : {args.baseline}  ({len(base)} verdicts)")
+        print(f"baseline     : {base_name}  ({len(base)} verdicts)")
 
     # confirmed-correct should STAY 'yes' (recall); rejected should FLIP (the target)
     n_ok, ok_present, ok = group(gold, new, lambda s: s in CONFIRMED)
