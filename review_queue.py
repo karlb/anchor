@@ -90,7 +90,12 @@ def _lane(v=None):
 # we snapshot what the reviewer saw (lemma, verdict, reason, model) so each line
 # is a self-contained audit record that does not depend on the regenerable caches.
 LOG_COLS = ["ts", "target_lid", "anchor_qid", "target_lemma", "target_lang",
-            "target_n_senses", "verdict", "reason", "model", "status", "reviewer", "revid"]
+            "target_n_senses", "target_sid", "verdict", "reason", "model", "status",
+            "reviewer", "revid"]
+# `target_sid` is WHICH sense the decision is about, and it exists because the poly lane's
+# decision is not about a lexeme. Empty in the mono and senseless lanes, where the sense is
+# unambiguous by construction (the one sense, or none yet) — and empty in every row written
+# before 2026-08-16, all of which are one of those two lanes.
 
 # The statuses meaning "the human said the verifier-'yes' was correct" (write.py folds
 # 'written' into approval) — shared by the audit/validation consumers of the log.
@@ -115,9 +120,22 @@ def load_decisions(path=DECISIONS):
 
 
 def append_decision(rec, path=DECISIONS):
-    """Append one decision event (a dict over LOG_COLS); write the header if new."""
+    """Append one decision event (a dict over LOG_COLS); write the header if new.
+
+    The header is written ONCE, at file creation, so appending a row with more fields than
+    the header lists does not fail — it silently writes a wider row that every later
+    DictReader hands back with the extra value under the None key. On an append-only log
+    that is unrecoverable by design, so a column added to LOG_COLS without migrating the
+    file raises here instead."""
     os.makedirs(os.path.dirname(path), exist_ok=True)
     new = not os.path.exists(path)
+    if not new:
+        with open(path, newline="") as f:
+            have = next(csv.reader(f), [])
+        if have != LOG_COLS:
+            raise RuntimeError(
+                f"{path} header does not match LOG_COLS — migrate the file before appending.\n"
+                f"  file: {have}\n  code: {LOG_COLS}")
     with open(path, "a", newline="") as f:
         w = csv.DictWriter(f, fieldnames=LOG_COLS)
         if new:
@@ -1058,16 +1076,18 @@ class Handler(BaseHTTPRequestHandler):
         if action in ("approved", "rejected", "deferred"):
             row = next(iter(pool(key=(lid, qid))), None)
             decided = load_decisions()
-            # An approval in the poly lane approves a SENSE, and the log has no column for one:
-            # the only record of WHICH sense is the assignment cache, keyed by prompt_ver. So
-            # refuse to log an approval with no live assignment, or one the assigner abstained
-            # on. A row saying "approved" whose sense nobody can name is an ambiguous decision
-            # on an append-only log, and those are precisely the ones that cannot be repaired
-            # afterwards. Reject/defer stay allowed — neither ever reaches a write.
-            if row and action == "approved" and _lane() == "poly":
+            # A poly decision is about a SENSE, so it records which one — target_sid, frozen
+            # into the log at approval time rather than re-derived later from the assignment
+            # cache. Re-deriving would mean a prompt change silently rewrites what the human
+            # approved, which on an append-only log is exactly the kind of damage that cannot
+            # be repaired afterwards.
+            target_sid = ""
+            if row and _lane() == "poly":
                 sid = assign.load({(lid, qid)}).get((lid, qid), (None, "", 0))[0]
-                if sid in (None, "none", "error", "out_of_range"):
-                    row = None
+                if sid not in (None, "none", "error", "out_of_range"):
+                    target_sid = sid
+                elif action == "approved":
+                    row = None       # an approval must name a sense; reject/defer need not
             if row and (lid, qid) not in decided:  # ignore replays / stale double-clicks
                 # row_lang, NOT lang: `lang` is the reviewer's active filter (hidden form
                 # field) and must survive to the redirect below
@@ -1075,6 +1095,7 @@ class Handler(BaseHTTPRequestHandler):
                 append_decision({
                     "ts": now(), "target_lid": l, "anchor_qid": q,
                     "target_lemma": lemma, "target_lang": row_lang, "target_n_senses": ns,
+                    "target_sid": target_sid,
                     "verdict": v, "reason": reason, "model": model,
                     "status": action, "reviewer": "local", "revid": "",
                 })
