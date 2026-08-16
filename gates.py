@@ -167,22 +167,23 @@ def concrete_anchor_clause(cand_alias="c", it_alias="it"):
             f"(_x.prop='P279' AND _x.value IN ({p279})))))")
 
 
-# The pre-refactor definition, kept verbatim so --check can prove the swap moved nothing.
-# Delete it once the polysemous lane has shipped and the equivalence stops being interesting.
-_LEGACY_CLEAN = "{c}.homograph_n_lid = 1 AND NOT {c}.cross_pivot_conflict"
-
-
 def _check():
-    """Assert the refactor is behaviour-preserving on BOTH existing lanes.
+    """Assert the invariants the three lanes must satisfy, against the live databases.
 
-    The equivalence at n_senses=1 is structural, not luck: for a monosemous lexeme the one
-    sense either carries no P5137 (free, and cross_pivot_conflict false) or carries a
-    different one (not free, and the flag true) — and the third case, already grounded to
-    THIS anchor, match.py:146-149 removed from `candidate` before we ever see it.
+    This used to compare each lane against the pre-refactor SQL verbatim. That proof did its
+    job when admissibility moved out of `clean_clause`, and keeping it would pin the OLD
+    definition into the code forever — a frozen arm constraining live code, which is the
+    pattern we are trying to get rid of. What survives is the property that actually protects
+    us, and it is stronger than the equivalence was:
 
-    The n_senses=0 lane is the one a naive swap breaks: free_sense_clause is FALSE for a
-    lexeme with no senses, so folding it into clean_clause would take the senseless lane to
-    zero rows. That is the regression this check exists to catch."""
+      * every lane is NON-EMPTY. The near-miss was a predicate that silently took the
+        senseless lane from 11,371 rows to ZERO — 88% of the pool — because
+        free_sense_clause is false for a lexeme with no senses. An equivalence test caught
+        that by accident; this catches it on purpose, and keeps catching it as the
+        definitions legitimately change.
+      * the two MATCH lanes PARTITION the general form, so a pair is reviewable in exactly
+        one queue and can never be decided two ways.
+    """
     import sqlite3
     import config
     cn = sqlite3.connect("file:" + config.CANDIDATES + "?mode=ro", uri=True)
@@ -194,45 +195,27 @@ def _check():
             f"SELECT target_lid, anchor_qid FROM candidate c WHERE {where}"))
 
     ok = True
-    for n_senses, name in ((0, "CREATE_FIRST (senseless)"), (1, "MATCH (monosemous)")):
-        legacy = " AND ".join([_LEGACY_CLEAN.format(c="c"), gate_a("c"),
-                               gate_b("c", n_senses), concrete_anchor_clause("c", "it")])
-        before, after = pairs(legacy), pairs(high_tier_where("c", "it", n_senses))
-        same = before == after
-        ok &= same
-        print(f"{'PASS' if same else 'FAIL'}  n_senses={n_senses}  {name}: "
-              f"{len(before):,} -> {len(after):,}  symmetric difference {len(before ^ after):,}")
-        if not same:
-            for lid, qid in sorted(before ^ after)[:5]:
-                print(f"        diverged: {lid} {qid}")
+    lanes = {}
+    for n_senses, name in ((0, "CREATE_FIRST (senseless)"), (1, "MATCH (monosemous)"),
+                           ("poly", "MATCH (polysemous)")):
+        lanes[n_senses] = got = pairs(high_tier_where("c", "it", n_senses))
+        ok &= bool(got)
+        print(f"{'PASS' if got else 'FAIL'}  n_senses={str(n_senses):<6} {name:<26} "
+              f"{len(got):>6,} pairs over {len({l for l, _ in got}):>5,} lexemes")
 
     general = pairs(high_tier_where("c", "it", None))
-    mono = pairs(high_tier_where("c", "it", 1))
-    poly = pairs(high_tier_where("c", "it", "poly"))
-    net = general - mono
-    print(f"\ngeneral MATCH (any sense count): {len(general):,} pairs over "
-          f"{len({l for l, _ in general}):,} lexemes")
-    print(f"  net new vs the monosemous lane: {len(net):,} pairs over "
-          f"{len({l for l, _ in net}):,} lexemes  (unreachable by any target_n_senses = n)")
-    if mono - general:
-        ok = False
-        print(f"  FAIL: the general form LOST {len(mono - general):,} monosemous pairs")
-    # The two review lanes must PARTITION the general form: every MATCH pair belongs to exactly
-    # one queue. If they overlapped, a pair would be reviewable twice and could be decided two
-    # ways; if they left a gap, a pair would be admissible and reachable by nobody.
-    if poly != net:
-        ok = False
-        print(f"  FAIL: the poly lane is not exactly the net-new set "
-              f"({len(poly ^ net):,} pairs differ)")
+    mono, poly = lanes[1], lanes["poly"]
     if poly & mono:
         ok = False
         print(f"  FAIL: {len(poly & mono):,} pairs are in BOTH review lanes")
     if poly | mono != general:
         ok = False
-        print(f"  FAIL: mono + poly do not cover the general form "
-              f"({len(general - (poly | mono)):,} uncovered)")
-    print(f"  poly lane (m>=2): {len(poly):,} pairs over {len({l for l, _ in poly}):,} lexemes "
-          f"— partitions the general form with the monosemous lane")
+        print(f"  FAIL: mono + poly do not cover the general MATCH form "
+              f"({len(general - (poly | mono)):,} uncovered, "
+              f"{len((poly | mono) - general):,} extra)")
+    else:
+        print(f"\n{len(mono):,} mono + {len(poly):,} poly = {len(general):,} general MATCH — "
+              f"the review lanes partition it, no overlap and no gap")
     cn.close()
     return ok
 
