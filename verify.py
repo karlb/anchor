@@ -126,13 +126,59 @@ SYSTEM = (
     "fraction 1/80) glossed 'eightieth' vs a concept labelled 'eightieth' whose description reads "
     "'ordinal number for 80' -> DIFFERENT (label coincides, but a fraction is not an ordinal) -> no. "
     + MULTILINGUAL_GUIDE +
+    # STRUCTURED REPLY (2026-08-16, notes/redo.md #3). The triage layer used to substring-scrape
+    # this ten-word prose field for words like "female" and "ethnic" to decide keep-vs-defer, so a
+    # model paraphrase silently changed the action. Worse, it read the SAME token two ways: the
+    # senseless lane has no target gloss, so the demonym→ethnic-group downgrade could not fire and
+    # the word "ethnic" in the prose reached the *keep* convention instead — measured, and the
+    # biggest single error class in that lane (notes/senseless_lane_findings.md). The three
+    # booleans below are the fields the code actually branches on, asked for directly. The one
+    # that matters is anchor_is_ethnic_group: Wikidata types nationality demonyms (Spaniards,
+    # Guineans) as P31=ethnic group as well, so no deterministic rule over P31 or the description
+    # can separate the contested case from the blessed one — it takes a judgment, which is why it
+    # is asked of the model rather than computed.
+    "Then answer three FACTUAL questions about this item, as JSON booleans: "
+    '"gendered_form" — is the NOUN a gender-specific form (feminine or masculine) of a '
+    "gender-neutral counterpart? "
+    '"demonym" — does the NOUN denote a person by their origin, nationality, ethnicity or region '
+    "(a Swede, a Bavarian, a Sami)? "
+    '"anchor_is_ethnic_group" — is the CONCEPT an ethnic group, people or community defined by '
+    "shared descent, culture or history (the Sami, the Romani, the Aztecs)? Answer false when the "
+    "concept is instead the citizens, nationals or residents of a state (the Spaniards as "
+    "nationals of Spain, 'citizens or residents of Iran'), even if it is loosely called a people; "
+    "and false whenever the concept is not a human group at all. "
     'Reply with ONLY a JSON array (no prose, no code fences), one object per item in order: '
-    '[{"i":1,"verdict":"yes|no|uncertain","reason":"<REL>: <=10 words"}], where <REL> is the '
-    "relation you chose (EQUAL/BROADER/NARROWER/LATERAL/INCOHERENT/DIFFERENT)."
+    '[{"i":1,"verdict":"yes|no|uncertain","relation":"EQUAL|BROADER|NARROWER|LATERAL|INCOHERENT|'
+    'DIFFERENT","gendered_form":false,"demonym":false,"anchor_is_ethnic_group":false,'
+    '"reason":"<=10 words"}].'
 )
 
-# Fingerprint of the prompt: a changed SYSTEM yields a new PROMPT_VER, which automatically
-# invalidates verdicts cached under an older prompt (they are re-verified, not trusted).
+# The reason string the cache stores, composed by US from the model's fields — not free prose.
+# Shape: "<REL>·<tag>·<tag>: <=10 words", with the '·plain' tag when no flag is set, so a
+# structured row is always distinguishable from a legacy one by having any tag at all. '·' is
+# already this project's class-token separator (rel_class's '·convention', '·sole-anchor').
+FLAG_TAG = {"gendered_form": "gendered", "demonym": "demonym",
+            "anchor_is_ethnic_group": "ethnic-anchor"}
+
+
+def compose_reason(v):
+    """'<REL>·<tags>: <prose>' from one structured verdict object.
+
+    Falls back to the model's own reason when there is no relation field at all, which is what a
+    parse failure or an older reply shape produces — those stay legacy-shaped and the triage layer
+    keeps scraping them, so a bad batch degrades to the old behaviour instead of to no relation."""
+    rel = (v.get("relation") or "").strip().upper()
+    prose = " ".join((v.get("reason") or "").split())
+    if not rel:
+        return prose
+    tags = [t for f, t in FLAG_TAG.items() if v.get(f) is True] or ["plain"]
+    return "·".join([rel] + tags) + ": " + prose
+
+
+# Fingerprint of the prompt: a changed SYSTEM yields a new PROMPT_VER, and every read filters on
+# the current one — so a prompt edit stops the old verdicts being trusted without destroying them
+# (they stay in the cache as their own version, which is what makes a prompt change an A/B). The
+# cost is that the pool has to be re-verified at the new prompt before the queue is whole again.
 PROMPT_VER = hashlib.sha1(SYSTEM.encode()).hexdigest()[:8]
 
 SCHEMA = """
@@ -520,7 +566,7 @@ def main():
             lid, lang, lemma, qid = row[0], row[1], row[2], row[3]
             verdict = v.get("verdict", "parse_error")
             counts[verdict] = counts.get(verdict, 0) + 1
-            recs.append((lid, qid, lemma, lang, verdict, v.get("reason", ""), args.model, PROMPT_VER))
+            recs.append((lid, qid, lemma, lang, verdict, compose_reason(v), args.model, PROMPT_VER))
         out.executemany(
             "INSERT OR REPLACE INTO verdict VALUES (?,?,?,?,?,?,?,?)", recs)
         out.commit()

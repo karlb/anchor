@@ -298,14 +298,30 @@ def has_item_lang(it):
                            "WHERE type='table' AND name='item_lang'").fetchone())
 
 
-def anchor_langs(it, qid):
-    """[(display_lang, label, desc), ...] for config.CONCEPT_LANGS_DISPLAY present for qid.
+def display_spec(lang=None):
+    """config.CONCEPT_LANGS_DISPLAY, with the target language prepended when it isn't in it.
+
+    The display list is a curated eight and does not cover every review language: `ru` is absent,
+    so a Russian row showed its anchor only in other languages and — worse — `anchor_gloss` could
+    never pick a Russian description, giving every created Russian sense an English gloss instead.
+    1,370 of the senseless lane's 1,895 Russian pairs have a Russian description available
+    (notes/senseless_lane_findings.md). This is scoped to what a human reads and to what gets
+    WRITTEN; the verifier's own concept spec (CONCEPT_LANGS_VERIFY) already carries ru and is
+    deliberately not touched here, because its content is an input to a graded prompt."""
+    if not lang or any(lang == d or lang in srcs for d, srcs in config.CONCEPT_LANGS_DISPLAY):
+        return config.CONCEPT_LANGS_DISPLAY
+    return [(lang, (lang,))] + config.CONCEPT_LANGS_DISPLAY
+
+
+def anchor_langs(it, qid, lang=None):
+    """[(display_lang, label, desc), ...] for the display languages present for qid.
 
     Thin wrapper over the shared resolver (Norwegian collapses nb/no/nn to the first
-    available; a language is included if it has a label OR a description)."""
+    available; a language is included if it has a label OR a description). `lang` is the review
+    row's target language — see display_spec."""
     entry = {lg: (lab, ds) for lg, lab, ds in
              it.execute("SELECT lang, label, desc FROM item_lang WHERE qid=?", [qid])}
-    return config.resolve_concept_langs(entry, config.CONCEPT_LANGS_DISPLAY)
+    return config.resolve_concept_langs(entry, display_spec(lang))
 
 
 def anchor_cc0(it, qid, lang):
@@ -367,7 +383,7 @@ def anchor_gloss(it, qid, lang, lemma):
         entry = {lg: (lab, ds) for lg, lab, ds in
                  it.execute("SELECT lang, label, desc FROM item_lang WHERE qid=?", [qid])}
         described = [(d, ds) for d, _lab, ds in config.resolve_concept_langs(
-            entry, config.CONCEPT_LANGS_DISPLAY, target=lang) if usable(ds)]
+            entry, display_spec(lang), target=lang) if usable(ds)]
     else:   # pre-fetch / fixture: only the de/en/sv columns of `item` exist
         pairs = [(lg, anchor_cc0(it, qid, lg)[1]) for lg in dict.fromkeys([lang, "en"])]
         described = [(lg, ds) for lg, ds in pairs if usable(ds)]
@@ -470,14 +486,51 @@ HINTS = {
 }
 
 
+def parse_reason(reason):
+    """(relation, tags) from a verdict reason head. tags is None for a LEGACY prose reason.
+
+    A structured reason (verify.compose_reason, from the model's own boolean fields) has the shape
+    '<REL>·<tag>·<tag>: prose' and always carries at least '·plain', so the presence of any tag is
+    what distinguishes it from the pre-2026-08-16 '<REL>: prose' rows. Both shapes stay readable
+    and both stay in the cache — it is keyed by prompt version — so this has to classify either."""
+    head = (reason or "").split(":", 1)[0].strip()
+    parts = [p.strip().lower() for p in head.split("·")]
+    rel = parts[0].upper()
+    return rel, (set(parts[1:]) if len(parts) > 1 else None)
+
+
 def scope_kind(reason, gloss=None, anchor_desc=None):
     """(relation, kind) for a verdict reason — the ONE scope classifier.
 
     relation is the verifier's leading REL token (EQUAL/BROADER/NARROWER/LATERAL/INCOHERENT/…);
-    kind keys HINTS ('' = no scope flag: EQUAL or untagged). gloss + anchor_desc (when given)
-    enable the demonym→ethnic-group nudge: a person-from-X linked to an ethnic-group concept is
-    downgraded keep→defer (the split convention)."""
-    rel = (reason or "").split(":", 1)[0].strip().upper()
+    kind keys HINTS ('' = no scope flag: EQUAL or untagged).
+
+    STRUCTURED rows carry the model's own gendered_form / demonym / anchor_is_ethnic_group
+    booleans, and the triage reads those. LEGACY rows fall through to the original path: scrape
+    _CONVENTION out of the prose, and use gloss + anchor_desc for the demonym→ethnic-group nudge.
+    The legacy path is kept verbatim rather than retired because the cache still holds those rows
+    and `validate_prompt --baseline-ver` grades against them.
+
+    The two paths deliberately disagree in one place, and that disagreement is the point: without
+    a target gloss the legacy nudge cannot fire, so a demonym→ethnic-group pair fell through to
+    _CONVENTION, matched the word 'ethnic' there, and came out a *keep* — the inverse of the
+    intended action, and the largest error class measured in the senseless lane. The structured
+    path decides it from anchor_is_ethnic_group, which needs no gloss."""
+    rel, tags = parse_reason(reason)
+    if tags is not None:
+        if rel == "LATERAL":
+            return rel, "lateral"
+        if rel == "INCOHERENT":
+            return rel, "incoherent"
+        if "demonym" in tags and "ethnic-anchor" in tags:
+            return rel, "demonym-ethnic"      # contested keep → defer, at ANY relation
+        if rel not in ("BROADER", "NARROWER"):
+            return rel, ""
+        # Same asymmetry as the legacy path: the convention excuses a NARROWER lexeme (a female
+        # form, a national of X) denoting the neutral/collective concept, never a BROADER one.
+        if rel == "NARROWER" and ({"gendered", "demonym"} & tags):
+            return rel, "convention"
+        return rel, "scope"
     if rel == "LATERAL":
         # Adjacent / not-is-a is a JUDGMENT CALL, not an auto-drop: the verifier can't tell a
         # lateral-that-should-reject (arrangemang) from one that should go to a human
@@ -767,7 +820,7 @@ def occupancy_context(pairs):
             for lid, qid, lang in pairs}
 
 
-def live_rel(key, log_reason, cache, ctx=None):
+def live_rel(key, log_reason, cache, ctx=None, require_yes=True):
     """Relation to bucket a decided pair by, preferring the LIVE verify cache (the current
     prompt's rating of the pair) over the frozen decision-log reason — so pairs reviewed
     before the relation taxonomy was emitted still bucket correctly instead of piling into
@@ -776,11 +829,18 @@ def live_rel(key, log_reason, cache, ctx=None):
     the gloss + anchor_desc so the demonym→ethnic defer is applied here exactly as in the render
     queue — same classifier, same inputs. Returns None when the cache now rates the pair NOT 'yes'
     (the verifier would reject it — not write-eligible, so it must not inform the keep/defer/reject
-    gates)."""
+    gates).
+
+    `require_yes=False` lifts that last rule, and exactly one caller wants it: calibrate's
+    readiness table. The auto-hide REJECT gate is defined over reject-rated classes, i.e.
+    verifier-'no' pairs — and dropping them here meant that gate could never leave "hold", however
+    much review was spent on them (notes/review/reject-gate-starved.md). The queue's own use of
+    live_rel keeps the default: a pair the verifier now rejects is not write-eligible and must not
+    feed the keep/defer gates."""
     hit = cache.get(key)
     if hit is not None:
         verdict, reason = hit
-        if verdict != "yes":
+        if verdict != "yes" and require_yes:
             return None
         return rel_of(key, reason, ctx)
     return rel_of(key, log_reason, ctx)
@@ -951,7 +1011,7 @@ def render(limit, lang_filter=None, lane=None):
                       if sug else f"<span class=d>{rel.title()}</span>")
         # Anchor concept in the curated languages (item_lang) — the ONLY concept source now
         # (fetch_anchor_langs.py fills it for every anchor; verify enforces coverage).
-        al = anchor_langs(it, qid) if have_il else []
+        al = anchor_langs(it, qid, lang) if have_il else []
         anchor_html = "".join(
             f"<div class=al><span class=alc>{disp}</span> <b>{html.escape(lab or '')}</b>"
             + (f" <span class=d>{html.escape(ds)}</span>" if ds else "") + "</div>"

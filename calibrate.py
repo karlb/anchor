@@ -139,8 +139,12 @@ def main():
         st = (d.get("status") or "").strip()
         if st not in ("approved", "rejected", "deferred", "written"):
             continue
-        cls = rq.live_rel(k, d.get("reason"), cache, ctx)
-        if cls is None:               # the live verifier no longer says 'yes' — not write-eligible
+        # require_yes=False: verifier-'no' pairs bucket here too. They are the ONLY population the
+        # auto-hide REJECT gate is defined over, and dropping them (which the live queue is right
+        # to do — they are not write-eligible) meant the instrument could never measure the gate it
+        # documents, no matter how much review was spent. See notes/review/reject-gate-starved.md.
+        cls = rq.live_rel(k, d.get("reason"), cache, ctx, require_yes=False)
+        if cls is None:
             continue
         # A pair counts under its class AND its ·sole-anchor refinement — the same nested keys the
         # live gate reads (rq.rel_tokens), so a refinement row here IS a subset of its parent row.
