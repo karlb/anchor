@@ -55,27 +55,19 @@ import config
 import llm
 import verify
 
-DB = os.path.join(config.DATA, "assign.sqlite3")   # config-derived, never cwd-relative
+DB = config.ASSIGN                                 # config-derived, never cwd-relative
 SEED = 20260815
 
-SYSTEM = (
-    "You assign a Wikidata concept to ONE sense of a dictionary word, or to none of them.\n"
-    "Each item gives a language, a noun, that noun's NUMBERED senses with their glosses, and "
-    "one concept (label + descriptions). Decide which numbered sense the concept is the "
-    "item-for-this-sense of.\n"
-    "Answer with the sense NUMBER when the concept denotes what that sense means. Allow "
-    "ordinary translation and register differences, and allow the concept to be somewhat "
-    "wider or narrower than the gloss — pick the sense it fits best.\n"
-    'Answer "none" when the concept denotes no sense listed: a different sense of the word '
-    "that is not among those listed, a homograph, or an unrelated concept. Prefer \"none\" "
-    "over forcing a poor fit — a wrong assignment is worse than an abstention.\n"
-    "DESCRIPTION OVER LABEL: a shared word-form is not enough. Read the concept's "
-    "description; if it names a different kind of thing than the gloss does, that is not the "
-    "sense.\n"
-    'Reply ONLY with a JSON array: [{"i":1,"sense":2,"reason":"<=12 words"}, ...] where '
-    '"sense" is the sense number or the string "none". One object per item, no prose.'
-)
-PROMPT_VER = __import__("hashlib").sha1(SYSTEM.encode()).hexdigest()[:8]
+# THE PROMPT UNDER TEST IS THE PRODUCTION ONE, imported rather than copied. A measurement of
+# a prompt that has drifted from the shipped prompt measures nothing, and two identical string
+# literals in two files drift the first time one is edited. assign.py owns it; the measured
+# fingerprint is 4346c40f, asserted below so a silent edit fails here rather than quietly
+# re-labelling 876 cached answers as if they came from the new text.
+from assign import SYSTEM, PROMPT_VER, concept_text, senses_of  # noqa: E402
+
+assert PROMPT_VER == "4346c40f", (
+    f"assign.SYSTEM changed (prompt_ver {PROMPT_VER}) — the cached control/gold/absent arms "
+    "were measured on 4346c40f. Re-run the arms, then update this fingerprint.")
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS assign(
@@ -98,21 +90,6 @@ def connect_ro():
     for alias, path in (("it", config.ITEMS), ("wd", config.WIKIDATA), ("cl", config.CLUSTERS)):
         cn.execute("ATTACH DATABASE ? AS " + alias, ["file:" + path + "?mode=ro"])
     return cn
-
-
-def senses_of(cn, lid, lang):
-    """[(sid, gloss)] in a stable order, target language preferred then en, then any."""
-    by = {}
-    for sid, lg, gloss in cn.execute(
-            "SELECT sid, lang, gloss FROM wd.sense_gloss WHERE lid = ?", [lid]):
-        by.setdefault(sid, {})[lg] = gloss
-    out = []
-    for sid in sorted(by):
-        g = by[sid]
-        text = next((g[c] for c in (lang, "en", "de", "sv") if g.get(c)),
-                    next(iter(g.values()), ""))
-        out.append((sid, text))
-    return [(s, t) for s, t in out if t]
 
 
 def build_gold(cn):
@@ -175,15 +152,6 @@ def build_control(cn):
         out.append((lid, lang.get(lid, ""), lemma.get(lid, ""), qid,
                     "none" if status == "rejected" else sole[lid]))
     return out
-
-
-def concept_text(cn, qid, lang, il_map):
-    """The anchor concept in the SAME +multi format the production verifier grades on, so
-    this measurement is not accidentally testing a different concept rendering."""
-    r = cn.execute("SELECT label_de, label_en, label_sv, desc_de, desc_en, desc_sv "
-                   "FROM it.item WHERE qid = ?", [qid]).fetchone() or [None] * 6
-    row = ("", lang, "", qid, 0, *r)
-    return verify.fmt_concept(row, langs=config.CONCEPT_LANGS_VERIFY, il_map=il_map)
 
 
 def _drop_correct(p):

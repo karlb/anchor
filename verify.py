@@ -143,7 +143,7 @@ CREATE TABLE IF NOT EXISTS verdict(
 """
 
 
-def candidates(gate="", min_support=1, senseless_only=False, max_senses=None):
+def candidates(gate="", min_support=1, senseless_only=False, max_senses=None, poly_only=False):
     """Clean candidates joined to the anchor Q's CC0 label/description.
 
     `gate` adds structural gates (the same SQL fragments gates.high_tier_where composes):
@@ -171,6 +171,11 @@ def candidates(gate="", min_support=1, senseless_only=False, max_senses=None):
         where += f" AND c.target_n_senses <= {int(max_senses)}"
     if senseless_only:
         where += " AND " + gates.create_first_clause("c")
+    if poly_only:
+        # The polysemous review lane (m>=2 with a free sense). Mutually exclusive with
+        # senseless_only and with gate B — see gates.poly_match_clause for why it is its own
+        # lane and not just the tail of the general MATCH form.
+        where += " AND " + gates.poly_match_clause("c", "wd")
     if "B" in gate:
         where += " AND " + gates.gate_b("c", 1)
     if "D" in gate:
@@ -356,6 +361,9 @@ def main():
     ap.add_argument("--model", default="sonnet")
     ap.add_argument("--min-support", type=int, default=1)
     ap.add_argument("--senseless-only", action="store_true")
+    ap.add_argument("--poly-only", action="store_true",
+                    help="the polysemous review lane (target n_senses>=2 with a free "
+                         "sense); use with --gate AD, never B")
     ap.add_argument("--gate", default="", help="structural gate filter, e.g. ABD (the High tier)")
     ap.add_argument("--force", action="store_true", help="re-verify even cached candidates "
                     "(needed to apply a changed prompt/criterion; overwrites their verdicts)")
@@ -367,6 +375,10 @@ def main():
     args = ap.parse_args()
     if args.senseless_only and "B" in args.gate.upper():
         ap.error("--senseless-only (targets n_senses=0) is incompatible with gate B (requires n_senses=1)")
+    if args.poly_only and "B" in args.gate.upper():
+        ap.error("--poly-only (targets n_senses>=2) is incompatible with gate B (requires n_senses=1)")
+    if args.poly_only and args.senseless_only:
+        ap.error("--poly-only and --senseless-only select disjoint lanes; pick one")
 
     out = sqlite3.connect(config.VERIFY)
     out.executescript(SCHEMA)
@@ -381,7 +393,8 @@ def main():
         (r[0], r[1]) for r in out.execute(
             "SELECT target_lid, anchor_qid FROM verdict WHERE prompt_ver = ?", [PROMPT_VER])}
 
-    pool = [r for r in candidates(args.gate, args.min_support, args.senseless_only)
+    pool = [r for r in candidates(args.gate, args.min_support, args.senseless_only,
+                                  poly_only=args.poly_only)
             if (r[0], r[3]) not in done]
     if not args.all:
         pool = pool[: args.limit]
