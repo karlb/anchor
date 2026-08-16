@@ -260,7 +260,7 @@ def check(rec, seen):
 
 
 def build(langs=None, limit=0, trap_frac=0.15):
-    rows = rq.pool(senseless=False)
+    rows = rq.pool(lane="mono")
     decisions = rq.load_decisions()
     ctx = rq.demonym_context([(r[0], r[1], r[3]) for r in rows])
     it = sqlite3.connect(config.ITEMS)

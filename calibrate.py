@@ -15,9 +15,11 @@ verifier rating in the direction the live gate would get wrong — so they can b
     uv run calibrate.py --occupancy       # each class split by same-language slot occupancy
     uv run calibrate.py --lane senseless  # calibrate ONE review lane (see --lane below)
 
-The two review lanes are calibrated separately, not split into sub-classes: the senseless
+The review lanes are calibrated separately, not split into sub-classes: the senseless
 lane is small enough that every bucket would read "hold (need N more)" while its monosemous
 half carried the table. --lane FILTERS instead, so each run's MIN_SAMPLES means what it says.
+The poly lane (n_senses>=2) is newest and has no decided history yet, so it gates nothing and
+is reviewed entirely by hand until it has voted — which is the intended behaviour, not a gap.
 
 Gates (user call 2026-06-27 — avoid wrong writes "by all cost"). Denominator is always
 the bucket's human-decided pairs (approved + rejected + deferred):
@@ -109,15 +111,17 @@ def main():
     ap.add_argument("--occupancy", action="store_true",
                     help="split each class by whether the anchor's same-language slot is already "
                          "filled by an exact-label match (advisory measurement)")
-    ap.add_argument("--lane", choices=("senseless", "monosemous"),
-                    help="calibrate only the sense-creation lane (target_n_senses 0) or only "
-                         "the monosemous write stream (1); default pools both")
+    ap.add_argument("--lane", choices=("senseless", "mono", "poly"),
+                    help="calibrate only one review lane: senseless (target_n_senses 0), mono "
+                         "(the monosemous write stream, 1) or poly (>=2); default pools all")
     args = ap.parse_args()
 
     decisions = rq.load_decisions()   # last event per (lid, anchor) wins
     if args.lane:                     # filter, don't sub-class — see the module docstring
-        want = args.lane == "senseless"
-        decisions = {k: d for k, d in decisions.items() if rq.decided_lane(d) is want}
+        # Lane names are review_queue's, not a private copy: rq.decided_lane reads the
+        # count FROZEN in the log row, so a senseless target that has since been written
+        # still calibrates the lane it was judged in.
+        decisions = {k: d for k, d in decisions.items() if rq.decided_lane(d) == args.lane}
     cache = rq.load_verify_cache()    # the LIVE prompt's relation per pair (supersedes the
     #                                   frozen log reason, so pre-REL approvals bucket too)
     pairs = [(k[0], k[1], d.get("target_lang")) for k, d in decisions.items()]
@@ -143,8 +147,8 @@ def main():
     print(f"decision log: {rq.DECISIONS}"
           + (f"   [LANE: {args.lane} only]" if args.lane else ""))
     if not args.lane:
-        print("pooled over both review lanes — the live auto-defer gate is measured per lane; "
-              "run --lane senseless|monosemous to see the set actually enforced")
+        print("pooled over all review lanes — the live auto-defer gate is measured per lane; "
+              "run --lane senseless|mono|poly to see the set actually enforced")
     if args.occupancy:
         print(f"{OCCUPIED} = the anchor's same-language slot is already filled by an exact-label "
               "match (advisory split; nothing live keys on it)")

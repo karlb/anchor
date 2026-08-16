@@ -35,10 +35,43 @@ import gates
 DECISIONS = config.DECISIONS
 PORT = 8731
 
-# Review mode: the monosemous write stream (n_senses=1) or the phase-2 senseless
-# sense-creation lane (n_senses=0). One process serves one mode; the HTTP Handler
-# (which can't take params) reads this, set by serve()/status() from --senseless.
-SENSELESS = False
+# Review LANE: which population this process reviews. One process serves one lane; the HTTP
+# Handler (which can't take params) reads this, set by serve()/status() from the CLI flag.
+#   "mono"       n_senses = 1   the pilot write stream (445 written decisions)
+#   "senseless"  n_senses = 0   the sense-creation lane
+#   "poly"       n_senses >= 2  MATCH on a polysemous target — assign.py picks WHICH sense,
+#                               and the reviewer approves that sense, not the lexeme
+# The lanes PARTITION the admissible pool (gates.py --check asserts it), so a pair is
+# reviewable in exactly one queue and can never be decided two ways.
+LANE = "mono"
+LANE_N_SENSES = {"mono": 1, "senseless": 0, "poly": "poly"}
+
+
+LANE_BANNER = {
+    "mono": "",
+    "senseless": "   [MODE: senseless — first-sense creation]",
+    "poly": "   [MODE: polysemous — MATCH one of several existing senses]",
+}
+
+
+def lane_from_args(args):
+    """CLI flags -> lane name. --senseless and --poly are mutually exclusive (argparse
+    enforces it); neither means the monosemous write stream."""
+    if getattr(args, "poly", False):
+        return "poly"
+    return "senseless" if getattr(args, "senseless", False) else "mono"
+
+
+def _lane(v=None):
+    """Coerce a lane selector: None -> the module mode; a bool -> the legacy senseless flag
+    (kept because callers outside this module still pass senseless=True/False)."""
+    if v is None:
+        return LANE
+    if isinstance(v, bool):
+        return "senseless" if v else "mono"
+    if v not in LANE_N_SENSES:
+        raise ValueError(f"unknown review lane {v!r}; expected one of {sorted(LANE_N_SENSES)}")
+    return v
 
 # The anchor languages shown in the review UI live in config.CONCEPT_LANGS_DISPLAY — the
 # SAME spec/resolver the verifier uses (the verifier just feeds a wider set). Cross-checking
@@ -87,7 +120,7 @@ def append_decision(rec, path=DECISIONS):
         w.writerow({c: rec.get(c, "") for c in LOG_COLS})
 
 
-def pool(senseless=None, key=None):
+def pool(lane=None, key=None):
     """The reviewable set: verifier-'yes' High-tier candidates (clean ∩ A: >=2
     anchors ∩ B ∩ D: concrete/P31 ∩ in-scope), each with the verdict's reason/model and
     the anchor's CC0 de/en/sv descriptions (the scope-nudge input; the displayed concept
@@ -100,8 +133,7 @@ def pool(senseless=None, key=None):
     Defaults to the module SENSELESS mode so the HTTP Handler can call it param-free.
     `key`=(lid, qid) narrows to that one pair (the POST handler's membership check)
     without recomputing the full join or duplicating the gate SQL."""
-    if senseless is None:
-        senseless = SENSELESS
+    lane = _lane(lane)
     cn = sqlite3.connect(config.CANDIDATES)
     cn.execute("ATTACH DATABASE ? AS it", [config.ITEMS])
     cn.execute("ATTACH DATABASE ? AS vf", [config.VERIFY])
@@ -115,7 +147,7 @@ def pool(senseless=None, key=None):
         FROM candidate c
         JOIN vf.verdict v ON v.target_lid = c.target_lid AND v.anchor_qid = c.anchor_qid
         JOIN it.item i ON i.qid = c.anchor_qid AND NOT i.missing
-        WHERE """ + gates.high_tier_where("c", "it", n_senses=0 if senseless else 1)
+        WHERE """ + gates.high_tier_where("c", "it", n_senses=LANE_N_SENSES[lane])
         + """ AND v.verdict = 'yes'"""
         + (" AND c.target_lid = ? AND c.anchor_qid = ?" if key else "")
         + """
@@ -133,50 +165,51 @@ def decided_lane(d):
     senseless target that was approved and written HAS a sense now, but the verdict on it
     calibrates the lane it was judged in. Single-sourced here because the status counts, the
     auto-defer gate and calibrate all have to agree on what lane a row belongs to."""
-    return {"0": True, "1": False}.get((d.get("target_n_senses") or "").strip())
+    n = (d.get("target_n_senses") or "").strip()
+    if n in ("0", "1"):
+        return "senseless" if n == "0" else "mono"
+    return "poly" if n.isdigit() else None
 
 
-def pending_view(senseless=None):
+def pending_view(lane=None):
     """The shared review pipeline, computed ONCE per invocation: (decisions, undecided,
     ctx, auto-defer classes, verify cache). counts/status/render all consume this — it
     is a 3-DB join plus a full log replay and a verify-cache scan, so each caller runs
     it once and the call sites can't drift apart."""
-    if senseless is None:
-        senseless = SENSELESS
+    lane = _lane(lane)
     decisions = load_decisions()
     vcache = load_verify_cache()
     # `decisions` stays whole: the pending dedup must see BOTH lanes (a decided pair must not
     # resurface, and n_senses moves once a senseless target is written). Only the gate below and
     # the counts() display scope to `senseless`.
-    undecided = [r for r in pool(senseless) if (r[0], r[1]) not in decisions]
+    undecided = [r for r in pool(lane) if (r[0], r[1]) not in decisions]
     ctx = demonym_context([(k[0], k[1], d.get("target_lang")) for k, d in decisions.items()]
                           + [(r[0], r[1], r[3]) for r in undecided])
-    ad = auto_defer_classes(decisions, ctx, vcache, senseless)
+    ad = auto_defer_classes(decisions, ctx, vcache, lane)
     return decisions, undecided, ctx, ad, vcache
 
 
-def counts(view=None, senseless=None):
+def counts(view=None, lane=None):
     """(status -> n) from the log, plus computed 'pending' (human-pending) and 'auto_deferred'.
 
     The decided counts are scoped to the SAME lane as the pending numbers printed beside them.
     Pooled, senseless mode reported the monosemous lane's 335 writes directly above its own
     340 pending, reading as if the sense-creation lane were nearly worked through when it has
     written nothing at all."""
-    want = bool(SENSELESS if senseless is None else senseless)
+    want = _lane(lane)
     decisions, undecided, ctx, ad, _ = view or pending_view()
     c = collections.Counter(d["status"] for d in decisions.values()
-                            if decided_lane(d) is want)
+                            if decided_lane(d) == want)
     c["auto_deferred"] = sum(1 for r in undecided if is_auto_deferred((r[0], r[1]), r[6], ctx, ad))
     c["pending"] = len(undecided) - c["auto_deferred"]
     return c
 
 
 def status(args):
-    global SENSELESS
-    SENSELESS = getattr(args, "senseless", False)
-    print(f"decision log: {DECISIONS}"
-          + ("   [MODE: senseless — first-sense creation]" if SENSELESS else ""))
-    view = pending_view(SENSELESS)
+    global LANE
+    LANE = lane_from_args(args)
+    print(f"decision log: {DECISIONS}" + LANE_BANNER[LANE])
+    view = pending_view(LANE)
     decided, undecided, ctx, ad, vcache = view
     c = counts(view)
     for s in ("pending", "auto_deferred", "approved", "deferred", "rejected", "written"):
@@ -199,7 +232,7 @@ def status(args):
     for k, dec in decided.items():
         if (dec.get("status") or "").strip() not in ("approved", "written", "rejected"):
             continue
-        if decided_lane(dec) is not SENSELESS:   # lane-scoped like the counts above
+        if decided_lane(dec) != LANE:            # lane-scoped like the counts above
             continue
         rel = live_rel(k, dec.get("reason"), vcache, ctx)
         if not rel or REL_ACTION.get(rel) != "keep":
@@ -721,7 +754,7 @@ def live_rel(key, log_reason, cache, ctx=None):
     return rel_of(key, log_reason, ctx)
 
 
-def auto_defer_classes(decisions=None, ctx=None, cache=None, senseless=None):
+def auto_defer_classes(decisions=None, ctx=None, cache=None, lane=None):
     """{rel_class}: defer-classes the log proves are >=85% not-written on >=GATE_MIN_SAMPLES pairs
     IN THE LANE BEING REVIEWED (senseless — sense creation — or the monosemous write stream).
 
@@ -747,13 +780,13 @@ def auto_defer_classes(decisions=None, ctx=None, cache=None, senseless=None):
         decisions = load_decisions()
     if cache is None:
         cache = load_verify_cache()
-    want = bool(SENSELESS if senseless is None else senseless)
+    want = _lane(lane)
     buckets = collections.defaultdict(collections.Counter)
     for key, d in decisions.items():
         st = (d.get("status") or "").strip()
         if st not in ("approved", "rejected", "deferred", "written"):
             continue
-        if decided_lane(d) is not want:  # another lane's votes don't gate this one
+        if decided_lane(d) != want:      # another lane's votes don't gate this one
             continue
         cls = live_rel(key, d.get("reason"), cache, ctx)
         if cls is None:                 # verifier no longer says 'yes' — not a defer-class member
@@ -785,10 +818,10 @@ def lang_selector(lang_counts, active):
     return "<p class=bar>lemma language: " + " · ".join(links) + "</p>"
 
 
-def render(limit, lang_filter=None, senseless=None):
-    if senseless is None:
-        senseless = SENSELESS
-    decisions, undecided, ctx, ad, _ = pending_view(senseless)
+def render(limit, lang_filter=None, lane=None):
+    lane = _lane(lane)
+    senseless = lane == "senseless"
+    decisions, undecided, ctx, ad, _ = pending_view(lane)
     auto_def = [r for r in undecided if is_auto_deferred((r[0], r[1]), r[6], ctx, ad)]
     pending = [r for r in undecided if not is_auto_deferred((r[0], r[1]), r[6], ctx, ad)]
     # Selector counts are over the unfiltered (human-)pending set, so they don't change as you filter.
@@ -975,15 +1008,16 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def serve(args):
-    global SENSELESS
-    SENSELESS = getattr(args, "senseless", False)
-    n = len(pool(SENSELESS))
+    global LANE
+    LANE = lane_from_args(args)
+    n = len(pool(LANE))
     if not n:
-        gate = "AD --senseless-only" if SENSELESS else "ABD"
+        gate = {"senseless": "AD --senseless-only", "poly": "AD --poly-only",
+                "mono": "ABD"}[LANE]
         print(f"no verifier-'yes' High-tier candidates — run verify.py --gate {gate} first")
         return
     c = counts()
-    mode = "  [MODE: senseless — first-sense creation]" if SENSELESS else ""
+    mode = LANE_BANNER[LANE]
     print(f"review UI on http://localhost:{PORT}  ({c.get('pending', 0):,} pending of "
           f"{n:,} candidates){mode} — Ctrl-C to stop")
     HTTPServer(("127.0.0.1", PORT), Handler).serve_forever()
@@ -994,9 +1028,14 @@ def main():
     sub = ap.add_subparsers(dest="cmd", required=True)
     for name in ("serve", "status"):
         p = sub.add_parser(name)
-        p.add_argument("--senseless", action="store_true",
-                       help="review the senseless first-sense-creation lane (n_senses=0) "
-                            "instead of the monosemous write stream")
+        lane = p.add_mutually_exclusive_group()
+        lane.add_argument("--senseless", action="store_true",
+                          help="review the senseless first-sense-creation lane (n_senses=0) "
+                               "instead of the monosemous write stream")
+        lane.add_argument("--poly", action="store_true",
+                          help="review the polysemous MATCH lane (n_senses>=2): the candidate "
+                               "is shown against the lexeme's whole sense inventory, with "
+                               "assign.py's per-sense choice marked")
     args = ap.parse_args()
     {"serve": serve, "status": status}[args.cmd](args)
 

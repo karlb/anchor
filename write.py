@@ -228,7 +228,7 @@ def load_rows(args):
     replayed status, so anything later written/rejected is naturally excluded."""
     if args.preview:
         # senseless preview when --include-senseless, else the monosemous write stream
-        rows = [r[:5] for r in pool(senseless=args.include_senseless)]
+        rows = [r[:5] for r in pool(lane="senseless" if args.include_senseless else "mono")]
     else:
         rows = [(d["target_lid"], d["anchor_qid"], d["target_lemma"], d["target_lang"],
                  int(d["target_n_senses"]))
