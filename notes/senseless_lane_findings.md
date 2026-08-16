@@ -233,3 +233,56 @@ The sample was not wrong about the four pairs it saw — it was too small to see
 change would break, because the senseless lane it was drawn from is 73% de/ru common nouns and
 almost none of the affected demonyms live there. **Measure a prompt change on the population it
 will be applied to, not on the lane that motivated it.**
+
+### Correction to the postscript: the regression verdict rested on the confounded benchmark
+
+The section above graded the prompt change against `decisions.csv` alone. Two more reference sets
+exist, and both are cleaner. The verdict does not survive them.
+
+**The curated 119-case gold** (`config.GOLD` — contested mono-lane pairs, each with a written
+rationale and an explicit acceptable-output set; 99 of 119 still hold verdicts under both prompts):
+
+| | in-set | best-action exact | defers | false-keep |
+|---|---|---|---|---|
+| prose `59d6f472` | 93/99 = 93.9% | 58/99 = 58.6% | 76 | 0 |
+| structured `32e24a6f` | 92/99 = 92.9% | 65/99 = **65.7%** | **54** | 1 (`sv arrangemang`) |
+
+Head-to-head on the 34 cases where the two disagree, scored against the acceptable set:
+**prose-only-right 6, structured-only-right 5, both acceptable 23, both wrong 0.** That is a tie,
+not a loss. Structured reaches the gold's single *best* action 7pp more often and defers 29% less
+on the hardest slice — same correctness, less review burden. (An earlier read of this table said
+28–6 for structured; that was a scoring bug — cases where both actions were acceptable were being
+credited to the new prompt. Corrected here.)
+
+**The decision log is not a neutral referee.** Every one of its 681 decisions was made with the
+prose prompt's own `reason` visible in the queue, and since 2026-06-25 (`8332300`) with its action
+hint too. Grading a challenger against decisions taken while reading the incumbent's output gives
+the incumbent a home-field advantage of unknown size, and 4.3pp is well inside what that could
+produce. The pre-hint slice is too small to bound it (n=22, 12 vs 10 keeps).
+
+**Reverting definitely re-breaks one thing.** On the blind 240-pair senseless gold, the four
+contested demonym rows are unanimous:
+
+| | prose | structured | human |
+|---|---|---|---|
+| de Lappin, de Polynesier, de Zigeunerin, sv aztek | keep | defer | **hold** (all 4) |
+
+That is the member-vs-group inversion this document opened with — the legacy `_CONVENTION` path
+cannot fire without a target gloss, and the senseless lane has none by construction. Nothing is
+written from that lane today, so the bug is latent rather than live, but a revert restores it.
+
+**Two classes to keep an eye on either way**, from the 681 decided pairs:
+- `demonym-ethnic` is 32 rows: 25 correctly held, 7 wrongly held (78%). The postscript listed only
+  the 7 losses, which made a mostly-working class look like a regression.
+- `INCOHERENT` is 26 rows and the human kept 46% of them — deferring on it is barely better than a
+  coin flip, and the structured prompt produces more of them (48 → 64). This is the soft spot.
+
+**Where that leaves it: no benchmark shows structured is better, two show a tie, and the one that
+shows it worse is the one that cannot be neutral.** The honest summary is that the two prompts are
+not distinguishable on correctness with the evidence in hand.
+
+**The experiment that would settle it costs $0.** 186 undecided pairs carry both verdicts already
+and the two prompts disagree about writing them (101 defer→keep, 85 keep→defer). Adjudicating a
+blind sample of *those* — no LLM calls, both answers cached — is the only unconfounded head-to-head
+available, and grading disagreements only is high-signal: ~50 pairs separates a real 4pp effect
+that 681 confounded decisions cannot.
