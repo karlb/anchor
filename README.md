@@ -206,25 +206,29 @@ The gating question is **whether sense creation is accurate enough to propose at
 work is measurement before conversation. Reasoning in `notes/sense_assignment_findings.md` §4,
 `notes/sense_creation_plan.md` (measurement staging) and `notes/redo.md`.
 
-1. **Measure the senseless lane's fresh-stream precision.** It has never been measured, and it
-   is the one lane whose verifier runs *without* a target gloss — structurally blind to the
-   homograph class the gloss catches elsewhere. Verify a sample, human-review the 'yes' rows,
-   compare against the monosemous stream's reviewed precision. One pass on the current prompt,
-   no code change needed: the point is to learn **which** errors this lane makes before guessing
-   at fixes.
-2. **The prompt + cache revision** — make the verifier return the fields the code branches on,
-   and key the verdict cache on `(pair, prompt_ver)` keeping both rows, so a prompt change is an
-   A/B instead of a paid full re-verify. This is the enabling step for (3): refining a verifier
-   whose every edit destroys the cache is prohibitively slow, and the cost grows with each lane
-   opened. Several deferred findings in `notes/simplify/` and `notes/review/` are blocked on
-   exactly this and should ride along. The read-side `prompt_ver` filter has to land *before* the
-   prompt edit to do its job.
-3. **Refine the lane against what (1) found, then re-measure.** Candidate levers, in rough order
-   of expected value: richer anchor-side evidence (it helps most exactly where the target gloss
-   is missing); an abstention-style question adapted to senseless targets — "does the anchor
-   correspond to a meaning this lemma actually has?" — which is the nearest available substitute
-   for the missing gloss and which discriminated sharply in the polysemous lane; and a tighter
-   slice (higher support) as the fallback if precision won't come up.
+1. ~~**Measure the senseless lane's fresh-stream precision.**~~ **DONE** —
+   `notes/senseless_lane_findings.md`. A 240-pair random sample of the lane, adjudicated blind.
+   The lane **misses the gate** (its write-lane precision is clearly below the monosemous
+   stream's, non-overlapping CIs), so do not scale and do not write from it yet. What the errors
+   turned out to be is the useful part: none of the write-lane losses is a wrong sense, the
+   feared gloss-less homograph flood did not appear, higher support does *not* help, and two
+   thirds of the losses are deterministic — a triage inversion and bad gloss selection, not a
+   weak model.
+2. ~~**The prompt + cache revision**~~ **cache half DONE** (`(pair, prompt_ver)`, both rows kept,
+   read-side filters landed, `validate_prompt --baseline-ver`). The **structured-reply half**
+   (`notes/redo.md` #3 — the verifier returns the fields the code branches on instead of prose the
+   code substring-scrapes) is next, and (1) turned it from a tidiness argument into a correctness
+   one: the scraped `_CONVENTION` list makes the senseless lane *keep* exactly the demonym pairs
+   the monosemous lane defers.
+3. **Refine the lane against what (1) found, then re-measure.** The measured order is: the
+   demonym/ethnic-group split via a real `anchor_is_ethnic_group` field (largest class), gloss
+   selection (wrong-language and non-defining glosses), then — only if still short — the model
+   levers: richer anchor-side evidence, or an abstention-style question adapted to senseless
+   targets ("does the anchor correspond to a meaning this lemma actually has?"), which
+   discriminated sharply in the polysemous lane. The tighter-slice fallback is **refuted**;
+   precision is flat in support. Re-measurement is free: the sample's adjudications are a gold
+   set and the cache is additive —
+   `validate_prompt.py --decisions notes/runs/senseless_sample.csv --baseline-ver <old>`.
 4. **Disclose sense creation on-wiki, then write.** In that order. Sense creation is already
    announced in the talk-page thread as in-progress with a promise to report back, and the
    public answer given there about homographs does not cover a lane with no gloss — so the post

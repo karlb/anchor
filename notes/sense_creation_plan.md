@@ -4,12 +4,15 @@
 and attach the P5137 in one edit. Plan drafted 2026-07-02; companion to
 `p5137_anchor_propagation.md`.*
 
-> **Status 2026-08-16 — this is the critical path.** The lane is fully built (gates, verify,
-> review UI, write path, duplicate-sense preflight) and has approved rows waiting, but it has
-> **never written an edit and its precision has never been measured**. It holds the large
-> majority of the gated pool, so it is also the only lane where a bot request would be worth
-> filing — and the request cannot be written until the measurement below exists. The staging
-> section is therefore the live part of this document; the code sections are history.
+> **Status 2026-08-16 — measured, and it MISSED the gate.** The lane is fully built (gates,
+> verify, review UI, write path, duplicate-sense preflight) and has approved rows waiting. Its
+> fresh-stream precision has now been measured for the first time — full record in
+> `senseless_lane_findings.md` — and it is clearly below the monosemous stream's, on
+> non-overlapping confidence intervals. Staging steps 1–2 below are therefore **done** and step
+> 3's gate **failed**: do not scale, do not write from this lane yet, and there is nothing to
+> file a bot request on until a refinement moves the number. The good news is in the shape of
+> the errors rather than their count: no write-lane row was a *wrong sense*, and two thirds of
+> the losses are deterministic bugs rather than model weakness.
 
 *Amendment folded in 2026-07-05: review and write are **lexeme-centric, not pair-wise**. Some
 senseless lexemes have several candidate items, and independent per-pair sense creation would
@@ -54,11 +57,11 @@ Blocks:
 3. ~~Gloss language-key bug~~ **— DONE.** `anchor_gloss` returns `{gloss_lang: text}`
    keyed by the language the text is actually in, and `build_edit()` writes each under its own
    key — an en fallback is now keyed `en`, never as the target language.
-4. **No fresh-stream precision number — STILL OPEN, and now the project's critical path.**
-   None can come from held-out data: senseless targets have no P5137 to hide, *by construction*.
-   The lane, the review UI and the write path are all ready; what is unmeasured is whether the
-   stream is accurate enough to propose at volume. Verify a sample → human-review the 'yes' rows
-   → gate, per the staging section below.
+4. ~~No fresh-stream precision number~~ **— MEASURED 2026-08-16, and the gate failed.** None
+   could come from held-out data (senseless targets have no P5137 to hide, *by construction*), so
+   it was measured the only way available: a random sample of the lane, verified and then
+   adjudicated blind. `senseless_lane_findings.md` is the record. The blocker is no longer "we
+   don't know" — it is a known, itemised gap between this lane and the monosemous one.
 
 ## Risk model — how this stream differs from monosemous
 
@@ -159,17 +162,19 @@ MachtSinn as precedent — bot-created glosses are the part reviewers will push 
 
 ## Measurement & staging (cost-gated)
 
-1. **Verify a sample first, not the pool.** A few hundred random candidates on the current
-   prompt. Record the yes-rate *and* the actual token cost, extrapolate the full-pool run, and
-   get sign-off before spending it.
-2. **Human-review the sample's "yes" rows** in the senseless lane. This yields the stream's
-   first real precision number with a Wilson CI — the same measurement design that produced the
-   monosemous stream's reviewed precision, so the two are directly comparable.
-3. **Gate to proceed:** reviewed precision comparable to the monosemous stream (overlapping
-   CIs). If it lands clearly lower — plausible, since this lane has no gloss net — do NOT scale.
-   Options then: re-verify the sample with richer anchor evidence (it helps most exactly when
-   the target has no gloss), restrict to a tighter slice (higher support) and re-measure, or
-   fall back to human-confirm-per-edit rather than a bot.
+1. ~~**Verify a sample first, not the pool.**~~ **DONE** — 240 random pairs (`verify.py --sample
+   240 --seed s1`; the draw matters, `--limit` takes the highest-support rows). $2.29, which
+   extrapolates to ~$110 for the full lane.
+2. ~~**Human-review the sample's "yes" rows.**~~ **DONE**, and widened: all 240 were adjudicated
+   blind to the verdict, so the verifier's own rejections are graded too. Recorded in
+   `notes/runs/senseless_sample.csv`, kept out of `config.DECISIONS` on purpose.
+3. **Gate to proceed: FAILED.** Reviewed precision is clearly below the monosemous stream on
+   non-overlapping CIs. Of the three fallbacks named here, the measurement settles two: a
+   **tighter slice is refuted** (precision is flat in support, not rising), and **richer anchor
+   evidence is not the first lever** — the anchor side already caught every homograph in the
+   sample. What it did surface is that two thirds of the loss is deterministic (a demonym triage
+   inversion and gloss selection), so those come first and the model levers stay in reserve.
+   Human-confirm-per-edit remains the honest fallback if the number won't move.
 4. **A first batch of live edits**, hand-approved, in its **own EditGroups batch** (so the
    sense-creation class can be reverted separately from statement-adds). Inspect the on-wiki
    rendering of the created senses (gloss display, Ordia).
