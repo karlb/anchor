@@ -191,6 +191,16 @@ def build_edit(row, today, include_senseless, it):
     if n_senses == 1:
         sense = {"id": f"<{lid}-S? resolved live>", "claims": {"P5137": [claim]}}
         return {"senses": [sense]}, "add to existing sense"
+    if n_senses >= 2:
+        # MATCH on a polysemous target: the action is "write to ONE of the existing senses",
+        # and which one is not decidable here — it is the per-sense assignment, and it has to
+        # be the sid the human actually approved. Until that is threaded through, refuse.
+        # This branch used to fall into the sense-CREATION path below, because that path
+        # gated on the --include-senseless FLAG rather than on the sense count: a polysemous
+        # approved row would have created a brand-new sense on a lexeme that already has
+        # some — the `create_add` action the design records and refuses to write. Unreachable
+        # before the poly review lane existed; reachable the moment it does.
+        return None, f"skipped: polysemous target ({n_senses} senses) — no write path yet"
     if include_senseless:
         glosses = anchor_gloss(it, qid, lang, lemma)  # descriptions only, never the headword
         if not glosses:  # no CC0 description in ANY language -> nothing that defines the sense
