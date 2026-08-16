@@ -48,7 +48,7 @@ CREATE TABLE IF NOT EXISTS item_alias_fetched(qid TEXT PRIMARY KEY);
 
 
 def needed_qids(cache):
-    """Distinct anchor Q-ids of both review lanes, not yet fetched.
+    """Distinct anchor Q-ids of every review lane, not yet fetched.
 
     This is the +multi verifier's universe — every anchor it will score needs its all-language
     concept, because item_lang is now the ONLY concept the grader reads (no de/en/sv fallback).
@@ -64,7 +64,13 @@ def needed_qids(cache):
     when BOTH labels/descriptions AND aliases are cached, so a cache built before aliases were
     added self-heals: those anchors re-fetch once (labels rewritten idempotently)."""
     want = sorted({r[3] for r in verify.candidates(gate="ABD")}
-                  | {r[3] for r in verify.candidates(gate="AD", senseless_only=True)})
+                  | {r[3] for r in verify.candidates(gate="AD", senseless_only=True)}
+                  # AD --poly-only, the polysemous review lane. A lane missing from this union
+                  # is a dead end by construction — verify refuses to grade an anchor with no
+                  # item_lang, and this script reports "0 to fetch" for it however uncached it
+                  # is. That already cost a debugging round on the senseless lane and another
+                  # on the assign_eval gold pool; a third lane should not repeat it.
+                  | {r[3] for r in verify.candidates(gate="AD", poly_only=True)})
     lang_done = {r[0] for r in cache.execute("SELECT qid FROM item_lang_fetched")}
     alias_done = {r[0] for r in cache.execute("SELECT qid FROM item_alias_fetched")}
     done = lang_done & alias_done
