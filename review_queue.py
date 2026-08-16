@@ -1058,6 +1058,16 @@ class Handler(BaseHTTPRequestHandler):
         if action in ("approved", "rejected", "deferred"):
             row = next(iter(pool(key=(lid, qid))), None)
             decided = load_decisions()
+            # An approval in the poly lane approves a SENSE, and the log has no column for one:
+            # the only record of WHICH sense is the assignment cache, keyed by prompt_ver. So
+            # refuse to log an approval with no live assignment, or one the assigner abstained
+            # on. A row saying "approved" whose sense nobody can name is an ambiguous decision
+            # on an append-only log, and those are precisely the ones that cannot be repaired
+            # afterwards. Reject/defer stay allowed — neither ever reaches a write.
+            if row and action == "approved" and _lane() == "poly":
+                sid = assign.load({(lid, qid)}).get((lid, qid), (None, "", 0))[0]
+                if sid in (None, "none", "error", "out_of_range"):
+                    row = None
             if row and (lid, qid) not in decided:  # ignore replays / stale double-clicks
                 # row_lang, NOT lang: `lang` is the reviewer's active filter (hidden form
                 # field) and must survive to the redirect below
