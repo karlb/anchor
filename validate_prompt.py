@@ -230,6 +230,17 @@ def main():
     ok_catch = catch_rate >= args.catch_min
     print(f"\nCRITERION  keep >= {100 * args.keep_min:.0f}% · "
           f"write-lane catch >= {100 * args.catch_min:.0f}%")
+    # An empty denominator is NOT a failure. After a prompt change only the re-verified pairs
+    # carry a current-version verdict, so a gold row that hasn't been re-verified is out-of-scope
+    # on both sides — and `0/0 = 0.0%` used to print "FAIL (catch 0.0% — prompt misses known false
+    # positives)" about a prompt that had not been shown a single one of them. Same class of bug
+    # as counting a failed batch as a verdict: no evidence must never read as bad evidence.
+    if not ok_gradable or not catch_den:
+        missing = "confirmed-correct" if not ok_gradable else "human-rejected"
+        print(f"  VERDICT: NOT GRADABLE — no {missing} gold row has a verdict under this prompt "
+              f"(they are all out-of-scope, not failing). Re-verify the pool at this prompt, or "
+              f"point --decisions at a log whose pairs have been.")
+        return
     print(f"  VERDICT: {'PASS' if ok_keep and ok_catch else 'FAIL'}"
           + ("" if ok_keep else f"  (keep {100 * keep_rate:.1f}% — prompt too strict, hurts recall)")
           + ("" if ok_catch else f"  (catch {100 * catch_rate:.1f}% — prompt misses known false positives)"))
