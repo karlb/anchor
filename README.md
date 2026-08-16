@@ -220,15 +220,21 @@ work is measurement before conversation. Reasoning in `notes/sense_assignment_fi
    code substring-scrapes) is next, and (1) turned it from a tidiness argument into a correctness
    one: the scraped `_CONVENTION` list makes the senseless lane *keep* exactly the demonym pairs
    the monosemous lane defers.
-3. **Refine the lane against what (1) found, then re-measure.** The measured order is: the
-   demonym/ethnic-group split via a real `anchor_is_ethnic_group` field (largest class), gloss
-   selection (wrong-language and non-defining glosses), then — only if still short — the model
-   levers: richer anchor-side evidence, or an abstention-style question adapted to senseless
-   targets ("does the anchor correspond to a meaning this lemma actually has?"), which
-   discriminated sharply in the polysemous lane. The tighter-slice fallback is **refuted**;
-   precision is flat in support. Re-measurement is free: the sample's adjudications are a gold
-   set and the cache is additive —
+3. ~~**Refine the lane against what (1) found, then re-measure.**~~ **ONE ROUND DONE** — the
+   structured reply landed and the demonym/ethnic-group split now works without a gloss (verified
+   8/8 on the decisive pairs), and Russian senses can be glossed in Russian. Write-lane precision
+   moved 92.9% → 94.0%, still short of the monosemous stream. The re-measure's real finding is
+   methodological: at one sample per pair, the model's relation call moves ~6% of pairs between
+   runs, which is the same size as the fix — so **the next iteration needs a multi-sample vote**
+   before its headline means anything. Levers still unspent: richer anchor-side evidence, and an
+   abstention-style question adapted to senseless targets ("does the anchor correspond to a
+   meaning this lemma actually has?"), which discriminated sharply in the polysemous lane. The
+   tighter-slice fallback is **refuted** — precision is flat in support. Grading is free: the
+   sample's adjudications are a gold set and the cache is additive —
    `validate_prompt.py --decisions notes/runs/senseless_sample.csv --baseline-ver <old>`.
+   **Before the queue is whole again**, the pool needs re-verifying at the new prompt: consumers
+   read only the current version, so `review_queue.py status` currently sees just the re-verified
+   sample. ~$33 for the 3,451 cached pairs — not spent, and Karl's call.
 4. **Disclose sense creation on-wiki, then write.** In that order. Sense creation is already
    announced in the talk-page thread as in-progress with a promise to report back, and the
    public answer given there about homographs does not cover a lane with no gloss — so the post

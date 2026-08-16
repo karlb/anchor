@@ -94,15 +94,86 @@ Russian CC0 description available. That matters beyond tidiness: Russian is 17% 
 Karl does not read it, and the review capacity Infovarius offered on the talk page is the plan's
 answer for it.
 
+## Refinement, and what re-measuring it showed (same day)
+
+The structured verifier reply landed (`notes/redo.md` #3 — `relation` +
+`gendered_form` + `demonym` + `anchor_is_ethnic_group`, serialised as
+`<REL>·<tag>·<tag>: prose`) and the same 240 pairs were re-verified under it, prompt
+`32e24a6f`, $2.91. Graded against the adjudications above.
+
+|                            | prose `59d6f472` | structured `32e24a6f` | monosemous |
+| -------------------------- | ---------------- | --------------------- | ---------- |
+| write-lane precision       | 171/184 = 92.9%  | **172/183 = 94.0%**   | 98.8%      |
+| 95% CI                     | [88.3, 95.8]     | [89.6, 96.6]          | [97.2, 99.5] |
+
+`validate_prompt.py --decisions notes/runs/senseless_sample.csv --baseline-ver 59d6f472`
+on the new prompt: **keep 182/182 = 100%**, **write-lane catch 24/24 = 100%**, PASS.
+
+**The mechanism works and is verified.** Probed directly on the eight decisive pairs, the
+demonym split is 8/8: Lappin, Zigeunerin, Polynesier, aztek and pariah all defer;
+US-Amerikanerin, иранка and малайзиец all keep. In the full run, four pairs changed action
+*because a flag was set*, and all four were correct.
+
+**But the aggregate barely moved, and that is the more useful finding.** Twenty pairs changed
+action between the two runs. Decomposed by whether the structured fields were involved:
+
+| rows | changes | correct | wrong |
+| ---- | ------- | ------- | ----- |
+| flag-carrying (`·gendered`, `·demonym`, `·ethnic-anchor`) | 4 | 4 | 0 |
+| plain (no flag set) | 16 | 7 | 8 (+1 neutral) |
+
+So the fix contributed only wins, and everything else is **run-to-run variance in the model's
+relation call** — symmetric, and the same size as the fix. Holding the relations fixed and
+changing only the triage, the demonym fix alone is worth 171/184 → 171/179 = 95.5%
+[91.4, 97.7]; the observed 94.0% is that minus the noise that happened to land the other way
+(Emblem, Jagdfalke, Nachahmung, сокровище, дьяволопоклонничество all went EQUAL → BROADER or
+INCOHERENT on re-run, with no flag involved).
+
+**This is the `rigorous-method-retesting` rule biting.** A single sample per pair cannot resolve
+a ~2pp effect when the relation call alone moves ~6% of pairs between runs. Any further prompt
+iteration on this lane needs a multi-sample vote before its aggregate is read as a result — the
+decomposition above, not the headline, is what made this run interpretable.
+
+**Still missing the gate**: 94.0% [89.6, 96.6] against 98.8% [97.2, 99.5], CIs still disjoint.
+
+### The other loss class: gloss quality, partly addressed
+
+- **Russian glosses — FIXED.** `anchor_gloss` now reaches the target language even when it is
+  outside `CONCEPT_LANGS_DISPLAY` (`review_queue.display_spec`). 1,370 of the lane's 1,895
+  Russian pairs now get a Russian gloss instead of an English one; no other language's gloss
+  choice moves, and the verifier's own concept spec was deliberately not touched.
+- **Gloss in a third language only — MEASURED AND DECLINED.** Holding rows whose sense could
+  only be glossed in neither the target language nor English would have caught Ideologin (sv
+  gloss on a German lexeme) and förbundskansler (German, feminine-specific, on a Swedish one) —
+  2 of the sample's 13 losses. But the class is **36 of 11,371 pairs, 0.3% of the lane** (the
+  sample over-represents it at 0.8%), so its real effect is ~0.3pp, and the precedent on
+  rare-class automation is to leave it. Recorded so it is not re-proposed without the number.
+- **Non-defining glosses** (`Differenz` → "philosophischer Fachausdruck") and
+  **person-vs-activity** (`Hafenarbeiter`, whose anchor description defines the occupation, not
+  the worker) are left open. Neither has a deterministic test that does not also fire on
+  terse-but-real glosses like "Musikinstrument", which are fine.
+
 ## What this says to do
 
-1. **Not scale, and not write from this lane yet** — the gate is not met on the number that
-   was specified in advance.
-2. **Fix the two deterministic classes first** (9 of the 13 losses). Neither needs a better
-   model: one is a triage inversion, one is gloss selection.
-3. **Then re-measure against this same sample.** The adjudications above are now a gold set for
-   this lane, and the verdict cache is additive, so any prompt revision is graded free:
+1. **Not scale, and not write from this lane yet** — the gate is not met, before or after the
+   refinement.
+2. ~~Fix the deterministic classes~~ **DONE for the two that were worth it** (the demonym triage
+   inversion, and Russian glosses). The third was measured and declined as too rare.
+3. ~~Re-measure~~ **DONE**, and it produced a methodological result rather than a precision one:
+   at one sample per pair, relation-call variance is the same size as the fix. **The next prompt
+   iteration on this lane must use a multi-sample vote**, or its headline will again be
+   uninterpretable. Grading itself stays free —
    `validate_prompt.py --decisions notes/runs/senseless_sample.csv --baseline-ver <old>`.
-4. The residual 4 genuine scope over-links are the part that actually needs the model to get
-   better, and they are ~2% of the write lane. Whether that is worth a prompt iteration is a
-   decision to make *after* the deterministic 9 are gone and the number is re-measured.
+4. The residual genuine scope over-links (`Leguan` → the genus, `fluff`, `gullet`, `borgare`) are
+   the part that needs the model to get better. They are ~2% of the write lane, which is below
+   the noise floor of the measurement design used so far — another reason the next iteration
+   needs multi-sample voting before it can claim anything.
+5. **Two gates now disagree, and that is a decision for Karl, not for the code.** The plan's gate
+   (precision comparable to the monosemous stream) says stop. `calibrate.py`'s pinned
+   auto-approve gate — ≤2% human-rejected AND ≥80% approved — reads
+   `EQUAL → AUTO-APPROVE (safe 100%, appr 95%)` on this very sample, because every loss in this
+   lane is a *defer* and none is a wrong write. The two gates measure different risks: "is this
+   as good as the lane we already trust" versus "would auto-approving it write something wrong".
+   Nothing should auto-approve here on the strength of a 240-pair sample adjudicated by one
+   reviewer, but the disagreement is real and worth resolving deliberately rather than by
+   whichever instrument gets run first.
