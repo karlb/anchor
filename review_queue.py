@@ -29,6 +29,7 @@ import sqlite3
 import urllib.parse
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
+import assign
 import config
 import gates
 
@@ -47,6 +48,10 @@ LANE = "mono"
 LANE_N_SENSES = {"mono": 1, "senseless": 0, "poly": "poly"}
 
 
+LANE_TITLE = {"mono": "", "senseless": " — senseless (creating first sense)",
+              "poly": " — polysemous (matching one of several senses)"}
+LANE_COL = {"mono": "(its CC0 sense gloss)", "senseless": "(sense to CREATE)",
+            "poly": "(which sense to MATCH)"}
 LANE_BANNER = {
     "mono": "",
     "senseless": "   [MODE: senseless — first-sense creation]",
@@ -818,6 +823,38 @@ def lang_selector(lang_counts, active):
     return "<p class=bar>lemma language: " + " · ".join(links) + "</p>"
 
 
+def sense_inventory(lid, lang, _cache={}):
+    """[(sid, gloss, taken_qid)] — EVERY recorded sense of the target lexeme, with the anchor
+    already sitting on it if there is one.
+
+    This is the poly lane's whole safety story. assign.py picks one sense at 93-95%, and the
+    ~9.5% it gets wrong it gets wrong by naming a DIFFERENT sense — which is invisible to a
+    reviewer shown only the chosen one, and obvious to a reviewer shown the alternatives.
+    So the inventory is not decoration: approving a poly row without it is approving a claim
+    nobody checked. Taken senses are marked because they are not writable targets (the free
+    -sense gate already excluded fully-linked lexemes, but a lexeme can be part-linked).
+    Cached per lexeme for the lifetime of the process — candidates/wikidata are immutable
+    while a server runs, the same premise polysemy_index and anchor_support_index rely on."""
+    if lid in _cache:
+        return _cache[lid]
+    cn = sqlite3.connect("file:" + config.WIKIDATA + "?mode=ro", uri=True)
+    by = {}
+    for sid, lg, gloss in cn.execute(
+            "SELECT sid, lang, gloss FROM sense_gloss WHERE lid = ?", [lid]):
+        by.setdefault(sid, {})[lg] = gloss
+    taken = dict(cn.execute("SELECT sid, qid FROM sense_item WHERE lid = ?", [lid]))
+    all_sids = [r[0] for r in cn.execute("SELECT sid FROM sense WHERE lid = ?", [lid])]
+    cn.close()
+    out = []
+    for sid in sorted(set(all_sids) | set(by)):
+        g = by.get(sid, {})
+        text = next((g[c] for c in (lang, "en", "de", "sv") if g.get(c)),
+                    next(iter(g.values()), ""))
+        out.append((sid, text, taken.get(sid)))
+    _cache[lid] = out
+    return out
+
+
 def render(limit, lang_filter=None, lane=None):
     lane = _lane(lane)
     senseless = lane == "senseless"
@@ -840,6 +877,9 @@ def render(limit, lang_filter=None, lane=None):
     # flag, computed once per row and reused by both the sort below and the render loop.
     poly_idx = polysemy_index(cand)
     sup = anchor_support_index()   # neutral: how many distinct lexemes anchor each pair
+    # The poly lane's per-sense advisory. Read-only and never a decision: a row with no
+    # assignment renders as "not assigned yet" rather than defaulting to some sense.
+    assigned = assign.load({(r[0], r[1]) for r in rows}) if lane == "poly" else {}
     meta = {}
     for r in rows:
         gl, glang, _ad = ctx.get((r[0], r[1]), ("", None, ""))
@@ -917,6 +957,32 @@ def render(limit, lang_filter=None, lane=None):
             if lid_counts[lid] > 1:
                 gloss_html += (f"<div class=multi>⚠ this lexeme has {lid_counts[lid]} candidate "
                                "senses in the queue — approve/prune them as one inventory</div>")
+        elif lane == "poly":
+            inv = sense_inventory(lid, lang)
+            sid, why, n_off = assigned.get((lid, qid), (None, "", 0))
+            if sid is None:
+                gloss_html = ("<span class=noassign>no per-sense assignment yet — run "
+                              "<code>assign.py</code> before deciding this row</span>")
+            elif sid in ("none", "error", "out_of_range"):
+                gloss_html = ("<span class=noassign>⚠ no sense fits: the assigner read all "
+                              f"{n_off} glosses and abstained. Measured, it abstains on 1% of "
+                              "answerable rows and 60% of unanswerable ones, so this is "
+                              "evidence the sense is MISSING from Wikidata — do not approve; "
+                              "the lexeme may need a new sense instead.</span>")
+            else:
+                gloss_html = (f"<span class=match>will MATCH sense {html.escape(sid)}</span>"
+                              + (f" <span class=d>— {html.escape(why)}</span>" if why else ""))
+            rowsi = []
+            for s_id, s_gl, s_taken in inv:
+                mark = "›" if s_id == sid else "&nbsp;"
+                cls = " class=chosen" if s_id == sid else ""
+                tk = (f" <span class=taken>[already linked to {html.escape(s_taken)}]</span>" if s_taken else "")
+                rowsi.append(f"<div{cls}>{mark} <b>{html.escape(s_id)}</b> "
+                             f"“{html.escape(s_gl or '')}”{tk}</div>")
+            gloss_html += ("<div class=inv>" + "".join(rowsi)
+                           + "<div class=d>the whole inventory is shown because a wrong "
+                             "assignment is a wrong SENSE, not a wrong lexeme — check the "
+                             "alternatives before approving</div></div>")
         else:
             gtag = f" [{glang}]" if glang and glang != lang else ""
             gloss_html = f"“{html.escape(gl)}”{gtag}" if gl else "<i>(no sense gloss)</i>"
@@ -956,10 +1022,13 @@ button{{font-size:.85rem;padding:3px 8px;cursor:pointer;border:1px solid #ccc;bo
 .akahit,.sole{{margin-top:3px;color:#36c;font-size:.78rem}}
 .poly{{margin-top:3px;color:#a60;font-size:.78rem}}
 .create{{color:#197a19;font-weight:600;font-size:.82rem}} .multi{{margin-top:3px;color:#a60;font-size:.78rem}}
+.match{{color:#197a19;font-weight:600;font-size:.82rem}} .noassign{{color:#b00;font-weight:600;font-size:.8rem}}
+.inv{{margin-top:5px;border-left:2px solid #ddd;padding-left:7px;font-size:.8rem;color:#555}}
+.inv .chosen{{color:#197a19;font-weight:600}} .taken{{color:#999}}
 .bar{{margin:.4rem 0 1rem}} .lsel{{padding:1px 4px;border-radius:3px}} .lsel.sel{{background:#eef;font-weight:700;color:#000}}</style>
-<h2>P5137 review queue{" — senseless (creating first sense)" if senseless else ""}</h2><p class=d>{head} — showing up to {limit} pending</p>
+<h2>P5137 review queue{LANE_TITLE[lane]}</h2><p class=d>{head} — showing up to {limit} pending</p>
 {lang_selector(lang_counts, lang_filter)}
-<table><tr><th>lang</th><th>lemma → Lexeme<br>{"(sense to CREATE)" if senseless else "(its CC0 sense gloss)"}</th><th>anchor concept (CC0)</th><th>scope</th><th>verifier reason</th><th></th></tr>
+<table><tr><th>lang</th><th>lemma → Lexeme<br>{LANE_COL[lane]}</th><th>anchor concept (CC0)</th><th>scope</th><th>verifier reason</th><th></th></tr>
 {chr(10).join(trs) or '<tr><td colspan=6>nothing pending 🎉</td></tr>'}</table>"""
 
 
