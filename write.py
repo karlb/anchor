@@ -84,6 +84,97 @@ def build_statement(anchor_qid, today):
     }
 
 
+# ---- duplicate-sense preflight (senseless multi-item groups only) -----------
+# A senseless lexeme with 2-4 approved anchors becomes ONE edit creating a sense each. Nothing
+# below the human checks that two of those anchors don't denote the SAME sense — and if they do,
+# we don't merely mislink, we CREATE a redundant sense pair on a lexeme that had none. Wikidata's
+# lexeme data is already full of those: in the assign_eval `absent` arm, deleting the linked sense
+# still left a near-equivalent survivor in at least 51 of 200 polysemous lexemes (>=25%), which is
+# the pile this lane could add to. Structural priors do not see it (only 1 of the 319 same-lexeme
+# pairs co-occurs on any other lexeme's sense) and neither does gloss overlap (it scored the
+# odontology near-duplicate at 0.06), so it takes a read of the two glosses.
+#
+# Deliberately LAZY: it runs at edit-build time on multi-sense CREATE groups only, so its cost
+# scales with real usage rather than with the 283 lexemes that merely *could* become groups —
+# 11,371 senseless candidates are gated but only 394 verified, and not one of the 283 currently
+# has two verifier-'yes' anchors. Verdicts are cached in config.VERIFY, so a repeated --dry-run
+# is free. There is no override flag, matching the monosemous "competing anchors" skip directly
+# above the call: a flagged group is a human call, resolved by rejecting one of the anchors.
+DUP_MODEL = "sonnet"
+DUP_SYSTEM = (
+    "You are checking a proposed dictionary entry for REDUNDANT senses before it is written.\n"
+    "You get one word and several numbered concepts. Each concept would become its own new "
+    "sense of that word, glossed with the text shown. Two concepts are REDUNDANT when they "
+    "denote the same sense of the word — a reader would not accept them as two separate "
+    "senses, only as two wordings of one.\n"
+    "Judge the MEANING, not the wording: different languages, different length and different "
+    "phrasing are all normal ('a science dealing with the teeth' and 'the science of "
+    "dentistry' are ONE sense). Genuinely distinct senses stay distinct even when related — "
+    "an institution and its building, a material and the tissue it comes from, a taxon and a "
+    "member of it are all TWO senses.\n"
+    "For each concept i report same_as = the SMALLEST number that denotes the same sense as i "
+    "(same_as = i when no earlier concept means what i means). Concept 1 always has "
+    "same_as = 1.\n"
+    'Reply ONLY with a JSON array: [{"i":1,"same_as":1,"reason":"<=10 words"}, ...] — one '
+    "object per concept, no prose."
+)
+DUP_PROMPT_VER = __import__("hashlib").sha1(DUP_SYSTEM.encode()).hexdigest()[:8]
+
+
+def _dup_cached(vf, lid, qids):
+    vf.execute("CREATE TABLE IF NOT EXISTS sense_dup(lid TEXT, qids TEXT, prompt_ver TEXT, "
+               "same_as TEXT, reason TEXT, PRIMARY KEY (lid, qids, prompt_ver)) WITHOUT ROWID")
+    r = vf.execute("SELECT same_as, reason FROM sense_dup WHERE lid=? AND qids=? AND prompt_ver=?",
+                   [lid, ",".join(qids), DUP_PROMPT_VER]).fetchone()
+    return r
+
+
+def duplicate_groups(lid, lang, lemma, senses, it):
+    """[[qid, qid, ...], ...] anchors in this CREATE group that denote the same sense; [] if all
+    distinct. Compares the exact gloss text the edit would write, so what is judged is what
+    would be published."""
+    import llm                                    # only this path needs the LLM
+    qids = [sense_anchor(s) for s in senses]
+    vf = sqlite3.connect(config.VERIFY)
+    hit = _dup_cached(vf, lid, qids)
+    if hit:
+        same_as, _reason = hit
+        same = [int(x) for x in same_as.split(",")]
+    else:
+        lines = []
+        for n, s in enumerate(senses, 1):
+            gl = "; ".join(f"[{g}] {v['value']}" for g, v in sorted(s["glosses"].items()))
+            lab = (it.execute("SELECT coalesce(label_en, label_de, label_sv) FROM item WHERE qid=?",
+                              [sense_anchor(s)]).fetchone() or [""])[0] or ""
+            lines.append(f'{n}. concept {sense_anchor(s)} "{lab}" — gloss to write: {gl}')
+        prompt = (f'word: language={config.LANGNAME.get(lang, lang)} noun="{lemma}"\n'
+                  "concepts:\n" + "\n".join(lines))
+        try:
+            ans = llm.batch_json(DUP_SYSTEM, prompt, DUP_MODEL, len(senses),
+                                 {"same_as": None, "reason": ""})
+        except Exception as e:  # noqa: BLE001 — an unreachable model must not silently pass a group
+            print(f"# SKIP Lexeme:{lid} — duplicate-sense preflight failed ({e}); "
+                  "not writing a multi-sense inventory unchecked")
+            vf.close()
+            return [qids]
+        same = []
+        for n, a in enumerate(ans, 1):
+            try:
+                v = int(a.get("same_as"))
+            except (TypeError, ValueError):
+                v = n                              # unparseable -> treat as its own sense
+            same.append(v if 1 <= v <= n else n)
+        vf.execute("INSERT OR REPLACE INTO sense_dup VALUES (?,?,?,?,?)",
+                   [lid, ",".join(qids), DUP_PROMPT_VER, ",".join(map(str, same)),
+                    "; ".join(str(a.get("reason", ""))[:60] for a in ans)])
+        vf.commit()
+    vf.close()
+    by = {}
+    for n, root in enumerate(same, 1):
+        by.setdefault(root, []).append(qids[n - 1])
+    return [g for g in by.values() if len(g) > 1]
+
+
 def build_edit(row, today, include_senseless, it):
     """Return (wbeditentity_data, note) for one approved candidate.
 
@@ -360,7 +451,11 @@ def main():
         if len(edits) >= args.limit:
             break
         senses = []
+        last = None
         for row in group:
+            # Any row of the group carries the group's lemma/lang (same lid ⇒ same both),
+            # which the duplicate-sense preflight below needs to phrase its question.
+            last = row
             data, note = build_edit(row, today, args.include_senseless, it)
             print(f"# {row[3]} {row[2]!r}  Lexeme:{lid} → {row[1]}   [{note}]")
             if data is not None:
@@ -378,6 +473,16 @@ def main():
                   f"{[sense_anchor(s) for s in senses]} compete for one monosemous sense; "
                   f"keep exactly one approved")
             continue
+        # Creating several senses at once is the one edit shape that can INVENT a redundant
+        # sense pair, so it is the one shape that gets read before it goes out.
+        if len(senses) > 1 and "add" in senses[0]:
+            dups = duplicate_groups(lid, last[3], last[2], senses, it)
+            if dups:
+                print(f"# SKIP Lexeme:{lid} — duplicate-sense preflight: "
+                      + "; ".join("+".join(g) + " denote the same sense" for g in dups)
+                      + "; creating these as separate senses would add a redundant pair — "
+                        "reject all but one of each group, then re-run")
+                continue
         edits.append((lid, {"senses": senses}))
 
     for lid, data in edits:
