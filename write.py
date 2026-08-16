@@ -364,8 +364,14 @@ def resolve_sense(opener, lid):
 
 
 def submit(opener, csrf, lid, data, summary):
+    # No "bot" key. API booleans are presence-checked, so *any* value — "0" included —
+    # marks the edit as a bot edit; omitting the key is the only way to say false. Inert
+    # today because the account lacks the `bot` right, but the BRFA that grants it would
+    # silently hide every edit from Recent Changes, which is the last place this pilot
+    # wants to disappear from. Re-add as "bot": "1" only as a deliberate call.
+    #                   "bot": "0",
     res = _api(opener, {"action": "wbeditentity", "id": lid, "data": json.dumps(data),
-                        "summary": summary, "token": csrf, "maxlag": "5", "bot": "0"},
+                        "summary": summary, "token": csrf, "maxlag": "5"},
                post=True)
     if "error" in res:
         raise RuntimeError(res["error"].get("info", str(res["error"])))
