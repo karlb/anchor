@@ -108,14 +108,38 @@ def quotas(keys, total):
     langs = sorted(by_lang)
     floor = max(1, min(MIN_PER_LANG, total // max(1, len(langs))))
     n_lang = {lg: min(floor, by_lang[lg]) for lg in langs}
+    # The floor is `max(1, ...)`, so it hands every language a row even when the stratum is
+    # smaller than the language count — 4 languages in a 3-row stratum already overruns, and
+    # nothing downstream trims it (`left` goes negative and every later loop is guarded on
+    # > 0). Give the rows back from the currently-largest language each round, which is the
+    # one order that preserves what the floor is FOR: not crowding out the small languages.
+    over = sum(n_lang.values()) - total
+    while over > 0 and any(n_lang.values()):
+        for lg in sorted(langs, key=lambda l: (-n_lang[l], l)):
+            if over <= 0:
+                break
+            if n_lang[lg] > 0:
+                n_lang[lg] -= 1
+                over -= 1
     left = total - sum(n_lang.values())
     room = {lg: by_lang[lg] - n_lang[lg] for lg in langs}
     total_room = sum(room.values())
-    for lg in langs:                       # largest-remainder, deterministic on sorted langs
-        if left <= 0 or not total_room:
-            break
-        take = min(room[lg], round(left * room[lg] / total_room))
-        n_lang[lg] += take
+    # Largest remainder, deterministic on sorted langs. Shares are FLOORED and the leftover
+    # handed out by fractional part: rounding each share independently (what this did) lets the
+    # takes sum PAST `left`, so the stratum overruns its own target — it fires on ~11% of
+    # randomly shaped pools, and the sheet then holds more rows than the quota it reports.
+    if left > 0 and total_room:
+        share = {lg: left * room[lg] / total_room for lg in langs}
+        take = {lg: min(room[lg], int(share[lg])) for lg in langs}
+        rem = left - sum(take.values())
+        for lg in sorted(langs, key=lambda l: (-(share[l] - int(share[l])), l)):
+            if rem <= 0:
+                break
+            if take[lg] < room[lg]:
+                take[lg] += 1
+                rem -= 1
+        for lg in langs:
+            n_lang[lg] += take[lg]
     short = total - sum(n_lang.values())
     for lg in sorted(langs, key=lambda l: (-room[l], l)):
         while short > 0 and n_lang[lg] < by_lang[lg]:
@@ -284,8 +308,11 @@ def render(rows, interactive=False):
                 f"<form method=post action=/act><input type=hidden name=lid value='{lid}'>"
                 f"<input type=hidden name=action value='{act}'><button>{label}</button></form>"
                 for act, label in (("none", "none fit"), ("clear", "reset")))
+        # Same-quote nesting inside an f-string is PEP 701 (Python 3.12); pyproject declares
+        # requires-python >=3.11, where it is a SyntaxError at import time.
+        done_cls = " done" if complete and interactive else ""
         blocks.append(
-            f"<div class='lx{" done" if complete and interactive else ""}'>"
+            f"<div class='lx{done_cls}'>"
             f"<div class=hd>{html.escape(lemma)} "
             f"<span class=d>({lang}) {lid} · {rs[0]['stratum']} · {len(rs)} candidates</span>"
             f"</div><div class=gl>{html.escape(rs[0]['sense_gloss'])}</div>"
