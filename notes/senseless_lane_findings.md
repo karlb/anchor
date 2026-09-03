@@ -286,3 +286,51 @@ and the two prompts disagree about writing them (101 defer→keep, 85 keep→def
 blind sample of *those* — no LLM calls, both answers cached — is the only unconfounded head-to-head
 available, and grading disagreements only is high-signal: ~50 pairs separates a real 4pp effect
 that 681 confounded decisions cannot.
+
+### The blind head-to-head settles it: keep the structured prompt
+
+*2026-09-03. $0 in LLM calls — both verdicts were already cached.*
+
+The population is every undecided pair in the gated pool (all three lanes) that both prompts
+call 'yes' but triage differently: **146 pairs** (the earlier "186" counted cache rows outside
+the current gates). Adjudicated one by one, sorted by (language, lemma), against what the review
+UI shows — anchor CC0 label/description per display language, the target's sense inventory with
+the assigned sense marked (poly), or the gloss that would be created (senseless) — and blind to
+both verdicts and to which prompt keeps. Same rubric and same adjudicator as the 240-pair sample.
+Recorded in `notes/runs/disagree_sample.csv` (decisions-shaped, `reviewer=claude/measurement`,
+not `config.DECISIONS`).
+
+Every pair has exactly one prompt saying *write*, so each adjudication names a winner:
+
+| | n | prose right | structured right |
+|---|---|---|---|
+| **all** | 146 | 55 | **91** |
+| mono | 53 | 27 | 26 |
+| poly | 44 | 13 | **31** |
+| senseless | 49 | 15 | **34** |
+| structured holds what prose wrote | 79 | 19 | **60** |
+| structured writes what prose held | 67 | **36** | 31 |
+
+Two-sided sign test p = 0.004. Of what each prompt would write from this set, prose is right
+19/79 = 24%, structured 31/67 = 46%.
+
+Reading by lane:
+- **mono is a tie**, exactly as the 119-case gold said. Structured's extra writes here are
+  8/20 right, its extra holds 18/33 right — the same noise-floor trade in both directions.
+- **poly is not a discrimination win.** 43 of the 44 disagreements should be held (11 are an
+  assigned sense that is *already linked*, the rest a missing or wrong free sense), and
+  structured simply holds more of them: 30/31 of its extra holds right, but 1/13 of its extra
+  writes. Neither prompt sees the sense inventory; `assign.py` and the taken-sense guard carry
+  that lane, not the verifier.
+- **senseless is the real win**, in both directions: structured's extra writes are 22/34 right,
+  its extra holds 12/15 — including the four demonym rows (Lappin, Polynesier, Zigeunerin,
+  aztek) held again blind. Which is what the change was built for.
+
+**Verdict: the decision-log regression was the benchmark, not the prompt.** On the only
+unconfounded head-to-head, structured is better on two lanes and equal on the live one.
+Keep `32e24a6f`. The 42 decided pairs that now disagree with the cache stay as they are: the
+log is the authority on decided pairs, and they never re-enter the queue.
+
+Still true either way: the disagreement set is where both prompts are at their worst (24% and
+46% keep-precision), so nothing here changes the auto-approve picture — these pairs are the
+review queue's job.
