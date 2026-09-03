@@ -101,6 +101,11 @@ LOG_COLS = ["ts", "target_lid", "anchor_qid", "target_lemma", "target_lang",
 # The statuses meaning "the human said the verifier-'yes' was correct" (write.py folds
 # 'written' into approval) — shared by the audit/validation consumers of the log.
 CONFIRMED = ("approved", "written")
+# `create` (poly lane only): the assigner abstained and the human says the lemma has this
+# meaning but no recorded sense — write.py's create_add action. Deliberately NOT in CONFIRMED
+# and not counted by calibrate/auto-defer: it says nothing about the MATCH action's precision.
+# assign.py's non-sense answers, the only state in which `create` is offered.
+ABSTAINED = ("none", "error", "out_of_range")
 
 
 def now():
@@ -237,8 +242,9 @@ def status(args):
     view = pending_view(LANE)
     decided, undecided, ctx, ad, vcache = view
     c = counts(view)
-    for s in ("pending", "auto_deferred", "approved", "deferred", "rejected", "written"):
-        print(f"  {s:<13} {c.get(s, 0):,}")
+    for s in ("pending", "auto_deferred", "approved", "create", "deferred", "rejected", "written"):
+        if s != "create" or c.get(s):
+            print(f"  {s:<13} {c.get(s, 0):,}")
     if c.get("auto_deferred"):
         print(f"  ↳ auto-deferred classes (≥85% not-written, hidden from review): "
               f"{', '.join(sorted(ad))} — a better prompt/approach re-surfaces them")
@@ -1006,6 +1012,7 @@ def render(limit, lang_filter=None, lane=None):
     for (lid, qid, lemma, lang, _ns, _v, reason, _m,
          _dde, _den, _dsv, n_clusters, *_rest) in rows[:limit]:
         gl, glang, n_poly_row = meta[(lid, qid)]
+        can_create = False   # poly rows where the assigner abstained offer "+ create sense"
         rel, sug, scls = scope_hint(reason, gl, ctx.get((lid, qid), ("", None, ""))[2])
         scope_html = (f"<span class=rel>{rel}</span><br><span class={scls}>{html.escape(sug)}</span>"
                       if sug else f"<span class=d>{rel.title()}</span>")
@@ -1050,12 +1057,24 @@ def render(limit, lang_filter=None, lane=None):
             if sid is None:
                 gloss_html = ("<span class=noassign>no per-sense assignment yet — run "
                               "<code>assign.py</code> before deciding this row</span>")
-            elif sid in ("none", "error", "out_of_range"):
+            elif sid in ABSTAINED:
+                # The abstention is the assigner's strongest signal (60:1), and it used to be
+                # a dead end: defer or reject. `create` records the third answer — the lemma
+                # HAS this meaning, Wikidata just has no sense for it yet — as the create_add
+                # action write.py builds under --include-senseless. Preview the gloss the new
+                # sense would get, as the senseless lane does: approval covers that text.
+                can_create = True
+                glosses = anchor_gloss(it, qid, lang, lemma)
+                parts = [f"[{g}] “{html.escape(t)}”" for g, t in
+                         sorted(glosses.items(), key=lambda kv: kv[0] != lang)]
                 gloss_html = ("<span class=noassign>⚠ no sense fits: the assigner read all "
                               f"{n_off} glosses and abstained. Measured, it abstains on 1% of "
                               "answerable rows and 60% of unanswerable ones, so this is "
                               "evidence the sense is MISSING from Wikidata — do not approve; "
-                              "the lexeme may need a new sense instead.</span>")
+                              "“+ create sense” instead if the lemma has this meaning.</span>"
+                              + ("<br><span class=create>would CREATE sense</span> gloss: "
+                                 + " · ".join(parts) if parts else
+                                 "<br><i>(no CC0 gloss source — a create would be skipped)</i>"))
             else:
                 gloss_html = (f"<span class=match>will MATCH sense {html.escape(sid)}</span>"
                               + (f" <span class=d>— {html.escape(why)}</span>" if why else ""))
@@ -1088,7 +1107,9 @@ def render(limit, lang_filter=None, lane=None):
                 f"<input type=hidden name=lang value='{html.escape(lang_filter or '')}'>"
                 f"<button name=action value=approved class=ok>✓ approve</button> "
                 f"<button name=action value=rejected class=no>✗ reject</button> "
-                f"<button name=action value=deferred class=hold>? defer</button></form>")
+                f"<button name=action value=deferred class=hold>? defer</button>"
+                + (" <button name=action value=create class=ok>+ create sense</button>"
+                   if can_create else "") + "</form>")
         trs.append(
             f"<tr><td class=lg>{html.escape(lang)}</td>"
             f"<td class=lm><a href='https://www.wikidata.org/wiki/Lexeme:{lid}' target=_blank>"
@@ -1142,7 +1163,7 @@ class Handler(BaseHTTPRequestHandler):
         qid = data.get("qid", [""])[0]
         action = data.get("action", [""])[0]
         lang = data.get("lang", [""])[0]
-        if action in ("approved", "rejected", "deferred"):
+        if action in ("approved", "rejected", "deferred", "create"):
             row = next(iter(pool(key=(lid, qid))), None)
             decided = load_decisions()
             # A poly decision is about a SENSE, so it records which one — target_sid, frozen
@@ -1153,10 +1174,14 @@ class Handler(BaseHTTPRequestHandler):
             target_sid = ""
             if row and _lane() == "poly":
                 sid = assign.load({(lid, qid)}).get((lid, qid), (None, "", 0))[0]
-                if sid not in (None, "none", "error", "out_of_range"):
+                if sid not in (None, *ABSTAINED):
                     target_sid = sid
+                    if action == "create":
+                        row = None   # create is only offered where no sense fits
                 elif action == "approved":
                     row = None       # an approval must name a sense; reject/defer need not
+            elif action == "create":
+                row = None           # the other lanes have no sense inventory to be missing from
             if row and (lid, qid) not in decided:  # ignore replays / stale double-clicks
                 # row_lang, NOT lang: `lang` is the reviewer's active filter (hidden form
                 # field) and must survive to the redirect below

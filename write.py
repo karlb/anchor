@@ -29,7 +29,10 @@ exactly one sense, and that sense must NOT already carry a P5137 (never override
 data); a polysemous target's approved sense must still EXIST and must likewise carry no
 P5137; a sense-creation target must still be senseless (zero live senses) — if any sense
 appeared since the dump (a prior run, or real senses) we skip and leave it for manual review,
-since a semantically-duplicate sense is a hazard the P5137-only check can't see.
+since a semantically-duplicate sense is a hazard the P5137-only check can't see. The one
+exception is a `create` decision (poly lane, assigner abstained, human confirmed the meaning
+is missing): that lexeme HAS senses by construction, so its guard is only that no live sense
+already carries this anchor — the human saw the whole inventory before choosing create.
 
 Senseless (--include-senseless) writes are lexeme-centric: all approved items for one lexeme
 are grouped into a single edit creating one sense each, so a multi-item lexeme's inventory is
@@ -205,9 +208,14 @@ def build_edit(row, today, include_senseless, it, include_poly=False):
     en gloss for legibility (review_queue.anchor_gloss, the SAME text the review UI
     previewed).
     `it` is the shared items-DB connection (opened once in main)."""
-    lid, qid, lemma, lang, n_senses, target_sid = row
+    lid, qid, lemma, lang, n_senses, target_sid, create = row
     claim = build_statement(qid, today)
 
+    if create and not include_senseless:
+        return None, (f"skipped: create a new sense on a {n_senses}-sense lexeme "
+                      "(sense creation; use --include-senseless)")
+    if create:
+        n_senses = 0      # take the sense-creation path below; the live guard knows better
     if n_senses == 1:
         # The placeholder is what marks this shape for write_edits: a monosemous target's
         # S-id is not known until the live lexeme is re-fetched, whereas a poly target's IS
@@ -264,12 +272,15 @@ def load_rows(args):
                 else "poly" if args.include_poly else "mono")
         import assign
         sids = assign.load() if lane == "poly" else {}
-        rows = [(*r[:5], sids.get((r[0], r[1]), ("",))[0] if lane == "poly" else "")
+        rows = [(*r[:5], sids.get((r[0], r[1]), ("",))[0] if lane == "poly" else "", False)
                 for r in pool(lane=lane)]
     else:
+        # `create` rows are the poly lane's create_add decisions: a new sense on a lexeme
+        # that already has some. build_edit routes them by the flag, never by n_senses.
         rows = [(d["target_lid"], d["anchor_qid"], d["target_lemma"], d["target_lang"],
-                 int(d["target_n_senses"]), (d.get("target_sid") or "").strip())
-                for d in load_decisions().values() if d["status"] == "approved"]
+                 int(d["target_n_senses"]), (d.get("target_sid") or "").strip(),
+                 d["status"] == "create")
+                for d in load_decisions().values() if d["status"] in ("approved", "create")]
     # Sorted so one lexeme's rows are contiguous (same lid ⇒ same lang+lemma), which is what
     # lets main() group and cap by lexeme in a single pass. --limit is NOT applied here: the
     # approved pool holds both lanes, and a plain run drops every senseless row at build time,
@@ -446,6 +457,15 @@ def write_edits(edits, max_per_min):
                     print(f"  skip {lid}: sense already has P5137 {p5137} (never override)")
                     continue
                 senses[0]["id"] = sid
+            elif any(decisions.get((lid, a), {}).get("status") == "create" for a in anchors):
+                # create_add: the human chose "create" over a live inventory, so senses are
+                # expected. The only stale state is this anchor already sitting on one of
+                # them (a prior run that died before logging, or another editor).
+                live = live_senses(opener, lid)
+                carried = {a for a in anchors for s in live if a in p5137_targets(s)}
+                if carried:
+                    print(f"  skip {lid}: a live sense already has P5137 → {sorted(carried)}")
+                    continue
             else:
                 # sense-creation: only ever CREATE a first sense on a still-senseless lexeme.
                 # If the live lexeme has ANY sense now (a prior run created it and died before
@@ -549,42 +569,49 @@ def main():
                 senses.extend(data["senses"])
         if not senses:
             continue
-        # A monosemous lexeme has exactly ONE live sense, so several approved anchors for it don't
-        # form an inventory — they all pile onto that one sense. Grouping them can't be written
-        # (there is a single live sense id to resolve, and the extra copies would go out carrying
-        # the unresolved placeholder), and writing several P5137 values on one sense would assert
-        # that the sense denotes each of them — exactly the pivot ambiguity gate A exists to keep
-        # out. Competing anchors are a human call: skip the lexeme, approve one and reject the rest.
-        kind = edit_kind(senses)
-        if kind == "mono" and len(senses) > 1:
-            print(f"# SKIP Lexeme:{lid} — {len(senses)} approved anchors "
-                  f"{[sense_anchor(s) for s in senses]} compete for one monosemous sense; "
-                  f"keep exactly one approved")
-            continue
-        if kind == "poly" and len(senses) > 1:
-            # Several approved anchors on one polysemous lexeme are FINE — that is the normal
-            # shape, one per sense, written as a single edit. What is not fine is two anchors
-            # approved onto the SAME sense: that asserts the sense denotes both, the pivot
-            # ambiguity gate A exists to keep out. Same human resolution as the monosemous
-            # case, but scoped to the colliding sense rather than the whole lexeme.
-            by_sid = collections.Counter(s["id"] for s in senses)
-            clash = {sid: n for sid, n in by_sid.items() if n > 1}
-            if clash:
-                print(f"# SKIP Lexeme:{lid} — {sorted(clash)} each have "
-                      f"{max(clash.values())} approved anchors competing for one sense; "
-                      f"keep exactly one approved per sense")
+        # A poly lexeme can carry a MATCH (approved sense) and a CREATE (abstained, human
+        # confirmed) in one group. They are different write shapes with different live guards,
+        # so they go out as two edits; edit_kind reads senses[0] and must never see a mix.
+        created = [s for s in senses if "add" in s]
+        groups = ([[s for s in senses if "add" not in s], created]
+                  if created and len(created) < len(senses) else [senses])
+        for senses in groups:
+            # A monosemous lexeme has exactly ONE live sense, so several approved anchors for it don't
+            # form an inventory — they all pile onto that one sense. Grouping them can't be written
+            # (there is a single live sense id to resolve, and the extra copies would go out carrying
+            # the unresolved placeholder), and writing several P5137 values on one sense would assert
+            # that the sense denotes each of them — exactly the pivot ambiguity gate A exists to keep
+            # out. Competing anchors are a human call: skip the lexeme, approve one and reject the rest.
+            kind = edit_kind(senses)
+            if kind == "mono" and len(senses) > 1:
+                print(f"# SKIP Lexeme:{lid} — {len(senses)} approved anchors "
+                      f"{[sense_anchor(s) for s in senses]} compete for one monosemous sense; "
+                      f"keep exactly one approved")
                 continue
-        # Creating several senses at once is the one edit shape that can INVENT a redundant
-        # sense pair, so it is the one shape that gets read before it goes out.
-        if len(senses) > 1 and kind == "create":
-            dups = duplicate_groups(lid, last[3], last[2], senses, it)
-            if dups:
-                print(f"# SKIP Lexeme:{lid} — duplicate-sense preflight: "
-                      + "; ".join("+".join(g) + " denote the same sense" for g in dups)
-                      + "; creating these as separate senses would add a redundant pair — "
-                        "reject all but one of each group, then re-run")
-                continue
-        edits.append((lid, {"senses": senses}))
+            if kind == "poly" and len(senses) > 1:
+                # Several approved anchors on one polysemous lexeme are FINE — that is the normal
+                # shape, one per sense, written as a single edit. What is not fine is two anchors
+                # approved onto the SAME sense: that asserts the sense denotes both, the pivot
+                # ambiguity gate A exists to keep out. Same human resolution as the monosemous
+                # case, but scoped to the colliding sense rather than the whole lexeme.
+                by_sid = collections.Counter(s["id"] for s in senses)
+                clash = {sid: n for sid, n in by_sid.items() if n > 1}
+                if clash:
+                    print(f"# SKIP Lexeme:{lid} — {sorted(clash)} each have "
+                          f"{max(clash.values())} approved anchors competing for one sense; "
+                          f"keep exactly one approved per sense")
+                    continue
+            # Creating several senses at once is the one edit shape that can INVENT a redundant
+            # sense pair, so it is the one shape that gets read before it goes out.
+            if len(senses) > 1 and kind == "create":
+                dups = duplicate_groups(lid, last[3], last[2], senses, it)
+                if dups:
+                    print(f"# SKIP Lexeme:{lid} — duplicate-sense preflight: "
+                          + "; ".join("+".join(g) + " denote the same sense" for g in dups)
+                          + "; creating these as separate senses would add a redundant pair — "
+                            "reject all but one of each group, then re-run")
+                    continue
+            edits.append((lid, {"senses": senses}))
 
     for lid, data in edits:
         n = len(data["senses"])
