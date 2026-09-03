@@ -108,7 +108,7 @@ decides what the edit does. `gates.py` asserts that the lanes partition the pool
 | **mono** | exactly one sense | add P5137 to that sense | *(default)* |
 | **poly** | several senses | add P5137 to the *assigned* sense (`assign.py`) | `--include-poly` |
 | **senseless** | no senses at all | create a first sense (CC0 gloss) + P5137 | `--include-senseless` |
-| poly, assigner abstained | several senses, none fits | reviewer clicks **+ create sense** → status `create` → a new sense (CC0 gloss) + P5137 | `--include-senseless` |
+| mono or poly, no recorded sense fits | the verifier saw the inventory and answered `none` (`MISSING` class) | reviewer clicks **+ create sense** → status `create` → a new sense (CC0 gloss) + P5137 | `--include-senseless` |
 
 The lanes are deliberately kept separate: a lane's measured precision must not be restated over
 a population nobody has reviewed. `review_queue.py`, `export_review.py`, `calibrate.py`,

@@ -487,6 +487,7 @@ HINTS = {
     "demonym-ethnic": ("defer", "defer? (demonym vs ethnic group)", "hold"),
     "convention":     ("keep", "keep? (demonym/gender convention)", "ok"),
     "scope":          ("defer", "defer? (scope mismatch)", "hold"),
+    "missing":        ("create", "create? (the noun has this meaning; no recorded sense does)", "ok"),
     "":               ("", "", ""),
 }
 
@@ -523,6 +524,8 @@ def scope_kind(reason, gloss=None, anchor_desc=None):
     path decides it from anchor_is_ethnic_group, which needs no gloss."""
     rel, tags = parse_reason(reason)
     if tags is not None:
+        if "missing-sense" in tags:     # no listed sense is this meaning: create, whatever the rel
+            return rel, "missing"
         if rel == "LATERAL":
             return rel, "lateral"
         if rel == "INCOHERENT":
@@ -685,6 +688,9 @@ REL_ACTION = {
     "demonym-ethnic": "defer",   # demonym lexeme vs an ethnic-group anchor: a contested keep → defer
     "BROADER": "defer", "NARROWER": "defer", "LATERAL": "defer", "INCOHERENT": "defer",
     "DIFFERENT": "reject",
+    # the verifier saw the sense inventory and said no listed sense is this meaning, but the
+    # noun has it: the create_add action (a new sense), never a write to an existing sense
+    "MISSING": "create",
 }
 
 
@@ -702,6 +708,8 @@ def rel_class(reason, gloss=None, anchor_desc=None):
     rel, kind = scope_kind(reason, gloss, anchor_desc)
     if rel not in KNOWN_RELS:
         return "(legacy, pre-REL)"
+    if kind == "missing":                          # inventory shown, no sense fits → create class
+        return "MISSING"
     if kind == "demonym-ethnic":                   # demonym→ethnic-group nudge → single defer class
         return "demonym-ethnic"
     if kind == "convention":
@@ -1093,6 +1101,19 @@ def render(limit, lang_filter=None, lane=None):
         else:
             gtag = f" [{glang}]" if glang and glang != lang else ""
             gloss_html = f"“{html.escape(gl)}”{gtag}" if gl else "<i>(no sense gloss)</i>"
+            if _rest[-1] in ABSTAINED:
+                # mono, and the verifier says the one recorded sense is NOT this meaning while
+                # the noun has it: same create_add offer as the poly lane, with the gloss preview
+                can_create = True
+                glosses = anchor_gloss(it, qid, lang, lemma)
+                parts = [f"[{g}] “{html.escape(t)}”" for g, t in
+                         sorted(glosses.items(), key=lambda kv: kv[0] != lang)]
+                gloss_html += ("<br><span class=noassign>⚠ the recorded sense is not this "
+                               "meaning — do not approve; “+ create sense” if the noun has it."
+                               "</span>"
+                               + ("<br><span class=create>would CREATE sense</span> gloss: "
+                                  + " · ".join(parts) if parts else
+                                  "<br><i>(no CC0 gloss source — a create would be skipped)</i>"))
         if n_poly_row:
             gloss_html += (f"<div class=poly>⚠ source word is polysemous ({n_poly_row} WikDict "
                            "senses collapse here) — S1 may be a minor sense, which is fine; "
@@ -1173,16 +1194,16 @@ class Handler(BaseHTTPRequestHandler):
             # approved, which on an append-only log is exactly the kind of damage that cannot
             # be repaired afterwards.
             target_sid = ""
-            if row and _lane() == "poly":
+            if row and _lane() in ("poly", "mono"):
                 sid = row[-1]      # the verifier's chosen sense, frozen into the log below
                 if sid not in (None, *ABSTAINED):
                     target_sid = sid
                     if action == "create":
                         row = None   # create is only offered where no sense fits
-                elif action == "approved":
+                elif action == "approved" and (sid is not None or _lane() == "poly"):
                     row = None       # an approval must name a sense; reject/defer need not
             elif action == "create":
-                row = None           # the other lanes have no sense inventory to be missing from
+                row = None           # senseless: nothing recorded for a sense to be missing from
             if row and (lid, qid) not in decided:  # ignore replays / stale double-clicks
                 # row_lang, NOT lang: `lang` is the reviewer's active filter (hidden form
                 # field) and must survive to the redirect below

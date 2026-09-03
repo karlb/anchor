@@ -71,8 +71,8 @@ MULTILINGUAL_GUIDE = (
 SYSTEM = (
     "You are a lexicographer auditing Wikidata P5137 sense links. For each item you are given a "
     "NOUN, its LANGUAGE, sometimes the word's own dictionary GLOSS (a short definition of the ONE "
-    "specific sense being linked) or, for a word with several recorded senses, its NUMBERED SENSES "
-    "with their glosses, and a candidate concept described by a Wikidata CC0 label and "
+    "specific sense being linked) or, for a word with recorded senses, its NUMBERED SENSES (one or "
+    "more) with their glosses, and a candidate concept described by a Wikidata CC0 label and "
     "description. "
     "Use the GLOSS as the primary signal for WHICH sense of the noun is meant. If no gloss is shown, "
     "or it is a bare one-word synonym or written in an unexpected language, fall back to judging from "
@@ -186,18 +186,25 @@ FLAG_TAG = {"gendered_form": "gendered", "demonym": "demonym",
             "anchor_is_ethnic_group": "ethnic-anchor"}
 
 
-def compose_reason(v):
+def compose_reason(v, offered=False):
     """'<REL>·<tags>: <prose>' from one structured verdict object.
 
     Falls back to the model's own reason when there is no relation field at all, which is what a
     parse failure or an older reply shape produces — those stay legacy-shaped and the triage layer
-    keeps scraping them, so a bad batch degrades to the old behaviour instead of to no relation."""
+    keeps scraping them, so a bad batch degrades to the old behaviour instead of to no relation.
+
+    `offered`: numbered senses were shown, so a "none" answer is meaningful and is tagged
+    ·missing-sense — the token the triage maps to the CREATE action (review_queue.REL_ACTION).
+    It rides in the reason, not only in target_sid, because every policy consumer (queue sort,
+    status precision, calibrate, auto-defer) reads the reason head and none reads the sid."""
     rel = (v.get("relation") or "").strip().upper()
     prose = " ".join((v.get("reason") or "").split())
     if not rel:
         return prose
-    tags = [t for f, t in FLAG_TAG.items() if v.get(f) is True] or ["plain"]
-    return "·".join([rel] + tags) + ": " + prose
+    tags = [t for f, t in FLAG_TAG.items() if v.get(f) is True]
+    if offered and rel != "DIFFERENT" and str(v.get("sense")).strip().lower() == "none":
+        tags.append("missing-sense")     # DIFFERENT + none is an unrelated concept, not a gap
+    return "·".join([rel] + (tags or ["plain"])) + ": " + prose
 
 
 # Fingerprint of the prompt: a changed SYSTEM yields a new PROMPT_VER, and every read filters on
@@ -459,11 +466,12 @@ def load_glosses(lids):
 
 
 def load_senses(lids):
-    """{lid: [(sid, gloss)]} for POLYSEMOUS lexemes — the numbered inventory the verifier is
-    shown so it can say WHICH sense the concept belongs to, or 'none'. Same offer as assign.py
-    made (target language preferred, unglossed senses dropped, stable sid order), so the
-    measured 93-95% pick / 60:1 abstention numbers transfer as a prior. Lexemes with fewer
-    than two glossed senses are omitted: nothing to choose between."""
+    """{lid: {sid: {lang: gloss}}} for every lexeme WITH senses — the numbered inventory the
+    verifier is shown so it can say WHICH sense the concept belongs to, or 'none'. Same offer as
+    assign.py made (target language preferred, unglossed senses dropped, stable sid order), so
+    the measured 93-95% pick / 60:1 abstention numbers transfer as a prior. A monosemous lexeme
+    is a one-item list: 'none' there means its one recorded sense is not this meaning but the
+    noun has it — the create_add signal the single-gloss format could not express."""
     out = {}
     if not lids:
         return out
@@ -477,10 +485,7 @@ def load_senses(lids):
                 % ",".join("?" * len(chunk)), chunk):
             by_lid.setdefault(lid, {}).setdefault(sid, {})[lang] = gloss
     wd.close()
-    for lid, senses in by_lid.items():
-        if len(senses) >= 2:
-            out[lid] = senses
-    return out
+    return by_lid
 
 
 def offered_senses(smap, lid, lang):
@@ -492,7 +497,7 @@ def offered_senses(smap, lid, lang):
                     next(iter(g.values()), ""))
         if text:
             out.append((sid, text))
-    return out if len(out) >= 2 else []
+    return out
 
 
 def sense_shape(lids):
@@ -664,8 +669,8 @@ def main():
             lid, lang, lemma, qid = row[0], row[1], row[2], row[3]
             verdict = v.get("verdict", "parse_error")
             counts[verdict] = counts.get(verdict, 0) + 1
-            recs.append((lid, qid, lemma, lang, verdict, compose_reason(v), args.model,
-                         PROMPT_VER, parse_sense(v.get("sense"), sen)))
+            recs.append((lid, qid, lemma, lang, verdict, compose_reason(v, bool(sen)),
+                         args.model, PROMPT_VER, parse_sense(v.get("sense"), sen)))
         out.executemany(
             "INSERT OR REPLACE INTO verdict (target_lid, anchor_qid, target_lemma, target_lang, "
             "verdict, reason, model, prompt_ver, target_sid) VALUES (?,?,?,?,?,?,?,?,?)", recs)
