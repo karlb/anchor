@@ -1077,9 +1077,9 @@ def render(limit, lang_filter=None, lane=None):
                 parts = [f"[{g}] “{html.escape(t)}”" for g, t in
                          sorted(glosses.items(), key=lambda kv: kv[0] != lang)]
                 gloss_html = ("<span class=noassign>⚠ no sense fits: the verifier read all "
-                              f"{n_off} glosses and abstained. Measured, it abstains on 1% of "
-                              "answerable rows and 60% of unanswerable ones, so this is "
-                              "evidence the sense is MISSING from Wikidata — do not approve; "
+                              f"{n_off} glosses and said none is this meaning (it agrees with "
+                              "the measured assigner on 82% of poly rows, and the assigner "
+                              "abstains 60:1 on missing vs present senses) — do not approve; "
                               "“+ create sense” instead if the lemma has this meaning.</span>"
                               + ("<br><span class=create>would CREATE sense</span> gloss: "
                                  + " · ".join(parts) if parts else
