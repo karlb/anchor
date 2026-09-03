@@ -29,7 +29,6 @@ import sqlite3
 import urllib.parse
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
-import assign
 import config
 import gates
 import verify  # for PROMPT_VER/current_ver — the verdict cache is keyed by prompt version
@@ -41,7 +40,7 @@ PORT = 8731
 # Handler (which can't take params) reads this, set by serve()/status() from the CLI flag.
 #   "mono"       n_senses = 1   the pilot write stream (445 written decisions)
 #   "senseless"  n_senses = 0   the sense-creation lane
-#   "poly"       n_senses >= 2  MATCH on a polysemous target — assign.py picks WHICH sense,
+#   "poly"       n_senses >= 2  MATCH on a polysemous target — the verifier picks WHICH sense,
 #                               and the reviewer approves that sense, not the lexeme
 # The lanes PARTITION the admissible pool (gates.py --check asserts it), so a pair is
 # reviewable in exactly one queue and can never be decided two ways.
@@ -104,7 +103,7 @@ CONFIRMED = ("approved", "written")
 # `create` (poly lane only): the assigner abstained and the human says the lemma has this
 # meaning but no recorded sense — write.py's create_add action. Deliberately NOT in CONFIRMED
 # and not counted by calibrate/auto-defer: it says nothing about the MATCH action's precision.
-# assign.py's non-sense answers, the only state in which `create` is offered.
+# The verifier's non-sense answers on a poly row, the only state in which `create` is offered.
 ABSTAINED = ("none", "error", "out_of_range")
 
 
@@ -172,7 +171,7 @@ def pool(lane=None, key=None):
         SELECT c.target_lid, c.anchor_qid, c.target_lemma, c.target_lang,
                c.target_n_senses, v.verdict, v.reason, v.model,
                i.desc_de, i.desc_en, i.desc_sv,
-               c.support_clusters, v.prompt_ver
+               c.support_clusters, v.prompt_ver, v.target_sid
         FROM candidate c
         JOIN vf.verdict v ON v.target_lid = c.target_lid AND v.anchor_qid = c.anchor_qid
                          AND """ + verify.current_ver("v") + """
@@ -920,7 +919,7 @@ def sense_inventory(lid, lang, _cache={}):
     """[(sid, gloss, taken_qid)] — EVERY recorded sense of the target lexeme, with the anchor
     already sitting on it if there is one.
 
-    This is the poly lane's whole safety story. assign.py picks one sense at 93-95%, and the
+    This is the poly lane's whole safety story. The verifier picks one sense at ~93-95%, and the
     ~9.5% it gets wrong it gets wrong by naming a DIFFERENT sense — which is invisible to a
     reviewer shown only the chosen one, and obvious to a reviewer shown the alternatives.
     So the inventory is not decoration: approving a poly row without it is approving a claim
@@ -970,9 +969,6 @@ def render(limit, lang_filter=None, lane=None):
     # flag, computed once per row and reused by both the sort below and the render loop.
     poly_idx = polysemy_index(cand)
     sup = anchor_support_index()   # neutral: how many distinct lexemes anchor each pair
-    # The poly lane's per-sense advisory. Read-only and never a decision: a row with no
-    # assignment renders as "not assigned yet" rather than defaulting to some sense.
-    assigned = assign.load({(r[0], r[1]) for r in rows}) if lane == "poly" else {}
     meta = {}
     for r in rows:
         gl, glang, _ad = ctx.get((r[0], r[1]), ("", None, ""))
@@ -1053,10 +1049,15 @@ def render(limit, lang_filter=None, lane=None):
                                "senses in the queue — approve/prune them as one inventory</div>")
         elif lane == "poly":
             inv = sense_inventory(lid, lang)
-            sid, why, n_off = assigned.get((lid, qid), (None, "", 0))
+            # The verifier saw the numbered inventory and chose (since 2026-09-03); the
+            # relation and reason beside it are about THAT sense. A NULL sid is a row
+            # verified before the inventory was shown — re-verify, don't guess.
+            sid, why = _rest[-1], ""
+            n_off = sum(1 for _s, g, _t in inv if g)
             if sid is None:
-                gloss_html = ("<span class=noassign>no per-sense assignment yet — run "
-                              "<code>assign.py</code> before deciding this row</span>")
+                gloss_html = ("<span class=noassign>no sense chosen — verified before the "
+                              "inventory was shown; run <code>verify.py --recache --poly-only "
+                              "--gate AD</code> before deciding this row</span>")
             elif sid in ABSTAINED:
                 # The abstention is the assigner's strongest signal (60:1), and it used to be
                 # a dead end: defer or reject. `create` records the third answer — the lemma
@@ -1067,7 +1068,7 @@ def render(limit, lang_filter=None, lane=None):
                 glosses = anchor_gloss(it, qid, lang, lemma)
                 parts = [f"[{g}] “{html.escape(t)}”" for g, t in
                          sorted(glosses.items(), key=lambda kv: kv[0] != lang)]
-                gloss_html = ("<span class=noassign>⚠ no sense fits: the assigner read all "
+                gloss_html = ("<span class=noassign>⚠ no sense fits: the verifier read all "
                               f"{n_off} glosses and abstained. Measured, it abstains on 1% of "
                               "answerable rows and 60% of unanswerable ones, so this is "
                               "evidence the sense is MISSING from Wikidata — do not approve; "
@@ -1173,7 +1174,7 @@ class Handler(BaseHTTPRequestHandler):
             # be repaired afterwards.
             target_sid = ""
             if row and _lane() == "poly":
-                sid = assign.load({(lid, qid)}).get((lid, qid), (None, "", 0))[0]
+                sid = row[-1]      # the verifier's chosen sense, frozen into the log below
                 if sid not in (None, *ABSTAINED):
                     target_sid = sid
                     if action == "create":
@@ -1229,7 +1230,7 @@ def main():
         lane.add_argument("--poly", action="store_true",
                           help="review the polysemous MATCH lane (n_senses>=2): the candidate "
                                "is shown against the lexeme's whole sense inventory, with "
-                               "assign.py's per-sense choice marked")
+                               "the verifier's per-sense choice marked")
     args = ap.parse_args()
     {"serve": serve, "status": status}[args.cmd](args)
 

@@ -71,11 +71,24 @@ MULTILINGUAL_GUIDE = (
 SYSTEM = (
     "You are a lexicographer auditing Wikidata P5137 sense links. For each item you are given a "
     "NOUN, its LANGUAGE, sometimes the word's own dictionary GLOSS (a short definition of the ONE "
-    "specific sense being linked), and a candidate concept described by a Wikidata CC0 label and "
+    "specific sense being linked) or, for a word with several recorded senses, its NUMBERED SENSES "
+    "with their glosses, and a candidate concept described by a Wikidata CC0 label and "
     "description. "
     "Use the GLOSS as the primary signal for WHICH sense of the noun is meant. If no gloss is shown, "
     "or it is a bare one-word synonym or written in an unexpected language, fall back to judging from "
     "the noun itself and the concept. "
+    "When NUMBERED SENSES are shown, first decide which numbered sense the concept is the "
+    "item-for-this-sense of, allowing ordinary translation and register differences and the concept "
+    "being somewhat wider or narrower than the gloss; answer the sense NUMBER. Answer \"none\" when "
+    "the concept denotes no listed sense — a meaning of the noun that is not among those listed, a "
+    "homograph, or an unrelated concept; prefer \"none\" over forcing a poor fit, a wrong assignment "
+    "is worse than an abstention. Then classify the relation for THAT sense. After \"none\" the "
+    "verdict is about the NOUN: if the noun has a meaning the concept denotes that simply is not "
+    "among the listed senses, that is still \"yes\" (EQUAL when it denotes exactly that) — the "
+    "sense is MISSING from the list, not different; only a homograph-level or unrelated concept is "
+    "DIFFERENT. Example: English 'passage' senses (1) section of text (2) advance of time, vs "
+    "concept 'passageway between two buildings' -> sense none, EQUAL -> yes (the noun has that "
+    "meaning; no listed sense records it). "
     "Classify how that sense relates to the concept: "
     "EQUAL (the sense denotes that concept — exact synonyms and translation/register differences "
     "still count as EQUAL); "
@@ -148,10 +161,22 @@ SYSTEM = (
     "nationals of Spain, 'citizens or residents of Iran'), even if it is loosely called a people; "
     "and false whenever the concept is not a human group at all. "
     'Reply with ONLY a JSON array (no prose, no code fences), one object per item in order: '
-    '[{"i":1,"verdict":"yes|no|uncertain","relation":"EQUAL|BROADER|NARROWER|LATERAL|INCOHERENT|'
-    'DIFFERENT","gendered_form":false,"demonym":false,"anchor_is_ethnic_group":false,'
-    '"reason":"<=10 words"}].'
+    '[{"i":1,"sense":2,"verdict":"yes|no|uncertain","relation":"EQUAL|BROADER|NARROWER|LATERAL|'
+    'INCOHERENT|DIFFERENT","gendered_form":false,"demonym":false,"anchor_is_ethnic_group":false,'
+    '"reason":"<=10 words"}] — "sense" is the chosen sense number, the string "none", or null '
+    "when no numbered senses were shown."
 )
+
+
+def parse_sense(raw, senses):
+    """The cache's target_sid from the model's `sense` field: an S-id, 'none', 'out_of_range',
+    or None when the item offered no numbered senses (mono/senseless rows)."""
+    if not senses:
+        return None
+    if isinstance(raw, int) or (isinstance(raw, str) and raw.strip().isdigit()):
+        idx = int(raw)
+        return senses[idx - 1][0] if 1 <= idx <= len(senses) else "out_of_range"
+    return "none" if str(raw).strip().lower() == "none" else "out_of_range"
 
 # The reason string the cache stores, composed by US from the model's fields — not free prose.
 # Shape: "<REL>·<tag>·<tag>: <=10 words", with the '·plain' tag when no flag is set, so a
@@ -185,6 +210,10 @@ SCHEMA = """
 CREATE TABLE IF NOT EXISTS verdict(
     target_lid TEXT, anchor_qid TEXT, target_lemma TEXT, target_lang TEXT,
     verdict TEXT, reason TEXT, model TEXT, prompt_ver TEXT,
+    -- poly targets only: the S-id the verifier chose, 'none' (the concept is a meaning the
+    -- lexeme has but no listed sense records — the create_add signal), or 'out_of_range'.
+    -- NULL for mono/senseless rows and for every row verified before 2026-09-03.
+    target_sid TEXT,
     PRIMARY KEY (target_lid, anchor_qid, prompt_ver)
 ) WITHOUT ROWID;
 """
@@ -218,11 +247,13 @@ def ensure_schema(cn):
     and the pair-keyed cache described above. Both migrations preserve every row — the point of
     the change is that verdicts stop being thrown away."""
     cn.executescript(SCHEMA)
-    try:
-        cn.execute("ALTER TABLE verdict ADD COLUMN prompt_ver TEXT")  # pre-fingerprint cache
-        cn.commit()
-    except sqlite3.OperationalError:
-        pass  # column already present
+    for col in ("prompt_ver",     # pre-fingerprint cache
+                "target_sid"):    # pre-sense-inventory cache (before 2026-09-03)
+        try:
+            cn.execute(f"ALTER TABLE verdict ADD COLUMN {col} TEXT")
+            cn.commit()
+        except sqlite3.OperationalError:
+            pass  # column already present
     pk = [name for _, name in sorted((r[5], r[1]) for r in
                                      cn.execute("PRAGMA table_info(verdict)") if r[5])]
     if pk == ["target_lid", "anchor_qid"]:
@@ -427,6 +458,43 @@ def load_glosses(lids):
     return out
 
 
+def load_senses(lids):
+    """{lid: [(sid, gloss)]} for POLYSEMOUS lexemes — the numbered inventory the verifier is
+    shown so it can say WHICH sense the concept belongs to, or 'none'. Same offer as assign.py
+    made (target language preferred, unglossed senses dropped, stable sid order), so the
+    measured 93-95% pick / 60:1 abstention numbers transfer as a prior. Lexemes with fewer
+    than two glossed senses are omitted: nothing to choose between."""
+    out = {}
+    if not lids:
+        return out
+    wd = sqlite3.connect(config.WIKIDATA)
+    by_lid = {}
+    lids = list(lids)
+    for i in range(0, len(lids), 500):
+        chunk = lids[i:i + 500]
+        for lid, sid, lang, gloss in wd.execute(
+                "SELECT lid, sid, lang, gloss FROM sense_gloss WHERE lid IN (%s)"
+                % ",".join("?" * len(chunk)), chunk):
+            by_lid.setdefault(lid, {}).setdefault(sid, {})[lang] = gloss
+    wd.close()
+    for lid, senses in by_lid.items():
+        if len(senses) >= 2:
+            out[lid] = senses
+    return out
+
+
+def offered_senses(smap, lid, lang):
+    """[(sid, text)] the numbered list for one poly lexeme in the target language, else en/de/sv."""
+    out = []
+    for sid in sorted(smap.get(lid, {})):
+        g = smap[lid][sid]
+        text = next((g[c] for c in (lang, "en", "de", "sv") if g.get(c)),
+                    next(iter(g.values()), ""))
+        if text:
+            out.append((sid, text))
+    return out if len(out) >= 2 else []
+
+
 def sense_shape(lids):
     """'0 senses: N, 1: N, 2+: N' for a set of target lexemes — the pool's lane mix."""
     if not lids:
@@ -454,20 +522,27 @@ def pick_gloss(gmap, lid, lang):
     return next(iter(vals.values()), "")
 
 
-def run_batch(rows, model, gmap, langs=None, il_map=None, timeout=300):
-    """Verify a batch. langs/il_map select the unified +multi concept format."""
-    lines = []
+def run_batch(rows, model, gmap, langs=None, il_map=None, timeout=300, smap=None):
+    """Verify a batch. langs/il_map select the unified +multi concept format; smap (load_senses)
+    attaches the numbered inventory to polysemous targets. Returns (verdicts, offered), where
+    offered[i] is the [(sid, gloss)] list row i was shown — what parse_sense resolves against."""
+    lines, offered = [], []
     for n, row in enumerate(rows, 1):
         lid, lang, lemma, *_ = row
         qid, lab, desc = fmt_concept(row, langs=langs, il_map=il_map)
-        gloss = pick_gloss(gmap, lid, lang)
-        gpart = f' gloss="{gloss}"' if gloss else ""
+        sen = offered_senses(smap or {}, lid, lang)
+        offered.append(sen)
+        if sen:
+            gpart = " senses: " + "; ".join(f"({j}) {t}" for j, (_s, t) in enumerate(sen, 1))
+        else:
+            gloss = pick_gloss(gmap, lid, lang)
+            gpart = f' gloss="{gloss}"' if gloss else ""
         lines.append(
             f'{n}. language={config.LANGNAME.get(lang, lang)} noun="{lemma}"{gpart} | '
             f'concept {qid}: label="{lab}" description="{desc}"'
         )
     return llm.batch_json(SYSTEM, "Items:\n" + "\n".join(lines), model, len(rows),
-                          {"verdict": "parse_error", "reason": ""}, timeout=timeout)
+                          {"verdict": "parse_error", "reason": ""}, timeout=timeout), offered
 
 
 def main():
@@ -564,7 +639,9 @@ def main():
     rows = [r for r in pool if has_evidence(r, il_map)]        # ONLY source the grader reads
     skipped = len(pool) - len(rows)
     gmap = load_glosses({r[0] for r in rows})
-    print(f"candidates to verify: {len(rows):,}  ({len(gmap):,} with a CC0 gloss"
+    smap = load_senses({r[0] for r in rows})    # poly targets: the numbered inventory
+    print(f"candidates to verify: {len(rows):,}  ({len(gmap):,} with a CC0 gloss, "
+          f"{len(smap):,} with a sense inventory"
           + (f"; {skipped:,} skipped — no item_lang concept" if skipped else "")
           + f"; batch={args.batch}, model={args.model})")
     # Sense-count breakdown, so the polysemous rows that the action-level admissibility newly
@@ -576,19 +653,22 @@ def main():
     for i in range(0, len(rows), args.batch):
         batch = rows[i : i + args.batch]
         try:
-            verdicts = run_batch(batch, args.model, gmap,
-                                 langs=config.CONCEPT_LANGS_VERIFY, il_map=il_map)
+            verdicts, offered = run_batch(batch, args.model, gmap, smap=smap,
+                                          langs=config.CONCEPT_LANGS_VERIFY, il_map=il_map)
         except Exception as e:  # noqa: BLE001 — one bad batch shouldn't kill the run
             print(f"  batch {i // args.batch} failed: {e}")
             verdicts = [{"verdict": "error", "reason": ""}] * len(batch)
+            offered = [offered_senses(smap, r[0], r[1]) for r in batch]
         recs = []
-        for row, v in zip(batch, verdicts):
+        for row, v, sen in zip(batch, verdicts, offered):
             lid, lang, lemma, qid = row[0], row[1], row[2], row[3]
             verdict = v.get("verdict", "parse_error")
             counts[verdict] = counts.get(verdict, 0) + 1
-            recs.append((lid, qid, lemma, lang, verdict, compose_reason(v), args.model, PROMPT_VER))
+            recs.append((lid, qid, lemma, lang, verdict, compose_reason(v), args.model,
+                         PROMPT_VER, parse_sense(v.get("sense"), sen)))
         out.executemany(
-            "INSERT OR REPLACE INTO verdict VALUES (?,?,?,?,?,?,?,?)", recs)
+            "INSERT OR REPLACE INTO verdict (target_lid, anchor_qid, target_lemma, target_lang, "
+            "verdict, reason, model, prompt_ver, target_sid) VALUES (?,?,?,?,?,?,?,?,?)", recs)
         out.commit()
         print(f"  {min(i + args.batch, len(rows)):,}/{len(rows):,}  {counts}")
 
@@ -611,7 +691,7 @@ def main():
 
     if args.csv:
         cols = ["target_lid", "anchor_qid", "target_lemma", "target_lang",
-                "verdict", "reason", "model", "prompt_ver"]  # ver: the cache holds several
+                "verdict", "reason", "model", "prompt_ver", "target_sid"]  # several versions
         with open(args.csv, "w", newline="") as f:
             w = csv.writer(f)
             w.writerow(cols)

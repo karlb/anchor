@@ -207,7 +207,7 @@ def run_arm(name, kwargs, rows, gmap, model, samples, cache, il_map, batch=8):
                 vs = None
                 for _attempt in range(3):
                     try:
-                        vs = verify.run_batch(chunk, model, gmap, il_map=il_map,
+                        vs, _ = verify.run_batch(chunk, model, gmap, il_map=il_map,
                                               timeout=240, **kwargs)
                         break
                     except subprocess.TimeoutExpired:

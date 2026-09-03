@@ -8,9 +8,10 @@ polysemous lane (gates.poly_match_clause, m>=2 with a free sense) needs one more
 before a human can review anything: WHICH sense, or none of them.
 
 This module owns that question and nothing else. It does not verify, does not decide, and
-has no write path — write.py refuses a polysemous target outright. Its output is an
-advisory the review UI shows beside the candidate, so the human approves a SENSE, not a
-lexeme.
+has no write path. SUPERSEDED IN THE QUEUE 2026-09-03: verify.py now shows polysemous
+targets the same numbered inventory and returns the chosen sense (verdict.target_sid), so
+one call answers both questions. This module stays as the measured instrument the
+verifier's picks are graded against (assign_eval.py, and agreement on the live pool).
 
 THE PROMPT IS THE MEASURED ONE. assign_eval.py imports SYSTEM/PROMPT_VER from here rather
 than carrying its own copy, so the text that was measured is the text that ships. Editing

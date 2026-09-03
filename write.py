@@ -270,10 +270,10 @@ def load_rows(args):
         # senseless preview when --include-senseless, else the monosemous write stream
         lane = ("senseless" if args.include_senseless
                 else "poly" if args.include_poly else "mono")
-        import assign
-        sids = assign.load() if lane == "poly" else {}
-        rows = [(*r[:5], sids.get((r[0], r[1]), ("",))[0] if lane == "poly" else "", False)
-                for r in pool(lane=lane)]
+        # poly: the verifier's chosen sense rides on the pool row (NULL/none → no target_sid,
+        # build_edit skips it as approved-without-a-sense would be)
+        rows = [(*r[:5], (r[-1] if lane == "poly" and (r[-1] or "").startswith("L") else ""),
+                 False) for r in pool(lane=lane)]
     else:
         # `create` rows are the poly lane's create_add decisions: a new sense on a lexeme
         # that already has some. build_edit routes them by the flag, never by n_senses.

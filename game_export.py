@@ -131,7 +131,7 @@ def build_meta(it, ctx, row, common):
     """The per-suggestion optimization snapshot (plan §7) — denormalized so later
     analysis joins votes against it without needing the regenerable DBs at this commit."""
     (lid, qid, lemma, lang, n_senses, verdict, reason, _model,
-     dde, den, dsv, support, prompt_ver) = row
+     dde, den, dsv, support, prompt_ver, _sid) = row
     gloss = ctx.get((lid, qid), ("", None, ""))[0] or ""
     rel, _kind = rq.scope_kind(reason, gloss, rq.anchor_desc(dde, den, dsv))
     return dict(common,

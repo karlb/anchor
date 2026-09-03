@@ -103,7 +103,7 @@ def main():
     for i in range(0, len(sample), args.batch):
         chunk = sample[i : i + args.batch]
         try:
-            vs = verify.run_batch([r for r, _ in chunk], args.model, gmap)
+            vs, _ = verify.run_batch([r for r, _ in chunk], args.model, gmap)
         except Exception as e:  # noqa: BLE001 — a transient batch failure shouldn't abort the whole run
             print(f"  batch {i // args.batch} failed: {e}")
             vs = [{"verdict": "error"}] * len(chunk)
