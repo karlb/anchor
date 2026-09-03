@@ -955,7 +955,9 @@ def sense_inventory(lid, lang, _cache={}):
     return out
 
 
-def render(limit, lang_filter=None, lane=None):
+def render(limit, lang_filter=None, lane=None, act_filter=None):
+    """act_filter: show only rows whose triage action is this ('create', 'defer', 'keep'…) —
+    `/?act=create` is how the missing-sense rows are reviewed as a set."""
     lane = _lane(lane)
     senseless = lane == "senseless"
     decisions, undecided, ctx, ad, _ = pending_view(lane)
@@ -968,7 +970,8 @@ def render(limit, lang_filter=None, lane=None):
     # the FULL pending set so the flag/grouping is stable under language filtering, and sort
     # same-lexeme rows adjacent so the reviewer approves/prunes the inventory as a set, not blind.
     lid_counts = collections.Counter(r[0] for r in pending)
-    rows = [r for r in pending if not lang_filter or r[3] == lang_filter]
+    rows = [r for r in pending if (not lang_filter or r[3] == lang_filter)
+            and (not act_filter or (action_of((r[0], r[1]), r[6], ctx) or "keep") == act_filter)]
     it = sqlite3.connect(config.ITEMS)
     cand = sqlite3.connect(config.CANDIDATES)
     have_il = has_item_lang(it)
@@ -1127,6 +1130,7 @@ def render(limit, lang_filter=None, lane=None):
                 f"<input type=hidden name=lid value='{html.escape(lid)}'>"
                 f"<input type=hidden name=qid value='{html.escape(qid)}'>"
                 f"<input type=hidden name=lang value='{html.escape(lang_filter or '')}'>"
+                f"<input type=hidden name=act value='{html.escape(act_filter or '')}'>"
                 f"<button name=action value=approved class=ok>✓ approve</button> "
                 f"<button name=action value=rejected class=no>✗ reject</button> "
                 f"<button name=action value=deferred class=hold>? defer</button>"
@@ -1176,7 +1180,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(405, "use POST")
         qs = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
         lang = qs.get("lang", [None])[0] or None
-        self._send(200, render(50, lang))
+        act = qs.get("act", [None])[0] or None
+        self._send(200, render(50, lang, act_filter=act))
 
     def do_POST(self):
         length = int(self.headers.get("Content-Length", 0))
@@ -1215,8 +1220,10 @@ class Handler(BaseHTTPRequestHandler):
                     "verdict": v, "reason": reason, "model": model,
                     "status": action, "reviewer": "local", "revid": "",
                 })
+        act = data.get("act", [""])[0]
+        q = urllib.parse.urlencode({k: v for k, v in (("lang", lang), ("act", act)) if v})
         self.send_response(303)
-        self.send_header("Location", "/?lang=" + urllib.parse.quote(lang) if lang else "/")
+        self.send_header("Location", "/?" + q if q else "/")
         self.end_headers()
 
     def log_message(self, *a):  # quiet

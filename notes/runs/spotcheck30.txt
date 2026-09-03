@@ -1,0 +1,356 @@
+# 30 of the 146 disagreeing pairs, drawn at random. Same question as the review queue:
+# should P5137 -> this concept be WRITTEN on this lemma (a), held for scope/convention/bad gloss (d), or rejected (r)?
+# Fill in YOUR CALL on each row; leave everything else as is.
+
+[2] de 'Attest'  (L811691 -> Q196756)  lane=senseless n_senses=0 support=3
+      en: certificate  --  document that formally acknowledges something
+      de: Zertifikat  --  Urkunde, die eine Aussage bestätigt
+      sv: certifikat
+      eo: atestilo  --  dokumento kiu atestas ion
+      no: sertifikat
+      da: certifikat  --  bevisdokument med offentligretlig gyldighed
+      fr: certificat  --  document écrit ou officiel qui atteste un fait
+      nl: certificaat  --  schriftelijke verklaring
+      WOULD CREATE: [de] 'Urkunde, die eine Aussage bestätigt' · [en] 'document that formally acknowledges something'
+YOUR CALL: 
+
+[4] de 'Durchbruch'  (L296661 -> Q2920535)  lane=senseless n_senses=0 support=2
+      en: breakthrough  --  military term
+      fr: Percée  --  tactique militaire
+      WOULD CREATE: [en] 'military term'
+YOUR CALL: 
+
+[12] de 'Kunstsprache'  (L616489 -> Q1790577)  lane=poly n_senses=2 support=1
+      en: planned language  --  consciously designed human language
+      de: Plansprache  --  menschliche Sprache, die sich aus einem bewussten und planmäßigen Projekt entwickelt hat
+      sv: planspråk  --  betecknar ett urval av konstruerade språk
+      eo: planlingvo  --  konscie desegnita homa lingvo
+      no: planspråk
+      fr: langue construite auxiliaire  --  langue humaine consciemment conçue
+      TARGET SENSE L616489-S1: 'artificial language style'
+      TARGET SENSE L616489-S2: 'constructed language'  [already -> Q3247505]  <== ASSIGNED
+YOUR CALL: 
+
+[15] de 'Maus'  (L2871 -> Q83310)  lane=poly n_senses=5 support=2  ALIAS-MATCH='Maus'
+      en: house mouse  --  species of mammal
+      de: Hausmaus  --  Art der Gattung Mäuse (Mus)
+      sv: husmus  --  liten gnagare som har en mycket hög fortplantningsgrad och som förekommer över stora delar av världen
+      eo: hejma muso
+      no: husmus  --  museart
+      da: Lys husmus  --  små gnavere der har en meget høj formeringsevne og findes over store dele af verden
+      fr: souris domestique  --  espèce de mammifères rongeurs
+      nl: huismuis  --  klein knaagdier van het geslacht Mus
+      TARGET SENSE L2871-S1: 'weit verbreitete Gattung von Nagetieren'  [already -> Q39275]
+      TARGET SENSE L2871-S2: 'Gerät zum Bewegen eines Zeigers auf einem CBildschirm'  [already -> Q7987]
+      TARGET SENSE L2871-S3: 'physical or virtual object or record accepted as payment'  [already -> Q1368]
+      TARGET SENSE L2871-S4: 'small long tailed rodent'  [already -> Q2751034]  <== ASSIGNED
+      TARGET SENSE L2871-S5: 'an attractive person'
+YOUR CALL: 
+
+[16] de 'Modul'  (L797818 -> Q1178278)  lane=senseless n_senses=0 support=1
+      en: module  --  in ancient Roman and neoclassical architecture, the radius of the column at its base, used as a unit to determine the relative proportions of the various parts of the Classical orders
+      de: Modul (Architektur)  --  Grundeinheit in der Architektur
+      eo: Vitruvia modulo
+      fr: module  --  architecture
+      WOULD CREATE: [de] 'Grundeinheit in der Architektur' · [en] 'in ancient Roman and neoclassical architecture, the radius of the column at its base, used as a unit to determine the relative proportions of the various parts of the Classical orders'
+YOUR CALL: 
+
+[17] de 'Nachahmung'  (L902751 -> Q1131737)  lane=senseless n_senses=0 support=4
+      en: imitation  --  behavior whereby an individual observes and replicates another's behavior
+      de: Nachahmung  --  soziologisches Konzept
+      sv: imitation
+      eo: imitado  --  konduto, dum kiu oni observas aliulan konduton kaj poste kondutas simile
+      no: imitasjon
+      da: imitation
+      fr: imitation  --  processus d'apprentissage
+      nl: imitatie
+      WOULD CREATE: [de] 'soziologisches Konzept' · [en] "behavior whereby an individual observes and replicates another's behavior"
+YOUR CALL: 
+
+[24] de 'Truppe'  (L409097 -> Q1080137)  lane=senseless n_senses=0 support=2
+      en: troop  --  military formation size, generally subordinate to a squadron in cavalry
+      de: Eskadron  --  kleinste taktische Einheit der Kavallerie und der Panzertruppe
+      sv: tropp
+      eo: skadro
+      fr: troupe  --  unité militaire de petite taille
+      WOULD CREATE: [de] 'kleinste taktische Einheit der Kavallerie und der Panzertruppe' · [en] 'military formation size, generally subordinate to a squadron in cavalry'
+YOUR CALL: 
+
+[27] de 'Zeitrechnung'  (L853638 -> Q130788)  lane=senseless n_senses=0 support=1
+      en: chronology  --  science of arranging events in order of occurrence
+      de: Chronologie  --  Lehre von der Zeit, zum Beispiel Datierung in der Wissenschaft
+      sv: tideräkning
+      eo: kronologio
+      no: kronologi  --  vitenskapen om tidsregning og inndeling av tiden
+      da: kronologi
+      fr: chronologie  --  manière d'appréhender l'histoire par les événements
+      nl: chronologie  --  volgorde van gebeurtenissen in de tijd
+      WOULD CREATE: [de] 'Lehre von der Zeit, zum Beispiel Datierung in der Wissenschaft' · [en] 'science of arranging events in order of occurrence'
+YOUR CALL: 
+
+[31] en 'beginner'  (L56444 -> Q1183487)  lane=mono n_senses=1 support=1
+      en: novice  --  person who has entered a religious order and is under probation, before taking vows; person or creature who is new to a field or activity
+      de: Novize  --  Person bzw. Kreatur, die neu in ihrem Unfeld bzw. ihrer Aktivität ist
+      sv: Novis
+      eo: novico
+      no: novise  --  klosteraspirant
+      fr: novice  --  personne qui manque d'expérience ou qui passe un noviciat, période de réflexion sur sa vocation
+      nl: novice  --  proeftijd in een klooster
+      TARGET SENSE L56444-S1: 'person who is just starting to learn something'
+YOUR CALL: 
+
+[38] en 'check'  (L3925 -> Q1121708)  lane=poly n_senses=6 support=1
+      en: failure  --  state or event of not meeting a desired or intended objective
+      de: Versagen  --  Nichterfüllen von Anforderungen
+      sv: misslyckande
+      eo: fiasko  --  stato aŭ evento en kiu la dezirata aŭ celita celo ne estas plenumita
+      no: feil  --  tilstand eller hendelse av ikke å oppnå et ønsket eller tiltenkt mål
+      da: mislykkelse  --  tillstånd eller händelse av att inte uppnå ett önskat eller avsett mål
+      fr: échec  --  situation qui résulte d'une action n'ayant pas abouti au résultat escompté
+      nl: falen  --  toestand of gebeurtenis waarbij een gewenst of beoogd doel niet wordt bereikt
+      TARGET SENSE L3925-S1: 'pattern of intersecting vertical and horizontal lines'  [already -> Q14290457]
+      TARGET SENSE L3925-S2: 'chess condition'  [already -> Q842046]
+      TARGET SENSE L3925-S3: 'slip indicating the amount due: bill'  [already -> Q190581]
+      TARGET SENSE L3925-S4: 'examination'
+      TARGET SENSE L3925-S5: 'signed document drawing funds from a bank account'  [already -> Q80042]
+      TARGET SENSE L3925-S6: 'to have power over, curb or moderate'
+YOUR CALL: 
+
+[40] en 'college'  (L3942 -> Q3918)  lane=poly n_senses=3 support=3
+      en: university  --  an institution of tertiary education and research which awards academic degrees in several academic disciplines
+      de: Universität  --  Hochschule mit Promotionsrecht
+      sv: universitet  --  högre lärosäte med forskning och utbildning
+      eo: universitato  --  institucio de supera edukado kaj esplorado
+      no: universitet  --  akademisk institusjon for høyere utdanning
+      da: universitet  --  højere læreanstalt
+      fr: université  --  type d'établissement d'enseignement supérieur et de recherche
+      nl: universiteit  --  onderwijsinstelling
+      TARGET SENSE L3942-S1: 'higher education institution'  [already -> Q189004]  <== ASSIGNED
+      TARGET SENSE L3942-S2: 'kind of school in Canada'  [already -> Q5146315]
+      TARGET SENSE L3942-S3: 'an organized group of professional people with particular aims, duties, and privileges'
+YOUR CALL: 
+
+[47] en 'fragility'  (L34606 -> Q898288)  lane=mono n_senses=1 support=2
+      en: brittleness  --  material tendency to break from stress without significant plastic deformation
+      de: Sprödigkeit  --  Materialeigenschaft, Verformbarkeit
+      sv: sprödhet
+      eo: rompiĝemo
+      no: sprøhet  --  materialegenskap
+      fr: fragilité  --  propriété mécanique d'un matériau, opposé à la ductilité
+      nl: brosheid  --  materiaaleigenschap, die de hoge weerstand tegen plastische deformatie voor een breuk aangeeft
+      TARGET SENSE L34606-S1: 'quality of being easily broken'
+YOUR CALL: 
+
+[48] en 'front'  (L4089 -> Q899192)  lane=poly n_senses=3 support=2
+      en: front  --  military formation in some countries; originates in the Russian Empire
+      de: Front  --  Vereinigung militärischer Großverbände
+      sv: front  --  militärt förband
+      eo: armefronto
+      no: front
+      fr: front  --  formation de l'armée soviétique
+      nl: front
+      TARGET SENSE L4089-S1: 'side or face of an item considered to be its primary or front side; side that faces forward'  [already -> Q68345460]
+      TARGET SENSE L4089-S2: 'solution of an spatially extended system connecting two steady states'  [already -> Q28458702]
+      TARGET SENSE L4089-S3: 'disguise'
+YOUR CALL: 
+
+[52] en 'issue'  (L4160 -> Q3972943)  lane=poly n_senses=4 support=1
+      en: publishing  --  process of production and dissemination of literature, music, or information
+      de: Veröffentlichung  --  Prozess der Veröffentlichung eines Werkes
+      sv: publicering
+      eo: eldonado  --  procezo de produktado kaj disvastigo de literaturo, muziko aŭ informo
+      no: forlagsvirksomhet
+      da: udgivelse
+      fr: édition  --  processus de sélection, impression et commercialisation de textes
+      nl: uitgeven  --  proces van productie en distribueren van een werk
+      TARGET SENSE L4160-S1: "genealogical and legal term referring to one's lineal descendants"  [already -> Q86447]
+      TARGET SENSE L4160-S2: 'problem to be addressed'  [already -> Q621184]
+      TARGET SENSE L4160-S3: 'grouping of articles in a periodical publication, usually for a particular date'  [already -> Q28869365]
+      TARGET SENSE L4160-S4: 'emit, emit/provide'
+YOUR CALL: 
+
+[54] en 'league'  (L13004 -> Q170156)  lane=poly n_senses=4 support=1  ALIAS-MATCH='league'
+      en: confederation  --  union of sovereign states linked by treaties, whose common government does not directly exercise its sovereignty over their territory
+      de: Staatenbund  --  Zusammenschluss souveräner Staaten
+      sv: konfederation  --  förbund av självständiga stater, sammanslutna genom fördrag
+      eo: konfederacio  --  unio de suverenaj ŝtatoj ligitaj per traktatoj, kies komuna registaro ne rekte ekzercas sian suverenecon super ilia teritorio
+      no: konføderasjon
+      da: konføderation
+      fr: confédération  --  union d'États souverains liés par traités et dont le gouvernement commun n'exerce pas directement sa souveraineté sur leur territoire
+      nl: confederatie  --  samenwerkingsverband of staatsvorm
+      TARGET SENSE L13004-S1: "former unit of distance, hour's walk"  [already -> Q13530508]
+      TARGET SENSE L13004-S2: 'unit of length'  [already -> Q660818]
+      TARGET SENSE L13004-S3: 'group of sports teams that compete together'  [already -> Q623109]
+      TARGET SENSE L13004-S4: 'organization of people or other entities that work together'  <== ASSIGNED
+YOUR CALL: 
+
+[60] en 'privilege'  (L13274 -> Q43637)  lane=poly n_senses=5 support=2
+      en: monopoly  --  market structure with a single firm dominating the market
+      de: Monopol  --  Marktsituation, in der für ein ökonomisches Gut nur ein Anbieter vorhanden ist
+      sv: monopol  --  marknad med en enda producent och flera konsumenter
+      eo: monopolo
+      no: monopol  --  markedsform hvor én selger dominerer markedet
+      da: monopol
+      fr: monopole  --  Situation de marché en économie
+      nl: monopolie  --  marktsituatie met één aanbieder
+      TARGET SENSE L13274-S1: 'legal concept whereby someone is exempt from the ordinary operation of the law over time for some specific purpose'  [already -> Q7246299]
+      TARGET SENSE L13274-S2: 'social theory that special rights or advantages are available only to a particular person or group of people'  [already -> Q7246302]
+      TARGET SENSE L13274-S3: 'legal right or duty to refuse disclosure of evidence'  [already -> Q6501421]
+      TARGET SENSE L13274-S4: 'special entitlement to immunity granted by the state or another authority to a restricted group'  [already -> Q273395]
+      TARGET SENSE L13274-S5: 'An ability to perform an action on the system that can be selectively granted or denied to users'
+YOUR CALL: 
+
+[78] fr 'brute'  (L346591 -> Q729)  lane=mono n_senses=1 support=2
+      en: animal  --  kingdom of multicellular eukaryotic organisms
+      de: Tier  --  Gruppe von eukaryotischen, heterotrophen, mehrzelligen, gewebebewohnenden Organismen
+      sv: djur  --  flercelliga organismer som är rörliga och heterotrofa
+      eo: animalo  --  regno de plurĉelaj eŭkariotaj organismoj
+      no: dyr  --  rike av flercellede eukaryote organismer
+      da: dyr  --  flercellede organismer, som er karakteriseret ved at være mobil og heterotrofe
+      fr: animal  --  règne des êtres vivants hétérotrophes multicellulaires
+      nl: dier  --  rijk van meercellige eukaryoten
+      TARGET SENSE L346591-S1: 'animal lacking in reason/intelligence/sensibility (brute)'
+YOUR CALL: 
+
+[80] fr 'carabine'  (L688448 -> Q183302)  lane=mono n_senses=1 support=2
+      en: carbine  --  shortened version of a standard firearm
+      de: Karabiner  --  Gewehr mit verkürztem Lauf
+      sv: karbin  --  typ av skjutvapen
+      eo: karabeno
+      no: karabin  --  kort, lett gevær
+      da: karabin  --  kort, let gevær
+      fr: carabine militaire  --  arme à feu d'épaule avec crosse
+      nl: karabijn  --  type vuurwapen
+      TARGET SENSE L688448-S1: 'rifle'
+YOUR CALL: 
+
+[86] fr 'ferveur'  (L713603 -> Q840407)  lane=mono n_senses=1 support=3
+      en: enthusiasm  --  intense enjoyment, interest, or approval (in current English vernacular)
+      de: Enthusiasmus  --  Begeisterung
+      eo: entuziasmo  --  intensa ĝojo, intereso, aŭ aprobo
+      no: entusiasme
+      da: entusiasme
+      fr: enthousiasme  --  émotion positive
+      nl: enthousiasme
+      TARGET SENSE L713603-S1: 'ardor/zeal (fervor, in general)'
+YOUR CALL: 
+
+[87] fr 'illégitimité'  (L656906 -> Q2920651)  lane=mono n_senses=1 support=1
+      en: illegitimacy  --  status of a child born outside of a legal marriage
+      de: Unehelichkeit  --  Rechtsstatus des unehelich geborenen Kindes
+      fr: filiation naturelle  --  filiation qui caractérise les enfants nés de parents libres, c'est-à-dire non mariés ni l'un ni l'autre
+      nl: onwettig
+      TARGET SENSE L656906-S1: 'quality of not being legitimate'
+YOUR CALL: 
+
+[88] fr 'incapacité'  (L21508 -> Q4316032)  lane=mono n_senses=1 support=1
+      en: incapacity  --  inability to use one's mind without outside guidance
+      de: Unmündigkeit  --  Unvermögen, sich seines Verstandes ohne fremde Leitung zu bedienen
+      sv: omyndighet
+      no: umyndig
+      da: umyndig
+      fr: minorité  --  Incapacité à utiliser son esprit sans aide extérieure
+      TARGET SENSE L21508-S1: 'inability (to do something)'
+YOUR CALL: 
+
+[89] fr 'mentalité'  (L25713 -> Q116689012)  lane=mono n_senses=1 support=1
+      en: mindset  --  Wikimedia duplicated page
+      no: mentalitet
+      da: mindset  --  Wikimedia-duplikeret side
+      fr: mentalité
+      TARGET SENSE L25713-S1: 'mindset/way of thinking (mentality)'
+YOUR CALL: 
+
+[91] fr 'primate'  (L28213 -> Q7380)  lane=mono n_senses=1 support=3  ALIAS-MATCH='primate'
+      en: primate  --  order of mammals (scientific name: Primates)
+      de: Primaten  --  Ordnung aus der Klasse der Säugetiere (Mammalia)
+      sv: primater  --  ordning i djurklassen däggdjur
+      eo: Primatoj  --  ordo de mamuloj, konsistanta el lemuroj, galangoj, tarsioj, simioj, goriloj, ĉimpanzoj, orangutanoj, gibonoj, kaj homoj
+      no: Primater  --  orden av placentale pattedyr
+      da: Primater  --  orden i dyreklassen pattedyr
+      fr: primates  --  ordre de mammifères placentaires
+      nl: primaten  --  taxon, orde van zoogdieren
+      TARGET SENSE L28213-S1: 'member of an order of mammals which includes humans'
+YOUR CALL: 
+
+[120] sv 'djävulsdyrkan'  (L1218376 -> Q133363)  lane=mono n_senses=1 support=2  ALIAS-MATCH='Djävulsdyrkan'
+      en: Satanism  --  ideological and philosophical beliefs based on Satan
+      de: Satanismus  --  verschiedene Bewegungen, die sich positiv auf Satan oder das gesellschaftlich als das Böse angesehene beziehen
+      sv: satanism  --  samling av filosofiska och religiösa trosuppfattningar som grundar sig på ett aktivt ställningstagande för satansfiguren
+      eo: satanismo
+      no: satanisme
+      da: Satanisme
+      fr: satanisme  --  croyances idéologiques et philosophiques fondées sur Satan
+      nl: Satanisme  --  Religie
+      TARGET SENSE L1218376-S1: 'tillbedja djävulen'
+YOUR CALL: 
+
+[122] sv 'gigg'  (L244462 -> Q182832)  lane=senseless n_senses=0 support=1
+      en: concert  --  live performance of music
+      de: Konzert  --  Live-Darbietung von Musik
+      sv: konsert  --  framförande av levande musik
+      eo: koncerto  --  muzika prezentado de unu aŭ pluraj muzikistoj publike
+      no: konsert  --  fremføring av levende musikk
+      da: koncert  --  begivenhed med livemusik
+      fr: concert  --  représentation musicale d'un ou plusieurs musiciens en public
+      nl: concert  --  live muziekuitvoering
+      WOULD CREATE: [sv] 'framförande av levande musik' · [en] 'live performance of music'
+YOUR CALL: 
+
+[123] sv 'grundtal'  (L247926 -> Q163875)  lane=senseless n_senses=0 support=3
+      en: cardinal number  --  finite or infinite number that measures cardinality (size) of sets
+      de: Kardinalzahl  --  Verallgemeinerung der natürlichen Zahlen zur Beschreibung der Mächtigkeit von Mengen
+      sv: kardinaltal  --  begrepp inom mängdteorin
+      eo: kardinala nombro  --  finia aŭ senfina nombro kiu mezuras kardinalecon (grandecon) de aroj
+      no: kardinaltall  --  grunntall
+      da: kardinaltal
+      fr: nombre cardinal
+      nl: kardinaalgetal  --  natuurkundige eenheid
+      WOULD CREATE: [sv] 'begrepp inom mängdteorin' · [en] 'finite or infinite number that measures cardinality (size) of sets'
+YOUR CALL: 
+
+[134] sv 'perser'  (L1087128 -> Q484206)  lane=poly n_senses=2 support=1
+      en: Persians  --  Iranian ethnic group who make up over half the population of Iran
+      de: Perser  --  ethnische Gruppe
+      sv: Perser  --  västiransk folkgrupp
+      eo: Persoj  --  etna grupo en okcidenta Azio
+      no: Persere  --  En iransk etnisk folkegruppe, som utgjør mer enn halve befolkningen i Iran
+      da: Persiske folk
+      fr: Persans  --  principale ethnie d'Iran, historiquement de Perse, présente en Asie de l’Ouest, dont certaines régions du Caucase, de l’Asie centrale et de l’Asie du Sud
+      nl: Perzen  --  etnische groep
+      TARGET SENSE L1087128-S1: 'person från Persien'  <== ASSIGNED
+      TARGET SENSE L1087128-S2: 'perserkatt'
+YOUR CALL: 
+
+[135] sv 'pipa'  (L408623 -> Q204917)  lane=poly n_senses=4 support=2
+      en: whistle  --  instrument which produces sound from a stream of forced air
+      de: Pfeife  --  Tonerzeuger
+      sv: visselpipa  --  signalverktyg
+      eo: fajfilo
+      no: fløyte
+      da: fløjte
+      fr: sifflet  --  instrument qui produit un son créé par un flux d'air comprimé
+      nl: fluitje
+      TARGET SENSE L408623-S1: 'föremål som används vid tobaksrökning eller cannabisrökning'  [already -> Q104526]
+      TARGET SENSE L408623-S2: 'del av orgel'  [already -> Q1510738]
+      TARGET SENSE L408623-S3: 'eldrör på finkalibrigt vapen'  [already -> Q487192]
+      TARGET SENSE L408623-S4: 'sångröst'
+YOUR CALL: 
+
+[142] sv 'trams'  (L1494493 -> Q151501)  lane=mono n_senses=1 support=1
+      en: nonsense  --  idiom
+      de: Fisimatenten  --  umgangssprachlicher Begriff mit der Bedeutung Unsinn
+      TARGET SENSE L1494493-S1: 'nonsens, struntprat'
+YOUR CALL: 
+
+[144] sv 'tunisier'  (L1414894 -> Q2459831)  lane=mono n_senses=1 support=4
+      en: Tunisians  --  citizens or residents of Tunisia
+      de: Tunesier  --  Bürger oder Einwohner von Tunesien
+      sv: Tunisian
+      eo: Tunisian
+      no: Tunisian
+      da: Tunisian
+      fr: Tunisiens  --  groupe ethnique
+      nl: Tunesiërs  --  burgers of inwoners van Tunesië
+      TARGET SENSE L1414894-S1: 'person från Tunisien'
+YOUR CALL: 
