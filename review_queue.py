@@ -640,6 +640,50 @@ def polysemy_hint(idx, lid, qid, lang, lemma, gloss):
 _ANCHOR_IDX = None
 
 
+# ---- crowd advisory ----------------------------------------------------------
+# What the distributed game already saw. NEUTRAL and display-only: it floats nothing and
+# feeds no gate, because the crowd's two sides are not equally good — measured on trap
+# tiles (2026-09-12), non-spammers run 93% on approved traps but 54% on rejected ones, so
+# a lone "no" is barely evidence while agreement on "yes" is strong. import_crowd.py owns
+# the tiering and the promotion rule; this only shows what it filtered, in particular the
+# pairs the service will never serve again — read as "once the current mute list is
+# deployed", since a spammer found at import only stops counting there on the next push.
+_CROWD = None
+
+
+def crowd_index():
+    """{(target_lid, anchor_qid): (yes_users, no_users, stranded)} from the vote archive,
+    spammer votes and skips dropped. `stranded` marks a pair the game has stopped serving
+    without our threshold being met — the local queue is where it can still be finished.
+
+    Imported lazily: import_crowd imports THIS module, so a top-level import would cycle."""
+    global _CROWD
+    if _CROWD is not None:
+        return _CROWD
+    _CROWD = {}
+    try:
+        import import_crowd as ic
+        by_sid, _newest = ic.load_feeds()
+        latest = ic.latest_votes(ic.load_archive())
+        tiers = ic.classify(ic.trap_scores(latest, by_sid, ic.first_decisions()),
+                            {u for _s, u in latest})
+    except (SystemExit, OSError, ValueError):
+        return _CROWD          # no feeds or no archive yet — the queue works without it
+    honest = collections.defaultdict(lambda: ([], []))
+    for (sid, user), r in latest.items():
+        if by_sid.get(sid, {}).get("gold") or r["decision"] == "skip":
+            continue           # trap tiles never reach the queue as themselves
+        if tiers[user] != "spammer":
+            honest[ic.sid_key(sid)][r["decision"] == "no"].append(user)
+    for key, (yes, no) in honest.items():
+        met = (sum(ic.PROMOTE_WEIGHT[tiers[u]] for u in yes) >= 2
+               or sum(ic.PROMOTE_WEIGHT[tiers[u]] for u in no) >= 2)
+        stranded = not met and (len(yes) >= ic.SERVE_K or len(no) >= ic.SERVE_K
+                                or len(yes) + len(no) >= ic.SERVE_CAP)
+        _CROWD[key] = (sorted(yes), sorted(no), stranded)
+    return _CROWD
+
+
 def anchor_support_index():
     """{(target_lid, anchor_qid): n distinct anchoring LEXEMES} — how many separate P5137-bearing
     lexemes actually back a pair, as against candidate.support_clusters, which counts clusters and
@@ -980,6 +1024,7 @@ def render(limit, lang_filter=None, lane=None, act_filter=None):
     # flag, computed once per row and reused by both the sort below and the render loop.
     poly_idx = polysemy_index(cand)
     sup = anchor_support_index()   # neutral: how many distinct lexemes anchor each pair
+    crowd = crowd_index()          # neutral: what the game's players already said
     meta = {}
     for r in rows:
         gl, glang, _ad = ctx.get((r[0], r[1]), ("", None, ""))
@@ -1013,6 +1058,9 @@ def render(limit, lang_filter=None, lane=None, act_filter=None):
         head += f" · ⚠ {n_multi} on multi-candidate lexemes (review as a set)"
     if n_sole:
         head += f" · {n_sole} on a single anchor lexeme"
+    n_stranded = sum(1 for r in rows if crowd.get((r[0], r[1]), ((), (), False))[2])
+    if n_stranded:
+        head += f" · ⚠ {n_stranded} stranded by the game (it will not serve them again)"
     if lang_filter:
         head += f" · filtered to {html.escape(lang_filter)} ({len(rows)})"
     trs = []
@@ -1042,6 +1090,15 @@ def render(limit, lang_filter=None, lane=None, act_filter=None):
         if sup.get((lid, qid)) == 1:
             anchor_html += (f"<div class=sole>one anchor lexeme backs this — its {n_clusters} "
                             "gate-A support clusters all trace to that single P5137 statement</div>")
+        # NEUTRAL: what the game's players already said. Spammer votes are gone before this
+        # point, and the "no" side is weak by measurement, so it never floats or sorts a row.
+        c_yes, c_no, stranded = crowd.get((lid, qid), ((), (), False))
+        if c_yes or c_no:
+            said = " · ".join(f"{len(v)} {w} ({', '.join(html.escape(u) for u in v)})"
+                              for v, w in ((c_yes, "yes"), (c_no, "no")) if v)
+            why = (" — the game will not serve it again, so it ends here" if stranded
+                   else " — contested there" if c_yes and c_no else " — still in the game")
+            anchor_html += f"<div class=crowd>crowd: {said}{why}</div>"
         if senseless:
             # No existing sense to show — preview the sense we would CREATE (approval covers
             # this gloss text, not just the link), using the exact policy write.py will apply.
@@ -1155,7 +1212,7 @@ button{{font-size:.85rem;padding:3px 8px;cursor:pointer;border:1px solid #ccc;bo
 .ok{{color:#197a19}} .no{{color:#b00}} .hold{{color:#a60}} a{{color:#36c;text-decoration:none}}
 .rel{{font-weight:600;font-size:.78rem;letter-spacing:.02em}}
 .al{{margin:1px 0}} .alc{{display:inline-block;min-width:1.5rem;color:#999;font-size:.72rem;text-transform:uppercase}}
-.akahit,.sole{{margin-top:3px;color:#36c;font-size:.78rem}}
+.akahit,.sole,.crowd{{margin-top:3px;color:#36c;font-size:.78rem}}
 .poly{{margin-top:3px;color:#a60;font-size:.78rem}}
 .create{{color:#197a19;font-weight:600;font-size:.82rem}} .multi{{margin-top:3px;color:#a60;font-size:.78rem}}
 .match{{color:#197a19;font-weight:600;font-size:.82rem}} .noassign{{color:#b00;font-weight:600;font-size:.8rem}}

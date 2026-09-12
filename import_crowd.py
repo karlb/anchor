@@ -254,7 +254,10 @@ def classify(scores, users):
 
 # The service's serving cutoff, mirrored ONLY to spot pairs it will never serve
 # again (anchor-game app.py: a live tile is terminal at K yes, K no, or VOTE_CAP
-# non-skip votes — RAW counts, spammer votes included). Aggregation stays ours.
+# non-skip votes). It counts the same votes we do, muted players excluded, so the
+# mirror uses honest counts too — and reads as "once the current mute list
+# is deployed", since a tier found here only reaches the service on the next push.
+# Aggregation stays ours.
 SERVE_K, SERVE_CAP = 2, 3
 
 Agg = collections.namedtuple(
@@ -268,11 +271,11 @@ def aggregate(latest, tiers, decisions, first, by_sid):
     is undecided: sids drop out almost always BECAUSE the pair got decided (caught by
     the decisions replay right here), and the sid pins the exact tile the voter saw.
 
-    Two audit lists ride along: 'starved' pairs hit the service's raw-count serving
-    cutoff without reaching OUR threshold (spam-inflated counts — the game will never
-    finish them, so they fall back to the local queue); 'late' collects non-spammer
-    votes cast after a pair was decided that contradict the decision — the decision
-    stands, this only surfaces what would otherwise vanish into the decided count."""
+    Two audit lists ride along: 'starved' pairs hit the service's serving cutoff
+    without reaching OUR threshold (the game will never finish them, so they fall
+    back to the local queue); 'late' collects non-spammer votes cast after a pair
+    was decided that contradict the decision — the decision stands, this only
+    surfaces what would otherwise vanish into the decided count."""
     by_pair = collections.defaultdict(list)
     for (sid, user), r in latest.items():
         by_pair[sid].append((user, r["decision"], r["ts"]))
@@ -308,10 +311,9 @@ def aggregate(latest, tiers, decisions, first, by_sid):
         else:
             if honest:
                 pending += 1
-            raw_y = sum(d == "yes" for _, d, _ in votes)
-            raw_n = sum(d == "no" for _, d, _ in votes)
-            if raw_y >= SERVE_K or raw_n >= SERVE_K or raw_y + raw_n >= SERVE_CAP:
-                starved.append((sid, raw_y, raw_n))
+            n_y, n_n = len(yes), len(no)
+            if n_y >= SERVE_K or n_n >= SERVE_K or n_y + n_n >= SERVE_CAP:
+                starved.append((sid, n_y, n_n))
     return Agg(promoted, refuted, contested, pending, decided, uncovered, starved, late)
 
 
@@ -399,10 +401,10 @@ def report(payload, n_new, latest, scores, tiers, agg, by_sid, newest, dry):
                   + f"   yes: {', '.join(yes)} / no: {', '.join(no)}")
             print(f"      verifier: {by_sid[sid]['meta']['reason']}")
     if starved:
-        print(f"capped-but-unresolved {len(starved)} — the game hit its serving cutoff "
-              "on raw counts (spam included) and will not serve these again; finish locally:")
+        print(f"capped-but-unresolved {len(starved)} — the game hit its serving "
+              "cutoff and will not serve these again; finish locally:")
         for sid, raw_y, raw_n in starved:
-            print(pair_line(sid, by_sid, newest) + f"   raw {raw_y}y/{raw_n}n")
+            print(pair_line(sid, by_sid, newest) + f"   {raw_y}y/{raw_n}n")
     if late:
         print(f"late contradictions on {len(late)} decided pair(s) "
               "(audit only — the decision stands unless rechecked):")
