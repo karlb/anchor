@@ -362,6 +362,12 @@ def main():
           f"{sum(1 for r in recs if r['gold'] == 'approved')} approved)")
     print("  by lang:  " + " · ".join(f"{k} {v}" for k, v in sorted(by_lang.items())))
     print("  by class: " + " · ".join(f"{k} {v}" for k, v in sorted(by_class.items())))
+    # Shipping is two files, not one, and the second is easy to forget: a stale
+    # mute list lets spam retire tiles again (CONTRACT.md "Mute list").
+    print(f"\nto ship:  cp {path} {os.path.join(config.GAME_REPO, 'feeds')}/")
+    print("          uv run import_crowd.py        # refreshes feeds/muted.txt")
+    print("          git -C ../anchor-game add feeds && git -C ../anchor-game commit"
+          " && git -C ../anchor-game push piku master")
 
 
 if __name__ == "__main__":

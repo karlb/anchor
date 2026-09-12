@@ -18,13 +18,15 @@ appellate court and nothing is ever auto-rejected here.
 
 Spammer votes are ignored here, but that is too late on its own: the service had
 already counted them toward its own serving cutoff and retired the tile. So the
-tier travels back — `--write-muted` rewrites the service's mute list, and those
-clicks stop counting there too (CONTRACT.md "Mute list"; retroactive, so tiles
-stuck at the cutoff become servable again on the next deploy).
+tier travels back — every run rewrites the service's mute list (CONTRACT.md
+"Mute list") and those clicks stop counting there too; retroactive, so tiles
+stuck at the cutoff become servable again on the next deploy. It is written
+unconditionally and not behind a flag on purpose: the list is derived from the
+whole archive, so the only way it can be wrong is by being older than the
+tiers.
 
     uv run import_crowd.py                        # pull, archive, score, promote, report
     uv run import_crowd.py --dry-run              # identical report; writes nothing
-    uv run import_crowd.py --write-muted          # …and refresh anchor-game/feeds/muted.txt
     uv run import_crowd.py --from-file x.json     # replay a saved /export (dev/offline)
 """
 
@@ -336,7 +338,10 @@ def promote(promoted, by_sid, dry):
 def write_muted(tiers, path, dry):
     """Rewrite the service's mute list from the spammer tier. Derived in full on
     every run — a name leaves the file as soon as its trap record recovers, and
-    the service unmutes retroactively. Returns the names written."""
+    the service unmutes retroactively. Returns the names written.
+
+    Safe on a --from-file replay: tiers come from the merged archive, not from
+    the payload, so a partial export still yields the full picture."""
     users = sorted(u for u, t in tiers.items() if t == "spammer")
     if not dry:
         os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -414,8 +419,8 @@ def main():
                     help="read a saved /export JSON instead of pulling")
     ap.add_argument("--dry-run", action="store_true",
                     help="report only — archive and append nothing")
-    ap.add_argument("--write-muted", nargs="?", const=MUTED, metavar="PATH",
-                    help=f"also rewrite the service's mute list (default: {MUTED})")
+    ap.add_argument("--muted", default=MUTED, metavar="PATH",
+                    help=f"where to write the service's mute list (default: {MUTED})")
     args = ap.parse_args()
 
     payload = load_export(args.url, args.from_file)
@@ -428,11 +433,10 @@ def main():
     agg = aggregate(latest, tiers, rq.load_decisions(), first, by_sid)
     promote(agg.promoted, by_sid, args.dry_run)
     report(payload, n_new, latest, scores, tiers, agg, by_sid, newest, args.dry_run)
-    if args.write_muted:
-        users = write_muted(tiers, args.write_muted, args.dry_run)
-        note = " (dry-run: not written)" if args.dry_run else ""
-        print(f"mute list: {len(users)} player(s) → "
-              f"{args.write_muted}{note} — deploy with `git push piku master`")
+    users = write_muted(tiers, args.muted, args.dry_run)
+    note = " (dry-run: not written)" if args.dry_run else ""
+    print(f"mute list: {len(users)} player(s) → {os.path.relpath(args.muted, config.HERE)}"
+          f"{note} — commit it in anchor-game and `git push piku master` to apply")
 
 
 if __name__ == "__main__":
