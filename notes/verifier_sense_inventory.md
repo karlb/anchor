@@ -44,7 +44,7 @@ LATERAL→EQUAL); the "1" is wise guy. Read as a tie. Keep-precision on the conf
 vs 89.7% (433 keeps / 383 right vs 409 / 367 — more keeps, 16 more right, 8 more wrong). On the
 50 human-rejected pairs in scope the old prompt would write 8, the new 10, and the new says
 `create` on 4. `validate_prompt` FAILs its 50% catch line at 41.7%, as the predecessor would
-have on the same rows; the catch gate is starved (`notes/review/reject-gate-starved.md`).
+have on the same rows; the catch gate is starved (too few reviewed verifier-'no' pairs to grade catch on).
 
 Per lane on the 146 blind set: mono 14 vs 11, poly 23 vs 7, senseless 8 vs 6.
 

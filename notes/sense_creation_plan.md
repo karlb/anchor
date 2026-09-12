@@ -219,8 +219,11 @@ MachtSinn as precedent — bot-created glosses are the part reviewers will push 
 
 Creating a sense on a lexeme that **already has senses** is the same action applied to a
 different target, and it is not hypothetical — the polysemous lane's abstentions are exactly
-this case, and an abstention is strong evidence that the sense really is missing. `write.py`
-refuses it today. Two arguments (carried over from the retired scope roadmap) say why it should
+this case, and an abstention is strong evidence that the sense really is missing. Since
+2026-09-03 it is BUILT: the verifier sees every lexeme's sense inventory and answers `none`
+when no sense fits, the review UI offers `+ create sense` (status `create`), and `write.py`
+builds it under `--include-senseless` behind a no-live-sense-carries-the-anchor guard. Never
+written. Two arguments (carried over from the retired scope roadmap) say why it should
 stay behind the senseless lane rather than ship with it:
 
 - **The licensing surface grows.** Creating one first sense reproduces no partition. Deriving a

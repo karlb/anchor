@@ -847,7 +847,7 @@ def live_rel(key, log_reason, cache, ctx=None, require_yes=True):
     `require_yes=False` lifts that last rule, and exactly one caller wants it: calibrate's
     readiness table. The auto-hide REJECT gate is defined over reject-rated classes, i.e.
     verifier-'no' pairs — and dropping them here meant that gate could never leave "hold", however
-    much review was spent on them (notes/review/reject-gate-starved.md). The queue's own use of
+    much review was spent on them (fixed 2026-08-16). The queue's own use of
     live_rel keeps the default: a pair the verifier now rejects is not write-eligible and must not
     feed the keep/defer gates."""
     hit = cache.get(key)

@@ -142,7 +142,7 @@ def main():
         # require_yes=False: verifier-'no' pairs bucket here too. They are the ONLY population the
         # auto-hide REJECT gate is defined over, and dropping them (which the live queue is right
         # to do — they are not write-eligible) meant the instrument could never measure the gate it
-        # documents, no matter how much review was spent. See notes/review/reject-gate-starved.md.
+        # documents, no matter how much review was spent (2026-07-06 review finding, fixed 2026-08-16).
         cls = rq.live_rel(k, d.get("reason"), cache, ctx, require_yes=False)
         if cls is None:
             continue

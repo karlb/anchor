@@ -177,7 +177,7 @@ gloss** — so it is structurally blind to the homograph class the gloss catches
 inherited monosemous precision is an assumption, not a measurement. Everything downstream — a
 proposal, a trial size, `create_add` — is waiting on this number.
 
-**2 — The prompt + cache revision** (`redo.md` #3 + #4, "the one move I'd make"). No external
+~~**2 — The prompt + cache revision**~~ **DONE 2026-08-16** (`redo.md` #3 + #4, "the one move I'd make"). *Original argument:* No external
 dependency, and it gets *more* expensive with every lane opened: the re-verify cost went from
 2,670 to 3,220 pairs when poly landed. It has been promoted from "the standing cleanup" to a
 **prerequisite**, because the plan is now to *refine* the senseless approach before writing
@@ -205,9 +205,12 @@ approval appends a `recheck` row. The only decay is on-wiki (a lexeme acquiring 
 and `write.py`'s guard already catches that. The post carries the measured precision, the gloss
 policy, and an honest answer to the homograph question this lane re-opens.
 
-**5 — Review the poly lane's 222 assigned rows, non-English first.** ~85% usable versus 52%.
-Recording which rows a human rejects also yields the first sense-level human labels the project
-has ever had — as a side effect of reviewing, not a labelling exercise.
+**5 — Review the poly lane, non-English first.** *(2026-09-03: the assigner is superseded — the
+verifier itself now names the sense, prompt `d8769650`, `notes/verifier_sense_inventory.md`; the
+queue shows the whole inventory and offers `+ create sense` where it answered none. Unblocked;
+a handful of decisions so far.)* Recording which rows a human rejects also yields the first
+sense-level human labels the project has ever had — as a side effect of reviewing, not a
+labelling exercise.
 
 ### Deferred, with reasons
 
@@ -215,9 +218,9 @@ has ever had — as a side effect of reviewing, not a labelling exercise.
   edits). When written, **scope it at the ACTION**: "create a sense for a translation-attested
   meaning Wikidata does not yet record", not "senseless lexemes". The senseless lane is then its
   m=0 case, and `create_add` doesn't outgrow the request.
-- **`create_add`** — creating a sense on a lexeme that already has senses. Not hypothetical: the
-  125 poly abstentions are exactly this action, and P(sense really missing | abstained) ≈ 99%.
-  Currently refused by `write.py`. Wait until (2) and (3) are done.
+- ~~**`create_add`**~~ **BUILT 2026-09-03** (status `create`, `write.py --include-senseless`),
+  never written; ~104 mono + ~51 poly candidates in the queue. The sequencing argument in
+  `sense_creation_plan.md` (senseless first, disclose first) still holds for *writing* it.
 - **All-language expansion** — do the rebuild for a real number first. And note `redo.md` §7:
   every language added pre-BRFA multiplies the cost of a policy change the community forces.
 - **Unifying the three lanes in code.** The generic unit is `(lid, sid|NEW, qid)` and mono is

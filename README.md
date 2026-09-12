@@ -233,18 +233,19 @@ work is measurement before conversation. Reasoning in `notes/sense_assignment_fi
    tighter-slice fallback is **refuted** — precision is flat in support. Grading is free: the
    sample's adjudications are a gold set and the cache is additive —
    `validate_prompt.py --decisions notes/runs/senseless_sample.csv --baseline-ver <old>`.
-   **Before the queue is whole again**, the pool needs re-verifying at the new prompt: consumers
-   read only the current version, so `review_queue.py status` currently sees just the re-verified
-   sample. ~$33 for the 3,451 cached pairs — not spent, and Karl's call.
+   **2026-09-03: the verifier now sees each lexeme's sense inventory** and answers *which* sense
+   (or `none` → a `create` action on mono and poly rows). Prompt `d8769650`, pool re-verified,
+   kept on every free grader — `notes/verifier_sense_inventory.md`. Senseless targets still get
+   the bare lemma; the abstention-style question above is the unspent lever there.
 4. **Disclose sense creation on-wiki, then write.** In that order. Sense creation is already
    announced in the talk-page thread as in-progress with a promise to report back, and the
    public answer given there about homographs does not cover a lane with no gloss — so the post
    comes before the edits, carrying the measured precision and an honest account of what
    replaces the gloss. Approved rows keep: `decisions.csv` is append-only, so a refined approach
    that disagrees with an earlier approval appends a `recheck` row rather than losing it.
-5. **Review the polysemous lane**, non-English first — it also yields the project's first
-   sense-level human labels, which no lane has today. After (2), so that reviewing doesn't bake
-   human decisions onto verdicts the revision invalidates.
+5. **Review the polysemous lane and the new `create` rows**, non-English first — the first
+   sense-level human labels the project has. Unblocked since (2) and the 2026-09-03 re-verify;
+   `review_queue.py serve --poly`, `?act=create` filters the create rows.
 
 **The method has been disclosed on-wiki and the licensing question is answered.**
 [[Wikidata talk:Lexicographical data]], posted 2026-06-29 (`notes/talkpage_post.wiki`): two

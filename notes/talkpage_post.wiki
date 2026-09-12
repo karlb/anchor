@@ -1,0 +1,64 @@
+<!--
+POSTED 2026-06-29 to [[Wikidata talk:Lexicographical data]]. This file is the record of what
+went out, not a draft — don't edit it to match later reality; write a follow-up section instead.
+The live thread (replies, the fr/en example lists posted later) is on-wiki; only the opening
+post is reproduced here.
+
+WHAT THE THREAD SETTLED (as of 2026-08-14, two respondents: Infovarius, VIGNERON):
+
+  * Q1 LICENSING — answered, no objection. "It looks generally ok with everything" and "the
+    licensing should be ok". Asked publicly, unchallenged. That is the premise talkpage_draft.wiki
+    spends most of its length defending; keep the argument in reserve, don't lead with it.
+  * Q2 EXAMPLES / P887 SCHEME — no objection. One substantive correction: Bosnier →
+    "Bosnians and Herzegovinians" is not an exact match (the country has had different stages),
+    conceded as hard to fix. That is the demonym scope class we already defer on.
+  * Q3 HOW TO PROCEED / <100 items per week — NEVER ANSWERED. Nobody endorsed or objected to a
+    volume plan. So the one question that would have shaped a BRFA is still open, which is part
+    of why the BRFA is held.
+
+TWO LIVE OBLIGATIONS FROM THE THREAD:
+
+  * HOMOGRAPHS (VIGNERON, "the 3 words 'tour' in French"). The public answer was: the LLM sees
+    the sense gloss and the item descriptions, plus heuristics — "like excluding lexemes that
+    have multiple senses". BOTH of those safeguards are absent in the newer lanes: the senseless
+    lane has no target gloss at all, and the poly lane is multi-sense by definition. Any
+    disclosure of those lanes has to say so and say what replaces them.
+  * SENSE CREATION IS ANNOUNCED BUT NOT DESCRIBED. Told Infovarius on 2026-08-13: "I'm working
+    on a version that can add a sense to senseless lexemes (similar to Macht Sinn). I'll let you
+    know when that is ready." So there is an audience expecting a follow-up, and a promise to
+    report back — that follow-up is the disclosure sense_creation_plan.md staging step 5 asks for.
+  * Infovarius VOLUNTEERED to review Russian results. Russian is the language Karl cannot review
+    himself, and the mono lane produced almost nothing there because Russian lexemes are
+    overwhelmingly senseless — so the senseless lane is what makes that offer usable. Don't let
+    it go cold.
+
+The long method + licence write-up intended for the follow-up is talkpage_draft.wiki.
+-->
+
+== Adding P5137 to lexemes by using Wiktionary translation clusters ==
+
+I'm running an experiment where I use basic translation data from Wiktionary (via my [https://www.wikdict.com WikDict] project) to add P5137 to lexemes that don't have any such link yet and have exactly one sense.
+
+Basic concept:
+
+# Find translation on Wiktionary where one end of the translation already has a P5137. Then the same relation is a candidate for the other end of the translation. Problem: words can be ambiguous.
+# Get the description of the lexeme's sense and the labels and descriptions of the assigned item (all CC0 from Wikidata). Let an LLM verify this assignment to rule out most bad matches.
+# Let a human go through the remaining items and assign approve/reject/defer labels. Only approved ones are queued for writing. The results are also stored for evaluation and future improvements.
+# Write to Wikidata
+
+'''Licensing''': Wiktionary (CC-BY-SA) contributes only facts — which lemmas cluster, and the lemmas themselves. Verification reads only the anchor item's CC0 label/description, never the Wiktionary gloss, and nothing from Wiktionary (gloss, translation, sense numbering) is ever written to Wikidata. To my understanding, this clears all licensing hurdles.
+
+'''Examples''':
+
+* Dorsch (de) → [[Q13194939]] (cod) — [[Special:Diff/2511864531]]
+* Englischlehrer (de) → [[Q101444631]] (English teacher) — [[Special:Diff/2511864533]]
+* Bosnier (de) → [[Q99907279]] (Bosnians and Herzegovinians) — [[Special:Diff/2511864525]]
+* Existenz (de) → [[Q468777]] (existence) — [[Special:Diff/2511864539]]
+
+'''Questions''':
+
+# Do you agree that the licensing is ok?
+# Do the examples look correct? Is the P887 → [[Q140308675]] reference scheme the right way to disclose the heuristic? I created that one because I could not find a good existing heuristic.
+# If this is generally ok, what is the best way to proceed? Should I slowly (<100 items/week, even less at first) push more manually approved items as assisted writes?
+
+I'm happy to share review data, code, examples in other languages or any other information! [[User:Karlb42|Karlb42]] ([[User talk:Karlb42|<span class="signature-talk">{{int:Talkpagelinktext}}</span>]]) 16:10, 29 June 2026 (UTC)
