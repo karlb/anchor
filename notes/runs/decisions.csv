@@ -1261,3 +1261,12 @@ ts,target_lid,anchor_qid,target_lemma,target_lang,target_n_senses,target_sid,ver
 2026-08-13 14:44:01,L1525043,Q997267,skärmytsling,sv,1,,yes,BROADER: any minor conflict wider than specifically military skirmish,sonnet,written,write.py b/CB/3202ef8df726,2530907932
 2026-08-13 14:44:04,L33831,Q160894,spanjorska,sv,1,,yes,"EQUAL: gendered Spaniard, gender recorded separately",sonnet,written,write.py b/CB/3202ef8df726,2530907943
 2026-08-13 14:44:06,L246200,Q987168,tiggarmunk,sv,1,,yes,"INCOHERENT: English/German label=mendicant but French label+description=gyrovague, different concepts",sonnet,written,write.py b/CB/3202ef8df726,2530907950
+2026-09-03 10:51:56,L500805,Q123120,Aasgeier,de,2,L500805-S1,yes,EQUAL·plain: Aasgeier is common name for vulture,sonnet,approved,local,
+2026-09-12 09:28:22,L642647,Q4205820,Jemenit,de,1,L642647-S1,yes,INCOHERENT·gendered·demonym: Concept mixes citizens definition with ethnic group,sonnet,deferred,local,
+2026-09-12 09:28:36,L931776,Q15863,Slowenin,de,1,L931776-S1,yes,NARROWER·gendered·demonym·ethnic-anchor: female Slovenian narrower than Slovene ethnic group,sonnet,approved,local,
+2026-09-12 09:29:08,L1498668,Q231043,assent,en,1,L1498668-S1,yes,INCOHERENT·plain: Swedish field names unrelated liability-defense concept,sonnet,deferred,local,
+2026-09-12 09:38:03,L26630,Q11412,gravité,fr,1,,yes,EQUAL·missing-sense: physics gravité meaning missing from listed sense,sonnet,create,local,
+2026-09-12 09:42:57,L15912,Q7857,toilette,fr,1,,yes,"EQUAL·missing-sense: toilette also means lavatory, unlisted sense",sonnet,create,local,
+2026-09-12 09:43:05,L616610,Q6501380,Chinesin,de,1,,yes,INCOHERENT·gendered·demonym·ethnic-anchor·missing-sense: descriptions mix ethnic group and citizens of China,sonnet,deferred,local,
+2026-09-12 10:01:47,L749084,Q2094385,Nachspiel,de,1,,yes,EQUAL·missing-sense: unlisted music sense: Nachspiel=postlude,sonnet,create,local,
+2026-09-12 10:02:09,L29487,Q83012,advent,en,1,,yes,EQUAL·missing-sense: unlisted proper-noun sense: liturgical Advent season,sonnet,create,local,
