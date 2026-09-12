@@ -1131,7 +1131,8 @@ def render(limit, lang_filter=None, lane=None, act_filter=None):
                 f"<input type=hidden name=qid value='{html.escape(qid)}'>"
                 f"<input type=hidden name=lang value='{html.escape(lang_filter or '')}'>"
                 f"<input type=hidden name=act value='{html.escape(act_filter or '')}'>"
-                f"<button name=action value=approved class=ok>✓ approve</button> "
+                + ("" if can_create else
+                   f"<button name=action value=approved class=ok>✓ approve</button> ") +
                 f"<button name=action value=rejected class=no>✗ reject</button> "
                 f"<button name=action value=deferred class=hold>? defer</button>"
                 + (" <button name=action value=create class=ok>+ create sense</button>"
