@@ -334,3 +334,19 @@ log is the authority on decided pairs, and they never re-enter the queue.
 Still true either way: the disagreement set is where both prompts are at their worst (24% and
 46% keep-precision), so nothing here changes the auto-approve picture — these pairs are the
 review queue's job.
+
+### Spot-check of the 146 (2026-09-12): the referee is not neutral
+
+Karl adjudicated 30 random rows of the 146 blind (`notes/runs/spotcheck30.txt`, the
+evidence sheet without either verdict). Agreement with the measurement adjudications in
+`disagree_sample.csv`: **11/30**. The gap is mostly decisiveness — Claude deferred 16 of the 30,
+Karl 9 — and it is not symmetric: where the two prompts disagree, Karl's calls side with the
+**prose** prompt 12–7, while the 146 sided with the structured prompt 91–55. The structured
+prompt's win came from deferring where prose kept, graded by a referee who defers more than the
+project owner does. The current inventory prompt `d8769650` matches Karl on 12/30, prose on 12,
+structured on 7.
+
+So the 146 head-to-head is a measurement under Claude's standard, not Karl's, and it does not
+settle prompt choice. Thirty rows are too few to reverse it (19 decisive, p≈0.17). What it does
+settle: **a prompt-choice gold has to be human-adjudicated**, and the cheap way to get one is
+exactly this sheet — Karl grades only the pairs where two cached prompts disagree.

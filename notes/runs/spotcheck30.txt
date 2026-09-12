@@ -12,13 +12,13 @@
       fr: certificat  --  document écrit ou officiel qui atteste un fait
       nl: certificaat  --  schriftelijke verklaring
       WOULD CREATE: [de] 'Urkunde, die eine Aussage bestätigt' · [en] 'document that formally acknowledges something'
-YOUR CALL: 
+YOUR CALL: d
 
 [4] de 'Durchbruch'  (L296661 -> Q2920535)  lane=senseless n_senses=0 support=2
       en: breakthrough  --  military term
       fr: Percée  --  tactique militaire
       WOULD CREATE: [en] 'military term'
-YOUR CALL: 
+YOUR CALL: a
 
 [12] de 'Kunstsprache'  (L616489 -> Q1790577)  lane=poly n_senses=2 support=1
       en: planned language  --  consciously designed human language
@@ -29,7 +29,7 @@ YOUR CALL:
       fr: langue construite auxiliaire  --  langue humaine consciemment conçue
       TARGET SENSE L616489-S1: 'artificial language style'
       TARGET SENSE L616489-S2: 'constructed language'  [already -> Q3247505]  <== ASSIGNED
-YOUR CALL: 
+YOUR CALL: d
 
 [15] de 'Maus'  (L2871 -> Q83310)  lane=poly n_senses=5 support=2  ALIAS-MATCH='Maus'
       en: house mouse  --  species of mammal
@@ -45,7 +45,7 @@ YOUR CALL:
       TARGET SENSE L2871-S3: 'physical or virtual object or record accepted as payment'  [already -> Q1368]
       TARGET SENSE L2871-S4: 'small long tailed rodent'  [already -> Q2751034]  <== ASSIGNED
       TARGET SENSE L2871-S5: 'an attractive person'
-YOUR CALL: 
+YOUR CALL: d
 
 [16] de 'Modul'  (L797818 -> Q1178278)  lane=senseless n_senses=0 support=1
       en: module  --  in ancient Roman and neoclassical architecture, the radius of the column at its base, used as a unit to determine the relative proportions of the various parts of the Classical orders
@@ -53,7 +53,7 @@ YOUR CALL:
       eo: Vitruvia modulo
       fr: module  --  architecture
       WOULD CREATE: [de] 'Grundeinheit in der Architektur' · [en] 'in ancient Roman and neoclassical architecture, the radius of the column at its base, used as a unit to determine the relative proportions of the various parts of the Classical orders'
-YOUR CALL: 
+YOUR CALL: d (looks inconsistent, en has very special meaning)
 
 [17] de 'Nachahmung'  (L902751 -> Q1131737)  lane=senseless n_senses=0 support=4
       en: imitation  --  behavior whereby an individual observes and replicates another's behavior
@@ -65,7 +65,7 @@ YOUR CALL:
       fr: imitation  --  processus d'apprentissage
       nl: imitatie
       WOULD CREATE: [de] 'soziologisches Konzept' · [en] "behavior whereby an individual observes and replicates another's behavior"
-YOUR CALL: 
+YOUR CALL: a
 
 [24] de 'Truppe'  (L409097 -> Q1080137)  lane=senseless n_senses=0 support=2
       en: troop  --  military formation size, generally subordinate to a squadron in cavalry
@@ -74,7 +74,7 @@ YOUR CALL:
       eo: skadro
       fr: troupe  --  unité militaire de petite taille
       WOULD CREATE: [de] 'kleinste taktische Einheit der Kavallerie und der Panzertruppe' · [en] 'military formation size, generally subordinate to a squadron in cavalry'
-YOUR CALL: 
+YOUR CALL: r
 
 [27] de 'Zeitrechnung'  (L853638 -> Q130788)  lane=senseless n_senses=0 support=1
       en: chronology  --  science of arranging events in order of occurrence
@@ -86,7 +86,7 @@ YOUR CALL:
       fr: chronologie  --  manière d'appréhender l'histoire par les événements
       nl: chronologie  --  volgorde van gebeurtenissen in de tijd
       WOULD CREATE: [de] 'Lehre von der Zeit, zum Beispiel Datierung in der Wissenschaft' · [en] 'science of arranging events in order of occurrence'
-YOUR CALL: 
+YOUR CALL: r
 
 [31] en 'beginner'  (L56444 -> Q1183487)  lane=mono n_senses=1 support=1
       en: novice  --  person who has entered a religious order and is under probation, before taking vows; person or creature who is new to a field or activity
@@ -97,7 +97,7 @@ YOUR CALL:
       fr: novice  --  personne qui manque d'expérience ou qui passe un noviciat, période de réflexion sur sa vocation
       nl: novice  --  proeftijd in een klooster
       TARGET SENSE L56444-S1: 'person who is just starting to learn something'
-YOUR CALL: 
+YOUR CALL: r
 
 [38] en 'check'  (L3925 -> Q1121708)  lane=poly n_senses=6 support=1
       en: failure  --  state or event of not meeting a desired or intended objective
@@ -114,7 +114,7 @@ YOUR CALL:
       TARGET SENSE L3925-S4: 'examination'
       TARGET SENSE L3925-S5: 'signed document drawing funds from a bank account'  [already -> Q80042]
       TARGET SENSE L3925-S6: 'to have power over, curb or moderate'
-YOUR CALL: 
+YOUR CALL: r
 
 [40] en 'college'  (L3942 -> Q3918)  lane=poly n_senses=3 support=3
       en: university  --  an institution of tertiary education and research which awards academic degrees in several academic disciplines
@@ -128,7 +128,7 @@ YOUR CALL:
       TARGET SENSE L3942-S1: 'higher education institution'  [already -> Q189004]  <== ASSIGNED
       TARGET SENSE L3942-S2: 'kind of school in Canada'  [already -> Q5146315]
       TARGET SENSE L3942-S3: 'an organized group of professional people with particular aims, duties, and privileges'
-YOUR CALL: 
+YOUR CALL: d
 
 [47] en 'fragility'  (L34606 -> Q898288)  lane=mono n_senses=1 support=2
       en: brittleness  --  material tendency to break from stress without significant plastic deformation
@@ -139,7 +139,7 @@ YOUR CALL:
       fr: fragilité  --  propriété mécanique d'un matériau, opposé à la ductilité
       nl: brosheid  --  materiaaleigenschap, die de hoge weerstand tegen plastische deformatie voor een breuk aangeeft
       TARGET SENSE L34606-S1: 'quality of being easily broken'
-YOUR CALL: 
+YOUR CALL: d
 
 [48] en 'front'  (L4089 -> Q899192)  lane=poly n_senses=3 support=2
       en: front  --  military formation in some countries; originates in the Russian Empire
@@ -152,7 +152,7 @@ YOUR CALL:
       TARGET SENSE L4089-S1: 'side or face of an item considered to be its primary or front side; side that faces forward'  [already -> Q68345460]
       TARGET SENSE L4089-S2: 'solution of an spatially extended system connecting two steady states'  [already -> Q28458702]
       TARGET SENSE L4089-S3: 'disguise'
-YOUR CALL: 
+YOUR CALL: a
 
 [52] en 'issue'  (L4160 -> Q3972943)  lane=poly n_senses=4 support=1
       en: publishing  --  process of production and dissemination of literature, music, or information
@@ -167,7 +167,7 @@ YOUR CALL:
       TARGET SENSE L4160-S2: 'problem to be addressed'  [already -> Q621184]
       TARGET SENSE L4160-S3: 'grouping of articles in a periodical publication, usually for a particular date'  [already -> Q28869365]
       TARGET SENSE L4160-S4: 'emit, emit/provide'
-YOUR CALL: 
+YOUR CALL: r
 
 [54] en 'league'  (L13004 -> Q170156)  lane=poly n_senses=4 support=1  ALIAS-MATCH='league'
       en: confederation  --  union of sovereign states linked by treaties, whose common government does not directly exercise its sovereignty over their territory
@@ -182,7 +182,7 @@ YOUR CALL:
       TARGET SENSE L13004-S2: 'unit of length'  [already -> Q660818]
       TARGET SENSE L13004-S3: 'group of sports teams that compete together'  [already -> Q623109]
       TARGET SENSE L13004-S4: 'organization of people or other entities that work together'  <== ASSIGNED
-YOUR CALL: 
+YOUR CALL: r
 
 [60] en 'privilege'  (L13274 -> Q43637)  lane=poly n_senses=5 support=2
       en: monopoly  --  market structure with a single firm dominating the market
@@ -198,7 +198,7 @@ YOUR CALL:
       TARGET SENSE L13274-S3: 'legal right or duty to refuse disclosure of evidence'  [already -> Q6501421]
       TARGET SENSE L13274-S4: 'special entitlement to immunity granted by the state or another authority to a restricted group'  [already -> Q273395]
       TARGET SENSE L13274-S5: 'An ability to perform an action on the system that can be selectively granted or denied to users'
-YOUR CALL: 
+YOUR CALL: r
 
 [78] fr 'brute'  (L346591 -> Q729)  lane=mono n_senses=1 support=2
       en: animal  --  kingdom of multicellular eukaryotic organisms
@@ -210,7 +210,7 @@ YOUR CALL:
       fr: animal  --  règne des êtres vivants hétérotrophes multicellulaires
       nl: dier  --  rijk van meercellige eukaryoten
       TARGET SENSE L346591-S1: 'animal lacking in reason/intelligence/sensibility (brute)'
-YOUR CALL: 
+YOUR CALL: r (brute excludes humans, Q729 includes them; fr animal + bête already -> Q729)
 
 [80] fr 'carabine'  (L688448 -> Q183302)  lane=mono n_senses=1 support=2
       en: carbine  --  shortened version of a standard firearm
@@ -222,7 +222,7 @@ YOUR CALL:
       fr: carabine militaire  --  arme à feu d'épaule avec crosse
       nl: karabijn  --  type vuurwapen
       TARGET SENSE L688448-S1: 'rifle'
-YOUR CALL: 
+YOUR CALL: a
 
 [86] fr 'ferveur'  (L713603 -> Q840407)  lane=mono n_senses=1 support=3
       en: enthusiasm  --  intense enjoyment, interest, or approval (in current English vernacular)
@@ -233,7 +233,7 @@ YOUR CALL:
       fr: enthousiasme  --  émotion positive
       nl: enthousiasme
       TARGET SENSE L713603-S1: 'ardor/zeal (fervor, in general)'
-YOUR CALL: 
+YOUR CALL: d (LATERAL sibling-emotion; fr enthousiasme already -> Q840407, ferveur/ardeur unlinked, zèle sits on a separate item)
 
 [87] fr 'illégitimité'  (L656906 -> Q2920651)  lane=mono n_senses=1 support=1
       en: illegitimacy  --  status of a child born outside of a legal marriage
@@ -241,7 +241,7 @@ YOUR CALL:
       fr: filiation naturelle  --  filiation qui caractérise les enfants nés de parents libres, c'est-à-dire non mariés ni l'un ni l'autre
       nl: onwettig
       TARGET SENSE L656906-S1: 'quality of not being legitimate'
-YOUR CALL: 
+YOUR CALL: a
 
 [88] fr 'incapacité'  (L21508 -> Q4316032)  lane=mono n_senses=1 support=1
       en: incapacity  --  inability to use one's mind without outside guidance
@@ -251,7 +251,7 @@ YOUR CALL:
       da: umyndig
       fr: minorité  --  Incapacité à utiliser son esprit sans aide extérieure
       TARGET SENSE L21508-S1: 'inability (to do something)'
-YOUR CALL: 
+YOUR CALL: r (S1 is generic 'inability'; anchor is Kant's Unmündigkeit/legal minority — de Unmündigkeit already -> Q4316032)
 
 [89] fr 'mentalité'  (L25713 -> Q116689012)  lane=mono n_senses=1 support=1
       en: mindset  --  Wikimedia duplicated page
@@ -259,7 +259,7 @@ YOUR CALL:
       da: mindset  --  Wikimedia-duplikeret side
       fr: mentalité
       TARGET SENSE L25713-S1: 'mindset/way of thinking (mentality)'
-YOUR CALL: 
+YOUR CALL: d
 
 [91] fr 'primate'  (L28213 -> Q7380)  lane=mono n_senses=1 support=3  ALIAS-MATCH='primate'
       en: primate  --  order of mammals (scientific name: Primates)
@@ -271,7 +271,7 @@ YOUR CALL:
       fr: primates  --  ordre de mammifères placentaires
       nl: primaten  --  taxon, orde van zoogdieren
       TARGET SENSE L28213-S1: 'member of an order of mammals which includes humans'
-YOUR CALL: 
+YOUR CALL: a
 
 [120] sv 'djävulsdyrkan'  (L1218376 -> Q133363)  lane=mono n_senses=1 support=2  ALIAS-MATCH='Djävulsdyrkan'
       en: Satanism  --  ideological and philosophical beliefs based on Satan
@@ -283,7 +283,7 @@ YOUR CALL:
       fr: satanisme  --  croyances idéologiques et philosophiques fondées sur Satan
       nl: Satanisme  --  Religie
       TARGET SENSE L1218376-S1: 'tillbedja djävulen'
-YOUR CALL: 
+YOUR CALL: d
 
 [122] sv 'gigg'  (L244462 -> Q182832)  lane=senseless n_senses=0 support=1
       en: concert  --  live performance of music
@@ -295,7 +295,7 @@ YOUR CALL:
       fr: concert  --  représentation musicale d'un ou plusieurs musiciens en public
       nl: concert  --  live muziekuitvoering
       WOULD CREATE: [sv] 'framförande av levande musik' · [en] 'live performance of music'
-YOUR CALL: 
+YOUR CALL: d (bad gloss — it is konsert's definition verbatim; sv konsert already -> Q182832, and native spelning L240406 is the better senseless target)
 
 [123] sv 'grundtal'  (L247926 -> Q163875)  lane=senseless n_senses=0 support=3
       en: cardinal number  --  finite or infinite number that measures cardinality (size) of sets
@@ -307,7 +307,7 @@ YOUR CALL:
       fr: nombre cardinal
       nl: kardinaalgetal  --  natuurkundige eenheid
       WOULD CREATE: [sv] 'begrepp inom mängdteorin' · [en] 'finite or infinite number that measures cardinality (size) of sets'
-YOUR CALL: 
+YOUR CALL: r (grundtal is the GRAMMAR cardinal; anchor is set-theoretic — sibling ordningstal L1343177 already -> Q923933, the grammar series)
 
 [134] sv 'perser'  (L1087128 -> Q484206)  lane=poly n_senses=2 support=1
       en: Persians  --  Iranian ethnic group who make up over half the population of Iran
@@ -320,7 +320,7 @@ YOUR CALL:
       nl: Perzen  --  etnische groep
       TARGET SENSE L1087128-S1: 'person från Persien'  <== ASSIGNED
       TARGET SENSE L1087128-S2: 'perserkatt'
-YOUR CALL: 
+YOUR CALL: d
 
 [135] sv 'pipa'  (L408623 -> Q204917)  lane=poly n_senses=4 support=2
       en: whistle  --  instrument which produces sound from a stream of forced air
@@ -335,13 +335,13 @@ YOUR CALL:
       TARGET SENSE L408623-S2: 'del av orgel'  [already -> Q1510738]
       TARGET SENSE L408623-S3: 'eldrör på finkalibrigt vapen'  [already -> Q487192]
       TARGET SENSE L408623-S4: 'sångröst'
-YOUR CALL: 
+YOUR CALL: a
 
 [142] sv 'trams'  (L1494493 -> Q151501)  lane=mono n_senses=1 support=1
       en: nonsense  --  idiom
       de: Fisimatenten  --  umgangssprachlicher Begriff mit der Bedeutung Unsinn
       TARGET SENSE L1494493-S1: 'nonsens, struntprat'
-YOUR CALL: 
+YOUR CALL: r (Q151501 is P31=idiom — the German phrase Fisimatenten itself, 4 labels; not a concept a Swedish sense can denote)
 
 [144] sv 'tunisier'  (L1414894 -> Q2459831)  lane=mono n_senses=1 support=4
       en: Tunisians  --  citizens or residents of Tunisia
@@ -353,4 +353,4 @@ YOUR CALL:
       fr: Tunisiens  --  groupe ethnique
       nl: Tunesiërs  --  burgers of inwoners van Tunesië
       TARGET SENSE L1414894-S1: 'person från Tunisien'
-YOUR CALL: 
+YOUR CALL: a (nationality demonym, the codified case — P31 includes Q231002 nationality; en/de/nl say citizens or residents, only fr desc says ethnic group; matches the luxemburgare keep)
