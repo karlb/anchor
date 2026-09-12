@@ -1111,12 +1111,13 @@ def render(limit, lang_filter=None, lane=None, act_filter=None):
                 glosses = anchor_gloss(it, qid, lang, lemma)
                 parts = [f"[{g}] “{html.escape(t)}”" for g, t in
                          sorted(glosses.items(), key=lambda kv: kv[0] != lang)]
-                gloss_html += ("<br><span class=noassign>⚠ the recorded sense is not this "
-                               "meaning — do not approve; “+ create sense” if the noun has it."
-                               "</span>"
-                               + ("<br><span class=create>would CREATE sense</span> gloss: "
-                                  + " · ".join(parts) if parts else
-                                  "<br><i>(no CC0 gloss source — a create would be skipped)</i>"))
+                gloss_html = (f"<span class=d>existing sense, <b>not</b> this meaning:</span> "
+                              f"{gloss_html}<br><span class=noassign>⚠ the verifier says the "
+                              "noun has this meaning but no recorded sense does — “+ create "
+                              "sense” if so, defer if the gloss below is wrong</span>"
+                              + ("<br><span class=create>would CREATE sense</span> gloss: "
+                                 + " · ".join(parts) if parts else
+                                 "<br><i>(no CC0 gloss source — a create would be skipped)</i>"))
         if n_poly_row:
             gloss_html += (f"<div class=poly>⚠ source word is polysemous ({n_poly_row} WikDict "
                            "senses collapse here) — S1 may be a minor sense, which is fine; "
