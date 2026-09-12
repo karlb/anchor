@@ -113,6 +113,9 @@ SELECT lexentry, sense_num, lid, min(qid) AS qid
 FROM member_qid
 GROUP BY lexentry, sense_num, lid
 HAVING count(DISTINCT qid) = 1;
+-- review_queue.anchor_support_index joins candidate_raw to this on all three; without the
+-- index SQLite builds a temporary one on every server start (~7s)
+CREATE INDEX cla_key ON clean_anchor(lexentry, sense_num, qid);
 
 -- a cluster has a single dominant anchor iff its clean anchors agree on one Q
 DROP TABLE IF EXISTS cluster_anchor;
