@@ -154,8 +154,8 @@ def _dup_cached(vf, lid, qids):
 
 def duplicate_groups(lid, lang, lemma, senses, it):
     """[[qid, qid, ...], ...] anchors in this CREATE group that denote the same sense; [] if all
-    distinct. Compares the exact gloss text the edit would write, so what is judged is what
-    would be published."""
+    distinct; None if the check failed (already reported). Compares the exact gloss text the
+    edit would write, so what is judged is what would be published."""
     import llm                                    # only this path needs the LLM
     qids = [sense_anchor(s) for s in senses]
     vf = sqlite3.connect(config.VERIFY)
@@ -179,7 +179,7 @@ def duplicate_groups(lid, lang, lemma, senses, it):
             print(f"# SKIP Lexeme:{lid} — duplicate-sense preflight failed ({e}); "
                   "not writing a multi-sense inventory unchecked")
             vf.close()
-            return [qids]
+            return None
         same = []
         for n, a in enumerate(ans, 1):
             try:
@@ -605,6 +605,8 @@ def main():
             # sense pair, so it is the one shape that gets read before it goes out.
             if len(senses) > 1 and kind == "create":
                 dups = duplicate_groups(lid, last[3], last[2], senses, it)
+                if dups is None:
+                    continue
                 if dups:
                     print(f"# SKIP Lexeme:{lid} — duplicate-sense preflight: "
                           + "; ".join("+".join(g) + " denote the same sense" for g in dups)

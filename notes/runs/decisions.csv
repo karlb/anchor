@@ -1276,3 +1276,38 @@ ts,target_lid,anchor_qid,target_lemma,target_lang,target_n_senses,target_sid,ver
 2026-09-12 10:24:38,L330712,Q14394,zeta,en,1,,yes,EQUAL: sixth Greek letter matches exactly,sonnet,approved,"crowd:Ecartertechnologies, WikiMarta lv",
 2026-09-12 10:24:38,L37004,Q9020257,laparoscope,en,1,,yes,EQUAL: same medical endoscope device,sonnet,approved,"crowd:Ecartertechnologies, Spacecat711",
 2026-09-12 10:24:38,L40558,Q372016,pathogenesis,en,1,,yes,EQUAL: disease-origin mechanism matches description exactly,sonnet,approved,"crowd:Ecartertechnologies, Whitty81",
+2026-09-12 12:06:11,L931776,Q15863,Slowenin,de,1,,yes,NARROWER·gendered·demonym·ethnic-anchor: female Slovenian narrower than Slovene ethnic group,sonnet,written,write.py b/CB/339940c20971,2544524830
+2026-09-12 12:06:13,L318802,Q187704,coypu,en,1,,yes,EQUAL: same species Myocastor coypus,sonnet,written,write.py b/CB/339940c20971,2544524848
+2026-09-12 12:06:16,L324930,Q1921355,pachyderm,en,1,,yes,EQUAL: same obsolete taxonomic order,sonnet,written,write.py b/CB/339940c20971,2544524859
+2026-09-12 12:06:18,L40558,Q372016,pathogenesis,en,1,,yes,EQUAL: disease-origin mechanism matches description exactly,sonnet,written,write.py b/CB/339940c20971,2544524872
+2026-09-12 12:06:21,L220959,Q107647,phagocyte,en,1,,yes,EQUAL: immune cell type matches phagocyte,sonnet,written,write.py b/CB/339940c20971,2544524884
+2026-09-12 12:06:24,L330712,Q14394,zeta,en,1,,yes,EQUAL: sixth Greek letter matches exactly,sonnet,written,write.py b/CB/339940c20971,2544524897
+2026-09-20 15:18:17,L811788,Q134161,AG,de,1,L811788-S1,yes,EQUAL·plain: AG abbreviation for Aktiengesellschaft matches exactly,sonnet,approved,local,
+2026-09-20 15:18:28,L626474,Q4855428,Bangladescher,de,1,L626474-S1,yes,"EQUAL·gendered·demonym: national demonym, citizens/residents target",sonnet,approved,local,
+2026-09-20 15:18:30,L626475,Q4855428,Bangladescherin,de,1,L626475-S1,yes,"EQUAL·gendered·demonym: national demonym, citizens/residents target",sonnet,approved,local,
+2026-09-20 15:18:36,L342936,Q1567862,Iraker,de,1,L342936-S1,yes,"EQUAL·gendered·demonym: citizens of Iraq, gender recorded separately",sonnet,approved,local,
+2026-09-20 15:18:48,L345345,Q1567862,Irakerin,de,1,L345345-S1,yes,"EQUAL·gendered·demonym: Female Iraqi citizen, gender recorded separately",sonnet,approved,local,
+2026-09-20 15:18:52,L642648,Q4205820,Jemenitin,de,1,L642648-S1,yes,"EQUAL·gendered·demonym: citizens/residents of Yemen, blessed demonym target",sonnet,approved,local,
+2026-09-20 15:19:23,L849789,Q65560351,Koinzidenz,de,1,L849789-S1,yes,EQUAL·plain: coincidence sense matches concept,sonnet,approved,local,
+2026-09-27 08:24:43,L295676,Q627153,arbeterska,sv,1,,yes,EQUAL·gendered·missing-sense: arbeterska also names sterile female worker insects,sonnet,deferred,local,
+2026-09-27 08:25:59,L1494409,Q320433,aspiration,sv,1,,yes,"EQUAL·missing-sense: phonetic aspiration meaning, missing from listed senses",sonnet,create,local,
+2026-09-27 08:26:23,L59292,Q4440864,dimension,sv,1,,yes,"EQUAL·missing-sense: math dimension sense missing from list, still equal",sonnet,create,local,
+2026-09-27 08:28:48,L33277,Q2920990,ettåring,sv,1,,yes,"EQUAL·missing-sense: ettåring also used for yearling horse, unlisted",sonnet,deferred,local,
+2026-09-27 08:28:51,L409206,Q2920535,genombrott,sv,1,,yes,"EQUAL·missing-sense: military breakthrough sense, missing from list",sonnet,create,local,
+2026-09-27 08:28:53,L1331795,Q182661,grävare,sv,1,,yes,EQUAL·missing-sense: colloquial 'grävare' also means excavator machine,sonnet,create,local,
+2026-09-27 08:29:13,L33328,Q759676,insats,sv,1,,yes,"LATERAL·missing-sense: contribution/effort sense adjacent to task, not equal",sonnet,rejected,local,
+2026-09-27 08:29:47,L496879,Q267628,kolumn,sv,1,,yes,EQUAL·missing-sense: newspaper-column sense missing from listed sense,sonnet,deferred,local,
+2026-09-27 08:37:25,L54858,Q17278,krets,sv,1,,yes,"EQUAL·missing-sense: krets also means geometric circle, unlisted sense",sonnet,rejected,local,
+2026-09-27 08:37:59,L1129299,Q1581819,matris,sv,1,,yes,"EQUAL·missing-sense: printing matrix meaning missing from list, not different",sonnet,create,local,
+2026-09-27 08:41:57,L409442,Q144700,lake,sv,1,,yes,EQUAL·missing-sense: unlisted sense: 'lake' = burbot fish,sonnet,create,local,
+2026-09-27 08:42:07,L409217,Q11190,medicin,sv,1,,yes,EQUAL·missing-sense: unlisted 'science' sense of medicin,sonnet,create,local,
+2026-09-27 08:42:12,L32830,Q104605901,mes,sv,1,,yes,"EQUAL·missing-sense: mes=coward slang, missing sense not homograph",sonnet,create,local,
+2026-09-27 08:43:24,L32830,Q15951126,mes,sv,1,,yes,EQUAL·missing-sense: mes also slang for sissy/coward,sonnet,rejected,local,
+2026-09-27 08:45:34,L1504016,Q37068,romantik,sv,1,,yes,"EQUAL·missing-sense: romantik also names Romanticism movement, unlisted sense",sonnet,create,local,
+2026-09-27 08:45:37,L409429,Q231250,spets,sv,1,,yes,EQUAL·missing-sense: lace is unlisted second sense of spets,sonnet,create,local,
+2026-09-27 08:45:39,L409429,Q854787,spets,sv,1,,yes,EQUAL·missing-sense: unlisted sense: 'spets' = spitz dog,sonnet,create,local,
+2026-09-27 08:45:40,L47307,Q46737,tillgång,sv,1,,yes,"EQUAL·missing-sense: asset sense of tillgång missing, not homograph",sonnet,create,local,
+2026-09-27 08:45:42,L1417601,Q160695,torso,sv,1,,yes,EQUAL·missing-sense: body-part meaning missing from listed sense,sonnet,create,local,
+2026-09-27 08:51:32,L1092970,Q81938,ömhet,sv,1,,yes,"NARROWER·missing-sense: ömhet also means soreness, a pain type",sonnet,rejected,local,
+2026-09-27 08:51:50,L1551874,Q188681,uppståndelse,sv,1,,yes,EQUAL·missing-sense: resurrection is unlisted sense of uppståndelse,sonnet,create,local,
+2026-09-27 08:51:53,L1093017,Q81050,åtta,sv,1,,yes,EQUAL·missing-sense: boat-class 'eight' is unlisted numeral sense,sonnet,create,local,
