@@ -458,13 +458,20 @@ def write_edits(edits, max_per_min):
                     continue
                 senses[0]["id"] = sid
             elif any(decisions.get((lid, a), {}).get("status") == "create" for a in anchors):
-                # create_add: the human chose "create" over a live inventory, so senses are
-                # expected. The only stale state is this anchor already sitting on one of
-                # them (a prior run that died before logging, or another editor).
+                # create_add: the human chose "create" over the inventory the dump showed.
+                # Skip if the anchor already sits on a live sense (a prior run that died
+                # before logging, or another editor), or if the inventory changed since — a
+                # new sense may already mean this, without a P5137 to show it.
                 live = live_senses(opener, lid)
                 carried = {a for a in anchors for s in live if a in p5137_targets(s)}
                 if carried:
                     print(f"  skip {lid}: a live sense already has P5137 → {sorted(carried)}")
+                    continue
+                n_seen = {decisions[(lid, a)]["target_n_senses"] for a in anchors
+                          if decisions.get((lid, a), {}).get("status") == "create"}
+                if n_seen != {str(len(live))}:
+                    print(f"  skip {lid}: {len(live)} live senses, reviewed against "
+                          f"{'/'.join(sorted(n_seen))}; re-review")
                     continue
             else:
                 # sense-creation: only ever CREATE a first sense on a still-senseless lexeme.
