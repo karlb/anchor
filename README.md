@@ -243,9 +243,11 @@ work is measurement before conversation. Reasoning in `notes/sense_assignment_fi
    comes before the edits, carrying the measured precision and an honest account of what
    replaces the gloss. Approved rows keep: `decisions.csv` is append-only, so a refined approach
    that disagrees with an earlier approval appends a `recheck` row rather than losing it.
-5. **Review the polysemous lane and the new `create` rows**, non-English first — the first
-   sense-level human labels the project has. Unblocked since (2) and the 2026-09-03 re-verify;
-   `review_queue.py serve --poly`, `?act=create` filters the create rows.
+5. **Review the mono `create` rows** (`review_queue.py serve`, `/?act=create`) — the first human
+   labels on the create action, which the senseless lane and any bot request rest on.
+   **Poly is parked** (2026-09-27): ~350 pairs, no proposal depends on it. Kept built and in the
+   design — the unit stays `(lexeme, sense | new, item)` for every lane, so poly needs no special
+   case when it returns.
 
 **The method has been disclosed on-wiki and the licensing question is answered.**
 [[Wikidata talk:Lexicographical data]], posted 2026-06-29 (`notes/talkpage_post.wiki`): two
