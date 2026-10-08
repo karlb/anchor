@@ -167,8 +167,9 @@ def duplicate_groups(lid, lang, lemma, senses, it):
         lines = []
         for n, s in enumerate(senses, 1):
             gl = "; ".join(f"[{g}] {v['value']}" for g, v in sorted(s["glosses"].items()))
-            lab = (it.execute("SELECT coalesce(label_en, label_de, label_sv) FROM item WHERE qid=?",
-                              [sense_anchor(s)]).fetchone() or [""])[0] or ""
+            lab = (it.execute("SELECT label FROM item_lang WHERE qid=? AND label IS NOT NULL "
+                              "ORDER BY lang<>?, lang<>'en' LIMIT 1",
+                              [sense_anchor(s), lang]).fetchone() or [""])[0]
             lines.append(f'{n}. concept {sense_anchor(s)} "{lab}" — gloss to write: {gl}')
         prompt = (f'word: language={config.LANGNAME.get(lang, lang)} noun="{lemma}"\n'
                   "concepts:\n" + "\n".join(lines))

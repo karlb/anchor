@@ -63,7 +63,7 @@ latest-lexemes.json.gz ─load_lexemes.py──▶ wikidata.sqlite3 ─┘      
 
 **Evaluate, verify, review, write:**
 4. **`fetch_items.py`** / **`fetch_anchor_langs.py`** — polite Wikidata Action API clients; cache
-   anchor Q **CC0** labels/descriptions + P31/P279 into `wd_items.sqlite3`. The all-language
+   anchor Q P31/P279 and all-language **CC0** labels/descriptions into `wd_items.sqlite3`. The all-language
    `item_lang` cache is the verifier's only concept source, so a stale fetch fails loud.
 5. **`verify.py`** — LLM verifier over `claude -p` (CC0 anchor label/description + the target
    lexeme's numbered CC0 sense inventory; tolerant criterion — broader/narrower count as yes, only

@@ -1,16 +1,12 @@
 #!/usr/bin/env python3
-"""Fetch CC0 labels/descriptions + P31/P279 for the anchor Q-items.
+"""Fetch P31/P279 for the anchor Q-items.
 
 Reads the distinct anchor Q-ids from candidates.sqlite3 and fetches, from the
 Wikidata Action API (``wbgetentities``), each item's:
   * P31 (instance of) + P279 (subclass of) targets -> item_type, the STRUCTURAL,
     language-independent data behind gate D (concrete anchor) and the scope filter.
-    This is the reason this fetch still exists.
-  * CC0 label + description in de/en/sv -> the `item` table. NOT the verifier's
-    grading concept anymore (that is item_lang, all languages, via fetch_anchor_langs).
-    de/en/sv is a fossil of the original de/en/sv-only pilot; it survives as the fallback
-    for anchors item_lang lacks. It rides along for free in the same wbgetentities call
-    that fetches P31/P279.
+  * existence -> the `item` table (`missing` = 1 if the API has no such entity).
+Labels and descriptions come from fetch_anchor_langs.py (item_lang, all languages).
 
 Everything fetched is CC0 (Wikidata's own data). Results are cached in
 ``data/wd_items.sqlite3`` keyed by Q-id, so the script is fully resumable and a
@@ -47,7 +43,6 @@ import config
 
 API = "https://www.wikidata.org/w/api.php"
 USER_AGENT = "anchor-p5137-pilot/0.1 (https://www.wikidata.org/; karl42@gmail.com) python-urllib"
-LANGS = ("de", "en", "sv")
 BATCH = 50
 SLEEP = 0.2          # polite gap between successful batches (s)
 MAX_RETRIES = 6
@@ -55,8 +50,6 @@ MAX_RETRIES = 6
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS item(
     qid TEXT PRIMARY KEY,
-    label_de TEXT, label_en TEXT, label_sv TEXT,
-    desc_de TEXT, desc_en TEXT, desc_sv TEXT,
     missing INT DEFAULT 0          -- 1 if the API returned no such entity
 ) WITHOUT ROWID;
 CREATE TABLE IF NOT EXISTS item_type(qid TEXT, prop TEXT, value TEXT);
@@ -100,14 +93,8 @@ def http_get(params):
     raise RuntimeError(f"giving up after {MAX_RETRIES} retries: {url}")
 
 
-def parse_entity(qid, ent):
-    """Extract (label/desc row, [(qid, prop, value), ...]) from an entity blob.
-    The caller has already filtered out missing entities."""
-    labels = ent.get("labels", {})
-    descs = ent.get("descriptions", {})
-    row = [qid]
-    row += [labels.get(l, {}).get("value") for l in LANGS]
-    row += [descs.get(l, {}).get("value") for l in LANGS]
+def parse_types(qid, ent):
+    """[(qid, prop, value), ...] P31/P279 edges of a (non-missing) entity blob."""
     types = []
     claims = ent.get("claims", {})
     for prop in ("P31", "P279"):
@@ -118,15 +105,14 @@ def parse_entity(qid, ent):
             v = snak.get("datavalue", {}).get("value", {}).get("id")
             if v:
                 types.append((qid, prop, v))
-    return (row, types)
+    return types
 
 
 def fetch_batch(ids):
     data = http_get({
         "action": "wbgetentities",
         "ids": "|".join(ids),
-        "props": "labels|descriptions|claims",
-        "languages": "|".join(LANGS),
+        "props": "claims",
         "format": "json",
     })
     return data.get("entities", {})
@@ -164,15 +150,12 @@ def main():
         rows, types, missing = [], [], []
         for qid in batch:
             ent = entities.get(qid)
-            if ent is None or (ent.get("missing") is not None and "labels" not in ent):
+            if ent is None or "missing" in ent:
                 missing.append((qid,))
                 continue
-            row, ts = parse_entity(qid, ent)
-            rows.append(row)
-            types.extend(ts)
-        cache.executemany(
-            "INSERT OR REPLACE INTO item(qid,label_de,label_en,label_sv,desc_de,desc_en,desc_sv) "
-            "VALUES (?,?,?,?,?,?,?)", rows)
+            rows.append((qid,))
+            types.extend(parse_types(qid, ent))
+        cache.executemany("INSERT OR REPLACE INTO item(qid) VALUES (?)", rows)
         cache.executemany("INSERT OR REPLACE INTO item(qid,missing) VALUES (?,1)", missing)
         cache.executemany("INSERT INTO item_type VALUES (?,?,?)", types)
         cache.commit()

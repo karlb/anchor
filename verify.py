@@ -281,7 +281,7 @@ def ensure_schema(cn):
 
 
 def candidates(gate="", min_support=1, senseless_only=False, max_senses=None, poly_only=False):
-    """Clean candidates joined to the anchor Q's CC0 label/description.
+    """Clean candidates with a non-missing anchor item: (lid, lang, lemma, qid, support).
 
     `gate` adds structural gates (the same SQL fragments gates.high_tier_where composes):
     A (>=2 anchors), B (monosemous target, n_senses==1), D (concrete in-scope anchor).
@@ -318,8 +318,7 @@ def candidates(gate="", min_support=1, senseless_only=False, max_senses=None, po
         where += " AND " + gates.concrete_anchor_clause("c", "it")
     rows = cn.execute(
         f"""
-        SELECT c.target_lid, c.target_lang, c.target_lemma, c.anchor_qid, c.support_clusters,
-               i.label_de, i.label_en, i.label_sv, i.desc_de, i.desc_en, i.desc_sv
+        SELECT c.target_lid, c.target_lang, c.target_lemma, c.anchor_qid, c.support_clusters
         FROM candidate c
         JOIN it.item i ON i.qid = c.anchor_qid AND NOT i.missing
         WHERE {where}
@@ -386,27 +385,16 @@ def unfetched_anchors(qids):
     return qids - fetched
 
 
-def fmt_concept(row, langs, il_map=None):
-    """(qid, label, description) for the anchor concept, target-language first.
-
-    langs (a config.CONCEPT_LANGS_* spec) selects the languages: the concept is built from
-    item_lang (il_map), the ONLY concept the live verifier grades on — its has_evidence gate
-    keys on item_lang, so a live-run row always has an entry here. The de/en/sv fallback below
-    (when item_lang lacks the qid) is reached only by --allow-degraded smoke runs and the
-    audit; it widens to ALL of de/en/sv so cross-language disagreement still surfaces."""
-    _lid, lang, _lemma, qid, _sup, lde, len_, lsv, dde, den, dsv = row
-    entry = (il_map or {}).get(qid)
+def fmt_concept(row, langs, il_map):
+    """(qid, label, description) for the anchor concept, built from item_lang (il_map) in the
+    `langs` spec (a config.CONCEPT_LANGS_* entry), target-language first — the ONLY concept the
+    verifier grades on (has_evidence guarantees a live-run row has an entry here)."""
+    _lid, lang, _lemma, qid, _sup = row
+    entry = il_map.get(qid)
     res = config.resolve_concept_langs(entry, langs, target=lang) if entry else []
-    if res:
-        lab = " / ".join(dict.fromkeys(l for _d, l, _ds in res if l)) or "(no label)"
-        desc = " | ".join(f"{d}: {ds}" for d, _l, ds in res if ds) or "(no description)"
-        return qid, lab, desc
-    labels = {"de": lde, "en": len_, "sv": lsv}
-    descs = {"de": dde, "en": den, "sv": dsv}
-    order = list(dict.fromkeys([lang, "en", "de", "sv"]))   # target-language first
-    lab = " / ".join(dict.fromkeys(labels[c] for c in order if labels.get(c)))
-    desc = " | ".join(f"{c}: {descs[c]}" for c in order if descs.get(c))
-    return qid, lab or "(no label)", desc or "(no description)"
+    lab = " / ".join(dict.fromkeys(l for _d, l, _ds in res if l)) or "(no label)"
+    desc = " | ".join(f"{d}: {ds}" for d, _l, ds in res if ds) or "(no description)"
+    return qid, lab, desc
 
 
 def has_evidence(row, il_map):

@@ -25,7 +25,6 @@ contradictions (the sense-mismatch class the lemma-only verifier is blind to, e.
 import argparse
 import collections
 import json
-import sqlite3
 
 import config
 import llm
@@ -50,14 +49,10 @@ GLOSS_SYSTEM = (
 )
 
 
-def cc0(it, qid, lang, il_map):
-    """The anchor's CC0 concept exactly as the live verifier formats it (+multi from
-    item_lang, widened de/en/sv fallback) — the audit must show the SAME evidence the
-    graded verdict was based on, via the one shared formatter. No DBnary."""
-    row = it.execute(
-        "SELECT label_de,label_en,label_sv,desc_de,desc_en,desc_sv FROM item "
-        "WHERE qid=? AND NOT missing", [qid]).fetchone() or (None,) * 6
-    _q, lab, desc = verify.fmt_concept((None, lang, None, qid, 0) + tuple(row),
+def cc0(qid, lang, il_map):
+    """The anchor's CC0 concept exactly as the live verifier formats it — the audit must
+    show the SAME evidence the graded verdict was based on, via the one shared formatter."""
+    _q, lab, desc = verify.fmt_concept((None, lang, None, qid, 0),
                                        langs=config.CONCEPT_LANGS_VERIFY, il_map=il_map)
     return lab, desc
 
@@ -87,7 +82,7 @@ def run_gloss_batch(rows, model):
                           {"verdict": "parse_error", "reason": ""})
 
 
-def gloss_audit(dec, it, model, batch, il_map):
+def gloss_audit(dec, model, batch, il_map):
     """Flag confirmed (approved/written) links whose lexeme CC0 gloss contradicts the anchor."""
     gmap = verify.load_glosses({lid for (lid, _), d in dec.items() if d["status"] in CONFIRMED})
     rows = []
@@ -97,7 +92,7 @@ def gloss_audit(dec, it, model, batch, il_map):
         g = verify.pick_gloss(gmap, lid, d["target_lang"])
         if not g:
             continue
-        lab, desc = cc0(it, qid, d["target_lang"], il_map)
+        lab, desc = cc0(qid, d["target_lang"], il_map)
         rows.append((d, g, lab, desc))
     flagged, audited = [], 0
     for i in range(0, len(rows), batch):
@@ -134,11 +129,10 @@ def main():
     if not dec:
         raise SystemExit(f"no decisions at {config.DECISIONS}")
     verdicts = load_verify_cache()
-    it = sqlite3.connect(config.ITEMS)
     il_map = verify.load_item_lang({qid for _, qid in dec})
 
     if args.gloss:
-        rows, flagged, audited = gloss_audit(dec, it, args.model, args.batch, il_map)
+        rows, flagged, audited = gloss_audit(dec, args.model, args.batch, il_map)
         print(f"gloss-contradiction audit: {audited} of {len(rows)} confirmed links with a CC0 "
               f"gloss audited (model={args.model})"
               + (f"  ⚠ {len(rows) - audited} NOT audited — failed batches, re-run to cover them"
@@ -159,7 +153,7 @@ def main():
         out = []
         for kind, items in (("suspected_false_accept", acc), ("suspected_false_reject", rej)):
             for d, verdict, reason in items:
-                lab, desc = cc0(it, d["anchor_qid"], d["target_lang"], il_map)
+                lab, desc = cc0(d["anchor_qid"], d["target_lang"], il_map)
                 out.append({
                     "kind": kind, "lid": d["target_lid"], "qid": d["anchor_qid"],
                     "lemma": d["target_lemma"],

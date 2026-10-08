@@ -56,10 +56,7 @@ def needed_qids(cache):
     (the phase-2 sense-creation lane, n_senses=0). Fetching only ABD left every senseless-only
     anchor uncached, so review_queue --senseless showed "(no item_lang concept — run
     fetch_anchor_langs.py)" while this script reported 0 to fetch — a dead end.
-    So fetch EVERY non-missing ABD anchor — candidates() already excludes missing items, and we
-    deliberately do NOT pre-filter on the de/en/sv has_evidence gate: an anchor with no de/en/sv
-    label but a label in some other language would otherwise never be fetched and so never be
-    gradable. If an item genuinely has no CC0 label in any language, it fetches to zero rows,
+    So fetch EVERY non-missing ABD anchor — candidates() already excludes missing items. If an item genuinely has no CC0 label in any language, it fetches to zero rows,
     is marked done, and verify's item_lang has_evidence skips it. An anchor counts as done only
     when BOTH labels/descriptions AND aliases are cached, so a cache built before aliases were
     added self-heals: those anchors re-fetch once (labels rewritten idempotently)."""

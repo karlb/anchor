@@ -170,7 +170,6 @@ def pool(lane=None, key=None):
         """
         SELECT c.target_lid, c.anchor_qid, c.target_lemma, c.target_lang,
                c.target_n_senses, v.verdict, v.reason, v.model,
-               i.desc_de, i.desc_en, i.desc_sv,
                c.support_clusters, v.prompt_ver, v.target_sid
         FROM candidate c
         JOIN vf.verdict v ON v.target_lid = c.target_lid AND v.anchor_qid = c.anchor_qid
@@ -330,19 +329,10 @@ def anchor_langs(it, qid, lang=None):
 
 
 def anchor_cc0(it, qid, lang):
-    """(label, desc) for the anchor Q in `lang` — from the all-language item_lang cache
-    when populated, else the de/en/sv `item` columns. Either field may be None/empty."""
-    if has_item_lang(it):
-        r = it.execute("SELECT label, desc FROM item_lang WHERE qid=? AND lang=?",
-                       [qid, lang]).fetchone()
-        if r:
-            return r[0], r[1]
-    if lang in ("de", "en", "sv"):
-        r = it.execute(f"SELECT label_{lang}, desc_{lang} FROM item "
-                       "WHERE qid=? AND NOT missing", [qid]).fetchone()
-        if r:
-            return r[0], r[1]
-    return None, None
+    """(label, desc) for the anchor Q in `lang` from the item_lang cache. Either may be None."""
+    r = (it.execute("SELECT label, desc FROM item_lang WHERE qid=? AND lang=?",
+                    [qid, lang]).fetchone() if has_item_lang(it) else None)
+    return r or (None, None)
 
 
 def anchor_gloss(it, qid, lang, lemma):
@@ -459,13 +449,7 @@ _ETHNIC_ANCHOR = ("ethnic group", "etnisk grupp", "etnisk gruppe", "ethnic", "et
 # (de/en/sv already carries the ethnic signal, so extra text adds no marker hits); and broadening
 # the markers to match other languages' etn-root terms REGRESSES — it over-fires on nationality
 # demonyms (luxemburgare: keep -> needless defer) while fixing no false-keep. So keep it narrow.
-
-
-def anchor_desc(dde, den, dsv):
-    """The demonym nudge's anchor_desc input: the anchor's de/en/sv CC0 descriptions
-    joined. ONE composer, so the queue and the game export feed
-    is_ethnic_demonym identical text (a change here reaches all of them at once)."""
-    return " | ".join(d for d in (dde, den, dsv) if d)
+# Composed in ONE place, demonym_context, so every consumer feeds is_ethnic_demonym identical text.
 
 
 def is_ethnic_demonym(gloss, anchor_desc):
@@ -832,10 +816,13 @@ def demonym_context(pairs):
         glosses[lid][lg] = g
     wd.close()
     it = sqlite3.connect(config.ITEMS)
-    descs = {q: anchor_desc(de, en, sv) for q, de, en, sv in it.execute(
-        "SELECT qid, desc_de, desc_en, desc_sv FROM item WHERE qid IN (%s)"
-        % ",".join("?" * len(qids)), list(qids))}
+    parts = collections.defaultdict(list)
+    for q, d in it.execute(
+            "SELECT qid, desc FROM item_lang WHERE lang IN ('de','en','sv') AND desc IS NOT NULL "
+            "AND qid IN (%s) ORDER BY qid, lang" % ",".join("?" * len(qids)), list(qids)):
+        parts[q].append(d)
     it.close()
+    descs = {q: " | ".join(ds) for q, ds in parts.items()}
     return {(lid, qid): (*pick(lang, glosses.get(lid, {})), descs.get(qid, ""))
             for lid, qid, lang in pairs}
 
@@ -1064,8 +1051,7 @@ def render(limit, lang_filter=None, lane=None, act_filter=None):
     if lang_filter:
         head += f" · filtered to {html.escape(lang_filter)} ({len(rows)})"
     trs = []
-    for (lid, qid, lemma, lang, _ns, _v, reason, _m,
-         _dde, _den, _dsv, n_clusters, *_rest) in rows[:limit]:
+    for (lid, qid, lemma, lang, _ns, _v, reason, _m, n_clusters, *_rest) in rows[:limit]:
         gl, glang, n_poly_row = meta[(lid, qid)]
         can_create = False   # poly rows where the assigner abstained offer "+ create sense"
         rel, sug, scls = scope_hint(reason, gl, ctx.get((lid, qid), ("", None, ""))[2])
