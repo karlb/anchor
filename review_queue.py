@@ -971,7 +971,7 @@ def auto_defer_classes(decisions=None, ctx=None, cache=None, lane=None):
     return out
 
 
-FILTERS = ("lang", "act", "hint", "blind")   # the query keys every link, form and redirect carries
+FILTERS = ("lang", "act", "hint", "blind", "set")   # the query keys every link, form and redirect carries
 
 
 def filter_bar(state, dims):
@@ -1031,11 +1031,13 @@ def sense_inventory(lid, lang, _cache={}):
     return out
 
 
-def render(limit, lang_filter=None, lane=None, act_filter=None, blind=False, hint_filter=None):
+def render(limit, lang_filter=None, lane=None, act_filter=None, blind=False, hint_filter=None,
+           set_filter=None):
     """act_filter: show only rows whose triage action is this ('create', 'defer', 'keep'…) —
     `/?act=create` is how the missing-sense rows are reviewed as a set. hint_filter: only
     create rows whose create_evidence is this ('named', 'owned', '-'). blind (`&blind=1`)
-    hides the create_evidence hints, so rulings made under it can still validate them."""
+    hides the create_evidence hints, so rulings made under it can still validate them. set_filter
+    (`&set=named150`): only the pairs listed in notes/runs/<set>.txt — a fixed review sample."""
     lane = _lane(lane)
     senseless = lane == "senseless"
     decisions, undecided, ctx, ad, _ = pending_view(lane)
@@ -1059,7 +1061,12 @@ def render(limit, lang_filter=None, lane=None, act_filter=None, blind=False, hin
              if have_il and have_al else {})
     act_counts = collections.Counter(acts.values())
     hint_counts = collections.Counter(hints.values())
-    rows = [r for r in pending if (not lang_filter or r[3] == lang_filter)
+    in_set = set()
+    if set_filter:
+        path = os.path.join(config.HERE, "notes", "runs", os.path.basename(set_filter) + ".txt")
+        in_set = {tuple(l.split()[:2]) for l in open(path) if l.strip() and not l.startswith("#")}
+    rows = [r for r in pending if (not set_filter or (r[0], r[1]) in in_set)
+            and (not lang_filter or r[3] == lang_filter)
             and (not act_filter or acts[(r[0], r[1])] == act_filter)
             and (not hint_filter or hints.get((r[0], r[1])) == hint_filter)]
     # Target sense gloss (from ctx — already batch-loaded by pending_view) + polysemy-collapse
@@ -1242,7 +1249,7 @@ def render(limit, lang_filter=None, lane=None, act_filter=None, blind=False, hin
                 f"<input type=hidden name=qid value='{html.escape(qid)}'>"
                 + "".join(f"<input type=hidden name=f_{k} value='{html.escape(v)}'>" for k, v in
                           (("lang", lang_filter), ("act", act_filter), ("hint", hint_filter),
-                           ("blind", "1" if blind else None)) if v)
+                           ("blind", "1" if blind else None), ("set", set_filter)) if v)
                 + ("" if can_create else
                    f"<button name=action value=approved class=ok>✓ approve</button> ") +
                 f"<button name=action value=rejected class=no>✗ reject</button> "
@@ -1275,7 +1282,8 @@ button{{font-size:.85rem;padding:3px 8px;cursor:pointer;border:1px solid #ccc;bo
 .inv .chosen{{color:#197a19;font-weight:600}} .taken{{color:#999}}
 .bar{{margin:.4rem 0 1rem}} .lsel{{padding:1px 4px;border-radius:3px}} .lsel.sel{{background:#eef;font-weight:700;color:#000}}</style>
 <h2>P5137 review queue{LANE_TITLE[lane]}</h2><p class=d>{head} — showing up to {limit} pending</p>
-{filter_bar(dict(lang=lang_filter, act=act_filter, hint=hint_filter, blind="1" if blind else None),
+{filter_bar(dict(lang=lang_filter, act=act_filter, hint=hint_filter, blind="1" if blind else None,
+                 set=set_filter),
             [("lang", "language", lang_counts), ("act", "action", {} if senseless else act_counts),
              ("hint", "create hint", hint_counts)])}
 <table><tr><th>lang</th><th>lemma → Lexeme<br>{LANE_COL[lane]}</th><th>anchor concept (CC0)</th><th>scope</th><th>verifier reason</th><th></th></tr>
@@ -1298,7 +1306,8 @@ class Handler(BaseHTTPRequestHandler):
         lang = qs.get("lang", [None])[0] or None
         act = qs.get("act", [None])[0] or None
         self._send(200, render(50, lang, act_filter=act, blind=bool(qs.get("blind")),
-                               hint_filter=qs.get("hint", [None])[0] or None))
+                               hint_filter=qs.get("hint", [None])[0] or None,
+                               set_filter=qs.get("set", [None])[0] or None))
 
     def do_POST(self):
         length = int(self.headers.get("Content-Length", 0))
