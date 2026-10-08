@@ -522,10 +522,11 @@ def run_batch(rows, model, gmap, langs=None, il_map=None, timeout=300, smap=None
                           {"verdict": "parse_error", "reason": ""}, timeout=timeout), offered
 
 
-def verify_rows(rows, model, gmap, smap, il_map, batch_size):
-    """[(lid, qid, lemma, lang, verdict, reason, target_sid)] for `rows`, batched; a failed
-    batch yields 'error' rows (not cached as done, so a re-run retries them)."""
-    recs, counts = [], {}
+def verify_rows(rows, model, gmap, smap, il_map, batch_size, sink):
+    """Verify `rows` in batches, handing each batch's [(lid, qid, lemma, lang, verdict, reason,
+    target_sid)] to `sink` as soon as it is back, so an interrupted run loses at most one batch.
+    A failed batch yields 'error' rows (not cached as done, so a re-run retries them)."""
+    counts = {}
     for i in range(0, len(rows), batch_size):
         batch = rows[i : i + batch_size]
         try:
@@ -535,13 +536,14 @@ def verify_rows(rows, model, gmap, smap, il_map, batch_size):
             print(f"  batch {i // batch_size} failed: {e}")
             verdicts = [{"verdict": "error", "reason": ""}] * len(batch)
             offered = [offered_senses(smap, r[0], r[1]) for r in batch]
+        recs = []
         for row, v, sen in zip(batch, verdicts, offered):
             verdict = v.get("verdict", "parse_error")
             counts[verdict] = counts.get(verdict, 0) + 1
             recs.append((row[0], row[3], row[2], row[1], verdict, compose_reason(v, bool(sen)),
                          parse_sense(v.get("sense"), sen)))
+        sink(recs)
         print(f"  {min(i + batch_size, len(rows)):,}/{len(rows):,}  {counts}", flush=True)
-    return recs
 
 
 def vote(samples):
@@ -579,6 +581,8 @@ def main():
     ap.add_argument("--create-class", action="store_true",
                     help="only pairs the current verdict calls yes with no fitting sense (the "
                          "create rows); ignores --limit. Combine with the lane flags.")
+    ap.add_argument("--pairs", help="only these pairs: a file of 'lid qid' lines (e.g. one "
+                    "shard of a large run); ignores --limit")
     ap.add_argument("--batch", type=int, default=8)
     ap.add_argument("--model", default="sonnet")
     ap.add_argument("--min-support", type=int, default=1)
@@ -602,7 +606,7 @@ def main():
     if args.poly_only and args.senseless_only:
         ap.error("--poly-only and --senseless-only select disjoint lanes; pick one")
 
-    out = sqlite3.connect(config.VERIFY)
+    out = sqlite3.connect(config.VERIFY, timeout=60)   # parallel shards share the file
     ensure_schema(out)
     # Only verdicts produced by the CURRENT prompt count as done; rows from other prompt versions
     # are kept (see the SCHEMA note) but don't satisfy this run.
@@ -647,9 +651,13 @@ def main():
             "AND target_sid = 'none'", [PROMPT_VER])}
         eligible = [r for r in eligible if (r[0], r[3]) in cls]
         print(f"create class: {len(eligible):,} pairs")
+    if args.pairs:
+        want = {tuple(l.split()[:2]) for l in open(args.pairs) if l.strip()}
+        eligible = [r for r in eligible if (r[0], r[3]) in want]
+        print(f"--pairs: {len(eligible):,} of {len(want):,} listed pairs are eligible")
     # a vote re-verifies cached pairs on purpose; its resumability is the sample table's
     pool = eligible if args.samples > 1 else [r for r in eligible if (r[0], r[3]) not in done]
-    if not args.all and not args.sample and not args.recache and not args.create_class:
+    if not (args.all or args.sample or args.recache or args.create_class or args.pairs):
         pool = pool[: args.limit]
     # The live verifier's concept comes ONLY from item_lang (the +multi format) — de/en/sv is
     # no longer a grading fallback. So every anchor we intend to grade must have been fetched
@@ -677,12 +685,13 @@ def main():
     print(f"  target shape: {sense_shape({r[0] for r in rows})}")
 
     if args.samples == 1:
-        recs = verify_rows(rows, args.model, gmap, smap, il_map, args.batch)
-        out.executemany(
-            "INSERT OR REPLACE INTO verdict (target_lid, anchor_qid, target_lemma, target_lang, "
-            "verdict, reason, model, prompt_ver, target_sid) VALUES (?,?,?,?,?,?,?,?,?)",
-            [(l, q, lem, lg, v, r, args.model, PROMPT_VER, sid) for l, q, lem, lg, v, r, sid in recs])
-        out.commit()
+        def sink(recs):
+            out.executemany(
+                "INSERT OR REPLACE INTO verdict (target_lid, anchor_qid, target_lemma, target_lang, "
+                "verdict, reason, model, prompt_ver, target_sid) VALUES (?,?,?,?,?,?,?,?,?)",
+                [(l, q, lem, lg, v, r, args.model, PROMPT_VER, sid) for l, q, lem, lg, v, r, sid in recs])
+            out.commit()
+        verify_rows(rows, args.model, gmap, smap, il_map, args.batch, sink)
     else:
         for n in range(args.samples):
             have = {(r[0], r[1]) for r in out.execute(
@@ -690,12 +699,13 @@ def main():
                 "AND n = ? AND verdict NOT IN ('error', 'parse_error')", [PROMPT_VER, args.model, n])}
             todo = [r for r in rows if (r[0], r[3]) not in have]
             print(f"sample {n + 1}/{args.samples}: {len(todo):,} to verify")
-            recs = verify_rows(todo, args.model, gmap, smap, il_map, args.batch)
-            out.executemany(
-                "INSERT OR REPLACE INTO sample VALUES (?,?,?,?,?,?,?,?,?)",
-                [(l, q, PROMPT_VER, args.model, n, v, r, sid, llm.usage_summary()["model"])
-                 for l, q, _lem, _lg, v, r, sid in recs])
-            out.commit()
+            def sink(recs, n=n):
+                out.executemany(
+                    "INSERT OR REPLACE INTO sample VALUES (?,?,?,?,?,?,?,?,?)",
+                    [(l, q, PROMPT_VER, args.model, n, v, r, sid, llm.usage_summary()["model"])
+                     for l, q, _lem, _lg, v, r, sid in recs])
+                out.commit()
+            verify_rows(todo, args.model, gmap, smap, il_map, args.batch, sink)
         voted = collections.Counter()
         for lid, lang, lemma, qid, *_ in rows:
             got = out.execute(
