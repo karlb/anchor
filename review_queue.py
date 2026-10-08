@@ -413,6 +413,38 @@ def alias_match(it, qid, lang, lemma):
     return next((a for a in row[0].split("; ") if a.strip().lower() == want), "")
 
 
+def create_evidence(it, wd, lid, qid, lang, lemma):
+    """('named' | 'owned' | '', [(lid, lemma)]) — the two create-row signals, measured on
+    Karl's 87 create-class rulings (2026-10-08): 'named' = the item's own `lang` label or
+    alias IS the lemma, case-exact (22/26 created); 'owned' = not named, and another `lang`
+    lexeme already links the item or is named after it (7/30 created — mostly a polysemous
+    foreign pivot word, krets <- Kreis = circle). Case-exact is what separates fr Croate
+    (person) from croate (language). Advisory only: neither gates anything."""
+    names = set()
+    r = it.execute("SELECT label FROM item_lang WHERE qid=? AND lang=?", [qid, lang]).fetchone()
+    if r and r[0]:
+        names.add(r[0])
+    r = it.execute("SELECT aliases FROM item_alias WHERE qid=? AND lang=?", [qid, lang]).fetchone()
+    if r and r[0]:
+        names |= {a.strip() for a in r[0].split("; ")}
+    if lemma in names:
+        return "named", []
+    if lemma.casefold() in {n.casefold() for n in names}:
+        return "", []
+    owners = {l for (l,) in wd.execute(
+        "SELECT DISTINCT s.lid FROM sense_item s JOIN lexeme x ON x.lid = s.lid "
+        "WHERE s.qid = ? AND x.lang = ? AND s.lid <> ?", [qid, lang, lid])}
+    for n in names:
+        owners |= {l for (l,) in wd.execute(
+            "SELECT DISTINCT m.lid FROM lemma m JOIN lexeme x ON x.lid = m.lid "
+            "WHERE m.lemma = ? AND x.lang = ? AND x.lexcat = ? AND m.lid <> ?",
+            [n, lang, config.NOUN_QID, lid])}
+    if not owners:
+        return "", []
+    return "owned", [(l, (wd.execute("SELECT lemma FROM lemma WHERE lid=?", [l]).fetchone()
+                          or [""])[0]) for l in sorted(owners)[:3]]
+
+
 # ---- scope triage -----------------------------------------------------------
 # The verifier's TOLERANT criterion maps EQUAL/BROADER/NARROWER/LATERAL -> 'yes', so a
 # scope-mismatched pair still reaches review on a surface-plausible read. But P5137
@@ -986,9 +1018,10 @@ def sense_inventory(lid, lang, _cache={}):
     return out
 
 
-def render(limit, lang_filter=None, lane=None, act_filter=None):
+def render(limit, lang_filter=None, lane=None, act_filter=None, blind=False):
     """act_filter: show only rows whose triage action is this ('create', 'defer', 'keep'…) —
-    `/?act=create` is how the missing-sense rows are reviewed as a set."""
+    `/?act=create` is how the missing-sense rows are reviewed as a set. blind (`&blind=1`)
+    hides the create_evidence hints, so rulings made under it can still validate them."""
     lane = _lane(lane)
     senseless = lane == "senseless"
     decisions, undecided, ctx, ad, _ = pending_view(lane)
@@ -1007,6 +1040,7 @@ def render(limit, lang_filter=None, lane=None, act_filter=None):
     cand = sqlite3.connect(config.CANDIDATES)
     have_il = has_item_lang(it)
     have_al = has_item_alias(it)
+    wd = sqlite3.connect(config.WIKIDATA)
     # Target sense gloss (from ctx — already batch-loaded by pending_view) + polysemy-collapse
     # flag, computed once per row and reused by both the sort below and the render loop.
     poly_idx = polysemy_index(cand)
@@ -1161,6 +1195,18 @@ def render(limit, lang_filter=None, lane=None, act_filter=None):
                               + ("<br><span class=create>would CREATE sense</span> gloss: "
                                  + " · ".join(parts) if parts else
                                  "<br><i>(no CC0 gloss source — a create would be skipped)</i>"))
+        if (can_create or senseless) and have_il and have_al and not blind:
+            kind, owners = create_evidence(it, wd, lid, qid, lang, lemma)
+            if kind == "named":
+                gloss_html += (f"<div class=named>✓ Wikidata’s own {html.escape(lang)} name for "
+                               "this item is this word — such creates were right 22/26</div>")
+            elif kind == "owned":
+                links = ", ".join(
+                    f"<a href='https://www.wikidata.org/wiki/Lexeme:{o}' target=_blank>"
+                    f"{html.escape(m or o)}</a>" for o, m in owners)
+                gloss_html += (f"<div class=owned>⚠ another {html.escape(lang)} lexeme owns this "
+                               f"item ({links}) — such creates were right 7/30, usually a "
+                               "polysemous foreign word bridging two meanings</div>")
         if n_poly_row:
             gloss_html += (f"<div class=poly>⚠ source word is polysemous ({n_poly_row} WikDict "
                            "senses collapse here) — S1 may be a minor sense, which is fine; "
@@ -1175,6 +1221,7 @@ def render(limit, lang_filter=None, lane=None, act_filter=None):
                 f"<input type=hidden name=qid value='{html.escape(qid)}'>"
                 f"<input type=hidden name=lang value='{html.escape(lang_filter or '')}'>"
                 f"<input type=hidden name=act value='{html.escape(act_filter or '')}'>"
+                + ("<input type=hidden name=blind value=1>" if blind else "")
                 + ("" if can_create else
                    f"<button name=action value=approved class=ok>✓ approve</button> ") +
                 f"<button name=action value=rejected class=no>✗ reject</button> "
@@ -1200,6 +1247,7 @@ button{{font-size:.85rem;padding:3px 8px;cursor:pointer;border:1px solid #ccc;bo
 .al{{margin:1px 0}} .alc{{display:inline-block;min-width:1.5rem;color:#999;font-size:.72rem;text-transform:uppercase}}
 .akahit,.sole,.crowd{{margin-top:3px;color:#36c;font-size:.78rem}}
 .poly{{margin-top:3px;color:#a60;font-size:.78rem}}
+.named{{margin-top:3px;color:#197a19;font-size:.78rem}} .owned{{margin-top:3px;color:#b00;font-size:.78rem}}
 .create{{color:#197a19;font-weight:600;font-size:.82rem}} .multi{{margin-top:3px;color:#a60;font-size:.78rem}}
 .match{{color:#197a19;font-weight:600;font-size:.82rem}} .noassign{{color:#b00;font-weight:600;font-size:.8rem}}
 .inv{{margin-top:5px;border-left:2px solid #ddd;padding-left:7px;font-size:.8rem;color:#555}}
@@ -1226,7 +1274,7 @@ class Handler(BaseHTTPRequestHandler):
         qs = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
         lang = qs.get("lang", [None])[0] or None
         act = qs.get("act", [None])[0] or None
-        self._send(200, render(50, lang, act_filter=act))
+        self._send(200, render(50, lang, act_filter=act, blind=bool(qs.get("blind"))))
 
     def do_POST(self):
         length = int(self.headers.get("Content-Length", 0))
@@ -1266,7 +1314,9 @@ class Handler(BaseHTTPRequestHandler):
                     "status": action, "reviewer": "local", "revid": "",
                 })
         act = data.get("act", [""])[0]
-        q = urllib.parse.urlencode({k: v for k, v in (("lang", lang), ("act", act)) if v})
+        blind = data.get("blind", [""])[0]
+        q = urllib.parse.urlencode({k: v for k, v in (("lang", lang), ("act", act),
+                                                      ("blind", blind)) if v})
         self.send_response(303)
         self.send_header("Location", "/?" + q if q else "/")
         self.end_headers()
