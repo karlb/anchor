@@ -39,6 +39,7 @@ Run after fetch_items.py (defaults to a 40-candidate sample):
 """
 
 import argparse
+import collections
 import csv
 import hashlib
 import sqlite3
@@ -222,6 +223,13 @@ CREATE TABLE IF NOT EXISTS verdict(
     -- NULL for mono/senseless rows and for every row verified before 2026-09-03.
     target_sid TEXT,
     PRIMARY KEY (target_lid, anchor_qid, prompt_ver)
+) WITHOUT ROWID;
+-- --samples N: every sample, kept. The verdict row above then holds their MAJORITY, so no reader
+-- changes. n = -1 is the single-sample verdict the vote replaced, kept for comparison.
+CREATE TABLE IF NOT EXISTS sample(
+    target_lid TEXT, anchor_qid TEXT, prompt_ver TEXT, model TEXT, n INT,
+    verdict TEXT, reason TEXT, target_sid TEXT, model_id TEXT,
+    PRIMARY KEY (target_lid, anchor_qid, prompt_ver, model, n)
 ) WITHOUT ROWID;
 """
 
@@ -514,6 +522,43 @@ def run_batch(rows, model, gmap, langs=None, il_map=None, timeout=300, smap=None
                           {"verdict": "parse_error", "reason": ""}, timeout=timeout), offered
 
 
+def verify_rows(rows, model, gmap, smap, il_map, batch_size):
+    """[(lid, qid, lemma, lang, verdict, reason, target_sid)] for `rows`, batched; a failed
+    batch yields 'error' rows (not cached as done, so a re-run retries them)."""
+    recs, counts = [], {}
+    for i in range(0, len(rows), batch_size):
+        batch = rows[i : i + batch_size]
+        try:
+            verdicts, offered = run_batch(batch, model, gmap, smap=smap,
+                                          langs=config.CONCEPT_LANGS_VERIFY, il_map=il_map)
+        except Exception as e:  # noqa: BLE001 — one bad batch shouldn't kill the run
+            print(f"  batch {i // batch_size} failed: {e}")
+            verdicts = [{"verdict": "error", "reason": ""}] * len(batch)
+            offered = [offered_senses(smap, r[0], r[1]) for r in batch]
+        for row, v, sen in zip(batch, verdicts, offered):
+            verdict = v.get("verdict", "parse_error")
+            counts[verdict] = counts.get(verdict, 0) + 1
+            recs.append((row[0], row[3], row[2], row[1], verdict, compose_reason(v, bool(sen)),
+                         parse_sense(v.get("sense"), sen)))
+        print(f"  {min(i + batch_size, len(rows)):,}/{len(rows):,}  {counts}", flush=True)
+    return recs
+
+
+def vote(samples):
+    """(verdict, reason, target_sid) by strict majority over (verdict, target_sid); within the
+    majority, the most common relation head wins the reason. No majority -> 'uncertain', which
+    keeps the pair out of every verdict='yes' consumer."""
+    keys = collections.Counter((v, sid) for v, _r, sid in samples)
+    (v, sid), k = keys.most_common(1)[0]
+    if 2 * k <= len(samples):
+        return "uncertain", "no majority: " + " / ".join(
+            f"{v}·{sid}" for (v, sid) in keys), None
+    heads = collections.Counter(r.split(":")[0] for v2, r, s2 in samples if (v2, s2) == (v, sid))
+    head = heads.most_common(1)[0][0]
+    return v, next(r for v2, r, s2 in samples if (v2, s2) == (v, sid)
+                   and r.split(":")[0] == head), sid
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--limit", type=int, default=40, help="max candidates (default 40 sample)")
@@ -528,6 +573,12 @@ def main():
                          "prompt version — what makes the cache whole again after a prompt change, "
                          "since every read filters on the current version. Resumable; ignores "
                          "--limit; combines with the lane flags to do one lane at a time.")
+    ap.add_argument("--samples", type=int, default=1,
+                    help="verify each pair N times and cache the majority (samples kept in the "
+                         "`sample` table; resumable). Re-votes pairs already cached.")
+    ap.add_argument("--create-class", action="store_true",
+                    help="only pairs the current verdict calls yes with no fitting sense (the "
+                         "create rows); ignores --limit. Combine with the lane flags.")
     ap.add_argument("--batch", type=int, default=8)
     ap.add_argument("--model", default="sonnet")
     ap.add_argument("--min-support", type=int, default=1)
@@ -590,8 +641,15 @@ def main():
         print(f"recache: {len(eligible):,} pairs held a verdict under an earlier prompt and are "
               f"still candidates" + (f"; {stale:,} are no longer in the pool and are left behind"
                                      if stale else ""))
-    pool = [r for r in eligible if (r[0], r[3]) not in done]
-    if not args.all and not args.sample and not args.recache:
+    if args.create_class:
+        cls = {(r[0], r[1]) for r in out.execute(
+            "SELECT target_lid, anchor_qid FROM verdict WHERE prompt_ver = ? AND verdict = 'yes' "
+            "AND target_sid = 'none'", [PROMPT_VER])}
+        eligible = [r for r in eligible if (r[0], r[3]) in cls]
+        print(f"create class: {len(eligible):,} pairs")
+    # a vote re-verifies cached pairs on purpose; its resumability is the sample table's
+    pool = eligible if args.samples > 1 else [r for r in eligible if (r[0], r[3]) not in done]
+    if not args.all and not args.sample and not args.recache and not args.create_class:
         pool = pool[: args.limit]
     # The live verifier's concept comes ONLY from item_lang (the +multi format) — de/en/sv is
     # no longer a grading fallback. So every anchor we intend to grade must have been fetched
@@ -618,28 +676,48 @@ def main():
     # anything, rather than showing up on the bill.
     print(f"  target shape: {sense_shape({r[0] for r in rows})}")
 
-    counts = {}
-    for i in range(0, len(rows), args.batch):
-        batch = rows[i : i + args.batch]
-        try:
-            verdicts, offered = run_batch(batch, args.model, gmap, smap=smap,
-                                          langs=config.CONCEPT_LANGS_VERIFY, il_map=il_map)
-        except Exception as e:  # noqa: BLE001 — one bad batch shouldn't kill the run
-            print(f"  batch {i // args.batch} failed: {e}")
-            verdicts = [{"verdict": "error", "reason": ""}] * len(batch)
-            offered = [offered_senses(smap, r[0], r[1]) for r in batch]
-        recs = []
-        for row, v, sen in zip(batch, verdicts, offered):
-            lid, lang, lemma, qid = row[0], row[1], row[2], row[3]
-            verdict = v.get("verdict", "parse_error")
-            counts[verdict] = counts.get(verdict, 0) + 1
-            recs.append((lid, qid, lemma, lang, verdict, compose_reason(v, bool(sen)),
-                         args.model, PROMPT_VER, parse_sense(v.get("sense"), sen)))
+    if args.samples == 1:
+        recs = verify_rows(rows, args.model, gmap, smap, il_map, args.batch)
         out.executemany(
             "INSERT OR REPLACE INTO verdict (target_lid, anchor_qid, target_lemma, target_lang, "
-            "verdict, reason, model, prompt_ver, target_sid) VALUES (?,?,?,?,?,?,?,?,?)", recs)
+            "verdict, reason, model, prompt_ver, target_sid) VALUES (?,?,?,?,?,?,?,?,?)",
+            [(l, q, lem, lg, v, r, args.model, PROMPT_VER, sid) for l, q, lem, lg, v, r, sid in recs])
         out.commit()
-        print(f"  {min(i + args.batch, len(rows)):,}/{len(rows):,}  {counts}")
+    else:
+        for n in range(args.samples):
+            have = {(r[0], r[1]) for r in out.execute(
+                "SELECT target_lid, anchor_qid FROM sample WHERE prompt_ver = ? AND model = ? "
+                "AND n = ? AND verdict NOT IN ('error', 'parse_error')", [PROMPT_VER, args.model, n])}
+            todo = [r for r in rows if (r[0], r[3]) not in have]
+            print(f"sample {n + 1}/{args.samples}: {len(todo):,} to verify")
+            recs = verify_rows(todo, args.model, gmap, smap, il_map, args.batch)
+            out.executemany(
+                "INSERT OR REPLACE INTO sample VALUES (?,?,?,?,?,?,?,?,?)",
+                [(l, q, PROMPT_VER, args.model, n, v, r, sid, llm.usage_summary()["model"])
+                 for l, q, _lem, _lg, v, r, sid in recs])
+            out.commit()
+        voted = collections.Counter()
+        for lid, lang, lemma, qid, *_ in rows:
+            got = out.execute(
+                "SELECT verdict, reason, target_sid, model_id FROM sample WHERE target_lid = ? "
+                "AND anchor_qid = ? AND prompt_ver = ? AND model = ? AND n BETWEEN 0 AND ? "
+                "AND verdict NOT IN ('error', 'parse_error')",
+                [lid, qid, PROMPT_VER, args.model, args.samples - 1]).fetchall()
+            if len(got) < args.samples:
+                continue                     # a failed batch: re-run to complete the vote
+            v, r, sid = vote([g[:3] for g in got])
+            out.execute(                     # keep the single-sample verdict the vote replaces
+                "INSERT OR IGNORE INTO sample SELECT target_lid, anchor_qid, prompt_ver, model, -1, "
+                "verdict, reason, target_sid, NULL FROM verdict WHERE target_lid = ? AND "
+                "anchor_qid = ? AND prompt_ver = ? AND model NOT LIKE '%×%'", [lid, qid, PROMPT_VER])
+            out.execute(
+                "INSERT OR REPLACE INTO verdict (target_lid, anchor_qid, target_lemma, target_lang, "
+                "verdict, reason, model, prompt_ver, target_sid) VALUES (?,?,?,?,?,?,?,?,?)",
+                [lid, qid, lemma, lang, v, r, f"{got[0][3] or args.model}×{args.samples}",
+                 PROMPT_VER, sid])
+            voted[v] += 1
+        out.commit()
+        print(f"voted: {dict(voted)}")
 
     print("\nverdict distribution (this prompt):")
     for v, n in out.execute("SELECT verdict, count(*) FROM verdict WHERE prompt_ver = ? "

@@ -17,7 +17,7 @@ import subprocess
 # it here (a fresh process starts at zero) lets a caller print real token/cost numbers without
 # changing batch_json's return type. Read via usage_summary().
 _TOK_FIELDS = ("input_tokens", "output_tokens", "cache_read_input_tokens", "cache_creation_input_tokens")
-_usage = {"calls": 0, "cost_usd": 0.0, **{k: 0 for k in _TOK_FIELDS}}
+_usage = {"calls": 0, "cost_usd": 0.0, "model": None, **{k: 0 for k in _TOK_FIELDS}}
 
 
 def usage_summary():
@@ -38,6 +38,7 @@ def batch_json(system, prompt, model, n, default, timeout=300):
     usage = resp.get("usage") or {}          # token/cost telemetry the CLI returns per call
     _usage["calls"] += 1
     _usage["cost_usd"] += resp.get("total_cost_usd") or 0.0
+    _usage["model"] = next(iter(resp.get("modelUsage") or {}), _usage["model"])  # alias resolved
     for k in _TOK_FIELDS:
         _usage[k] += usage.get(k, 0)
     result = resp["result"].strip()
@@ -48,7 +49,8 @@ def batch_json(system, prompt, model, n, default, timeout=300):
         # failure, and which killed an ab_concept arm outright. Strip defensively instead.
         body = result.split("\n", 1)
         result = (body[1] if len(body) > 1 else body[0].lstrip("`")).rsplit("```", 1)[0]
-    parsed = json.loads(result)
+    # raw_decode, not loads: a reply that trails prose after the array ("Extra data") still parses
+    parsed = json.JSONDecoder().raw_decode(result.lstrip())[0]
     # Reindex by the model's own "i" labels (tolerating "3" for 3), NEVER by position — a
     # dropped/merged item would silently shift later verdicts onto the wrong pairs. A reply
     # with no usable labels raises: callers already treat a raised batch as transient
