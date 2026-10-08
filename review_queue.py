@@ -971,19 +971,32 @@ def auto_defer_classes(decisions=None, ctx=None, cache=None, lane=None):
     return out
 
 
-def lang_selector(lang_counts, active):
-    """An 'all · de · en · sv' filter bar over the lemma's language (target_lang).
+FILTERS = ("lang", "act", "hint", "blind")   # the query keys every link, form and redirect carries
 
+
+def filter_bar(state, dims):
+    """One line per filter dimension, e.g. 'language: all · de 12 · sv 3', plus a hints on/off
+    toggle. `state` is the active {key: value}; each link changes one key and keeps the rest.
     Counts come from the full pending set so they stay stable as you switch filters."""
-    total = sum(lang_counts.values())
+    def href(**change):
+        new = {k: v for k, v in {**state, **change}.items() if v}
+        return "/?" + urllib.parse.urlencode(new) if new else "/"
 
-    def link(code, label, n):
-        sel = " sel" if (code or "") == (active or "") else ""
-        href = "/" if code is None else "/?lang=" + urllib.parse.quote(code)
-        return f"<a class='lsel{sel}' href='{href}'>{label} <span class=d>{n}</span></a>"
-
-    links = [link(None, "all", total)] + [link(c, c, lang_counts[c]) for c in sorted(lang_counts)]
-    return "<p class=bar>lemma language: " + " · ".join(links) + "</p>"
+    lines = []
+    for key, label, counts in dims:
+        if not counts:
+            continue
+        def link(val, text, n):
+            sel = " sel" if (val or "") == (state.get(key) or "") else ""
+            return (f"<a class='lsel{sel}' href='{html.escape(href(**{key: val}))}'>{text}"
+                    f" <span class=d>{n}</span></a>")
+        links = [link(None, "all", sum(counts.values()))] + [
+            link(v, html.escape(v), counts[v]) for v in sorted(counts)]
+        lines.append(f"{label}: " + " · ".join(links))
+    hidden = bool(state.get("blind"))
+    lines.append(f"hints: <a class='lsel' href='{html.escape(href(blind=None if hidden else '1'))}'>"
+                 + ("hidden (blind) — show" if hidden else "shown — hide (blind)") + "</a>")
+    return "<p class=bar>" + "<br>".join(lines) + "</p>"
 
 
 def sense_inventory(lid, lang, _cache={}):
@@ -1018,9 +1031,10 @@ def sense_inventory(lid, lang, _cache={}):
     return out
 
 
-def render(limit, lang_filter=None, lane=None, act_filter=None, blind=False):
+def render(limit, lang_filter=None, lane=None, act_filter=None, blind=False, hint_filter=None):
     """act_filter: show only rows whose triage action is this ('create', 'defer', 'keep'…) —
-    `/?act=create` is how the missing-sense rows are reviewed as a set. blind (`&blind=1`)
+    `/?act=create` is how the missing-sense rows are reviewed as a set. hint_filter: only
+    create rows whose create_evidence is this ('named', 'owned', '-'). blind (`&blind=1`)
     hides the create_evidence hints, so rulings made under it can still validate them."""
     lane = _lane(lane)
     senseless = lane == "senseless"
@@ -1034,13 +1048,20 @@ def render(limit, lang_filter=None, lane=None, act_filter=None, blind=False):
     # the FULL pending set so the flag/grouping is stable under language filtering, and sort
     # same-lexeme rows adjacent so the reviewer approves/prunes the inventory as a set, not blind.
     lid_counts = collections.Counter(r[0] for r in pending)
-    rows = [r for r in pending if (not lang_filter or r[3] == lang_filter)
-            and (not act_filter or (action_of((r[0], r[1]), r[6], ctx) or "keep") == act_filter)]
     it = sqlite3.connect(config.ITEMS)
     cand = sqlite3.connect(config.CANDIDATES)
     have_il = has_item_lang(it)
     have_al = has_item_alias(it)
     wd = sqlite3.connect(config.WIKIDATA)
+    acts = {(r[0], r[1]): action_of((r[0], r[1]), r[6], ctx) or "keep" for r in pending}
+    hints = ({(r[0], r[1]): create_evidence(it, wd, r[0], r[1], r[3], r[2])[0] or "-"
+              for r in pending if senseless or acts[(r[0], r[1])] == "create"}
+             if have_il and have_al else {})
+    act_counts = collections.Counter(acts.values())
+    hint_counts = collections.Counter(hints.values())
+    rows = [r for r in pending if (not lang_filter or r[3] == lang_filter)
+            and (not act_filter or acts[(r[0], r[1])] == act_filter)
+            and (not hint_filter or hints.get((r[0], r[1])) == hint_filter)]
     # Target sense gloss (from ctx — already batch-loaded by pending_view) + polysemy-collapse
     # flag, computed once per row and reused by both the sort below and the render loop.
     poly_idx = polysemy_index(cand)
@@ -1219,9 +1240,9 @@ def render(limit, lang_filter=None, lane=None, act_filter=None, blind=False):
         form = (f"<form method=post action=/act style='display:inline'>"
                 f"<input type=hidden name=lid value='{html.escape(lid)}'>"
                 f"<input type=hidden name=qid value='{html.escape(qid)}'>"
-                f"<input type=hidden name=lang value='{html.escape(lang_filter or '')}'>"
-                f"<input type=hidden name=act value='{html.escape(act_filter or '')}'>"
-                + ("<input type=hidden name=blind value=1>" if blind else "")
+                + "".join(f"<input type=hidden name=f_{k} value='{html.escape(v)}'>" for k, v in
+                          (("lang", lang_filter), ("act", act_filter), ("hint", hint_filter),
+                           ("blind", "1" if blind else None)) if v)
                 + ("" if can_create else
                    f"<button name=action value=approved class=ok>✓ approve</button> ") +
                 f"<button name=action value=rejected class=no>✗ reject</button> "
@@ -1254,7 +1275,9 @@ button{{font-size:.85rem;padding:3px 8px;cursor:pointer;border:1px solid #ccc;bo
 .inv .chosen{{color:#197a19;font-weight:600}} .taken{{color:#999}}
 .bar{{margin:.4rem 0 1rem}} .lsel{{padding:1px 4px;border-radius:3px}} .lsel.sel{{background:#eef;font-weight:700;color:#000}}</style>
 <h2>P5137 review queue{LANE_TITLE[lane]}</h2><p class=d>{head} — showing up to {limit} pending</p>
-{lang_selector(lang_counts, lang_filter)}
+{filter_bar(dict(lang=lang_filter, act=act_filter, hint=hint_filter, blind="1" if blind else None),
+            [("lang", "language", lang_counts), ("act", "action", {} if senseless else act_counts),
+             ("hint", "create hint", hint_counts)])}
 <table><tr><th>lang</th><th>lemma → Lexeme<br>{LANE_COL[lane]}</th><th>anchor concept (CC0)</th><th>scope</th><th>verifier reason</th><th></th></tr>
 {chr(10).join(trs) or '<tr><td colspan=6>nothing pending 🎉</td></tr>'}</table>"""
 
@@ -1274,7 +1297,8 @@ class Handler(BaseHTTPRequestHandler):
         qs = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
         lang = qs.get("lang", [None])[0] or None
         act = qs.get("act", [None])[0] or None
-        self._send(200, render(50, lang, act_filter=act, blind=bool(qs.get("blind"))))
+        self._send(200, render(50, lang, act_filter=act, blind=bool(qs.get("blind")),
+                               hint_filter=qs.get("hint", [None])[0] or None))
 
     def do_POST(self):
         length = int(self.headers.get("Content-Length", 0))
@@ -1282,7 +1306,6 @@ class Handler(BaseHTTPRequestHandler):
         lid = data.get("lid", [""])[0]
         qid = data.get("qid", [""])[0]
         action = data.get("action", [""])[0]
-        lang = data.get("lang", [""])[0]
         if action in ("approved", "rejected", "deferred", "create"):
             row = next(iter(pool(key=(lid, qid))), None)
             decided = load_decisions()
@@ -1303,8 +1326,7 @@ class Handler(BaseHTTPRequestHandler):
             elif action == "create":
                 row = None           # senseless: nothing recorded for a sense to be missing from
             if row and (lid, qid) not in decided:  # ignore replays / stale double-clicks
-                # row_lang, NOT lang: `lang` is the reviewer's active filter (hidden form
-                # field) and must survive to the redirect below
+                # row_lang: the row's own language, not the reviewer's f_lang filter
                 (l, q, lemma, row_lang, ns, v, reason, model, *_rest) = row
                 append_decision({
                     "ts": now(), "target_lid": l, "anchor_qid": q,
@@ -1313,10 +1335,7 @@ class Handler(BaseHTTPRequestHandler):
                     "verdict": v, "reason": reason, "model": model,
                     "status": action, "reviewer": "local", "revid": "",
                 })
-        act = data.get("act", [""])[0]
-        blind = data.get("blind", [""])[0]
-        q = urllib.parse.urlencode({k: v for k, v in (("lang", lang), ("act", act),
-                                                      ("blind", blind)) if v})
+        q = urllib.parse.urlencode({k: data[f"f_{k}"][0] for k in FILTERS if data.get(f"f_{k}")})
         self.send_response(303)
         self.send_header("Location", "/?" + q if q else "/")
         self.end_headers()
