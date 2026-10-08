@@ -463,7 +463,7 @@ _ETHNIC_ANCHOR = ("ethnic group", "etnisk grupp", "etnisk gruppe", "ethnic", "et
 
 def anchor_desc(dde, den, dsv):
     """The demonym nudge's anchor_desc input: the anchor's de/en/sv CC0 descriptions
-    joined. ONE composer, so the queue and every measurement harness feed
+    joined. ONE composer, so the queue and the game export feed
     is_ethnic_demonym identical text (a change here reaches all of them at once)."""
     return " | ".join(d for d in (dde, den, dsv) if d)
 
@@ -478,7 +478,7 @@ def is_ethnic_demonym(gloss, anchor_desc):
 
 
 # kind -> (action, reviewer-facing suggestion, css class). The ACTION token is what policy
-# consumers branch on (rel_class, ab_concept.predicted_action, the queue sort/counters);
+# consumers branch on (rel_class, the queue sort/counters);
 # the suggestion is display copy only — so rewording a hint can never silently change
 # triage behaviour again (it used to: the prose was parsed back by substring).
 HINTS = {

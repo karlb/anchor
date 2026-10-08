@@ -21,7 +21,7 @@ own flag: MONOSEMOUS by default (add to the lexeme's one sense), senseless with
 --include-poly (add to the ONE existing sense the human approved). The poly shape is the same
 EDIT CLASS as the monosemous one — a P5137 on an existing sense — and differs only in which
 sense, which is why it needs no new permission; what it needs is the sid, read from the
-decision log's target_sid and never from assign.py's live cache, so that re-running a changed
+decision log's target_sid and never from the live verify cache, so that re-running a changed
 prompt can never move an approved statement onto a different sense.
 
 Before each live edit the live lexeme is re-fetched: a monosemous target must still have
@@ -224,7 +224,7 @@ def build_edit(row, today, include_senseless, it, include_poly=False):
         return {"senses": [sense]}, "add to existing sense"
     if n_senses >= 2 and include_poly and target_sid:
         # MATCH: add the claim to the ONE existing sense the human approved. The sid comes
-        # from the decision log, never from assign.py's live cache — a prompt change must not
+        # from the decision log, never from the live verify cache — a prompt change must not
         # be able to move an approved statement onto a different sense.
         return ({"senses": [{"id": target_sid, "claims": {"P5137": [claim]}}]},
                 f"add to approved sense {target_sid}")

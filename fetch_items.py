@@ -8,10 +8,9 @@ Wikidata Action API (``wbgetentities``), each item's:
     This is the reason this fetch still exists.
   * CC0 label + description in de/en/sv -> the `item` table. NOT the verifier's
     grading concept anymore (that is item_lang, all languages, via fetch_anchor_langs).
-    de/en/sv is a fossil of the original de/en/sv-only pilot; it survives only as the
-    cheap pre-item_lang availability tier (fetch_anchor_langs.needed_qids / has_evidence
-    before item_lang exists) and as the frozen measurement harnesses' base format. It
-    rides along for free in the same wbgetentities call that fetches P31/P279.
+    de/en/sv is a fossil of the original de/en/sv-only pilot; it survives as the fallback
+    for anchors item_lang lacks. It rides along for free in the same wbgetentities call
+    that fetches P31/P279.
 
 Everything fetched is CC0 (Wikidata's own data). Results are cached in
 ``data/wd_items.sqlite3`` keyed by Q-id, so the script is fully resumable and a

@@ -31,15 +31,11 @@ and is excluded.
 
 ```
 infer.sqlite3 ──build_clusters.py──▶ clusters.sqlite3 ─┐
-                                                       ├─match.py──▶ candidates.sqlite3 ─┬─ precision.py / ablation.py (held-out eval)
-latest-lexemes.json.gz ─load_lexemes.py──▶ wikidata.sqlite3 ─┘                          ├─ fetch_items.py / fetch_anchor_langs.py ─▶ wd_items.sqlite3 (CC0 labels)
-                                                                                        ├─ verify.py ─▶ verify.sqlite3 (LLM yes/no, per lexeme)
-                                                                                        ├─ assign.py ─▶ assign.sqlite3 (LLM: WHICH sense — poly lane)
-                                                                                        ├─ measure_lift.py / calibrate.py (eval + gate readiness)
-                                                                                        ├─ export_review.py ─▶ data/review.html
+                                                       ├─match.py──▶ candidates.sqlite3 ─┬─ fetch_items.py / fetch_anchor_langs.py ─▶ wd_items.sqlite3 (CC0 labels)
+latest-lexemes.json.gz ─load_lexemes.py──▶ wikidata.sqlite3 ─┘                          ├─ verify.py ─▶ verify.sqlite3 (LLM yes/no + which sense)
+                                                                                        ├─ calibrate.py (gate readiness)
                                                                                         ├─ review_queue.py ─▶ notes/runs/decisions.csv (human approve/reject log)
                                                                                         ├─ game_export.py / import_crowd.py (crowd votes ⇄ the same log)
-                                                                                        ├─ gender.py ─▶ gender.sqlite3 (LLM semantic gender → P10339; phase 2, not in v1 write path)
                                                                                         └─ write.py ─▶ wbeditentity: P5137 only (gated on approval)
 ```
 
@@ -66,37 +62,28 @@ latest-lexemes.json.gz ─load_lexemes.py──▶ wikidata.sqlite3 ─┘      
    Abstains on conflicting anchors and never overrides an existing P5137 (cross-pivot conflict).
 
 **Evaluate, verify, review, write:**
-4. **`precision.py`** / **`ablation.py`** — held-out leave-one-out precision and structural-gate
-   ablation (the A/B/D gates; see notes for the de-bias).
-5. **`fetch_items.py`** / **`fetch_anchor_langs.py`** — polite Wikidata Action API clients; cache
+4. **`fetch_items.py`** / **`fetch_anchor_langs.py`** — polite Wikidata Action API clients; cache
    anchor Q **CC0** labels/descriptions + P31/P279 into `wd_items.sqlite3`. The all-language
    `item_lang` cache is the verifier's only concept source, so a stale fetch fails loud.
-6. **`verify.py`** — LLM yes/no verifier over `claude -p` (CC0 anchor label/description + the
-   target lexeme's own CC0 gloss; tolerant criterion — broader/narrower count as yes, only a
-   genuinely different concept is 'no'). Verdicts are cached in `data/verify.sqlite3` (`--force`
-   re-verifies after a prompt change); `--csv` exports them.
-7. **`assign.py`** — the per-*sense* question, for targets that have several senses: which of
-   this lexeme's senses does the anchor belong to, or none? Runs downstream of `verify.py`;
-   an abstention is strong evidence the sense is missing from Wikidata altogether.
-8. **`measure_lift.py`** / **`calibrate.py`** — verifier precision lift on held-out truth, and
-   per-relation human-verdict precision against the pinned auto-approve/auto-defer gates.
-9. **`export_review.py`** / **`review_queue.py`** — browsable HTML + a stdlib approve/reject/defer UI
-   (the authorization gate). Decisions are an append-only, git-committed log at
-   `notes/runs/decisions.csv` (the single source of truth — there is no review DB; "pending" is
-   computed as the verifier-'yes' pool minus what the log covers).
-10. **`game_export.py`** / **`import_crowd.py`** — the same pool as pre-rendered tiles for the
+5. **`verify.py`** — LLM verifier over `claude -p` (CC0 anchor label/description + the target
+   lexeme's numbered CC0 sense inventory; tolerant criterion — broader/narrower count as yes, only
+   a genuinely different concept is 'no'). It names the matching sense, or `none` (→ create).
+   Verdicts are cached per prompt version in `data/verify.sqlite3`; `--csv` exports them.
+6. **`calibrate.py`** — per-relation human-verdict precision against the pinned
+   auto-approve/auto-defer gates.
+7. **`review_queue.py`** — a stdlib approve/reject/defer UI (the authorization gate). Decisions are
+   an append-only, git-committed log at `notes/runs/decisions.csv` (the single source of truth —
+   there is no review DB; "pending" is computed as the verifier-'yes' pool minus what the log covers).
+8. **`game_export.py`** / **`import_crowd.py`** — the same pool as pre-rendered tiles for the
    Wikidata Distributed Game, and the return path: crowd votes are scored per voter, promoted
    into the same decision log, and never write on their own (`notes/crowd_review_plan.md`).
-11. **`gender.py`** *(phase 2 — not wired into the v1 write path)* — LLM semantic-gender tagger
-   (CC0: bare lemma only) over approved candidates; supplies the **P10339** value for the
-   two-part gendered-lexeme convention (P5137 → the gender-neutral concept, the word's sex
-   recorded separately). A gendered form denotes the *same* concept as its neutral counterpart
-   (an EQUAL link, valid and constraint-clean without the qualifier), so v1 writes the P5137 link
-   alone and leaves P10339 as an additive phase-2 enrichment — not a v1 precondition. Cached in
-   `gender.sqlite3`.
-12. **`write.py`** — builds the `wbeditentity` payload (**P5137** + mandatory P887/P813 reference),
+9. **`write.py`** — builds the `wbeditentity` payload (**P5137** + mandatory P887/P813 reference),
    reads only approved rows from that log, appends a `written` event with the revid, and defaults
    to `--dry-run`.
+
+Measurement harnesses (held-out precision, gate ablation, A/B arms, per-sense assignment eval)
+and the phase-2 P10339 gender tagger were retired 2026-10-08; their results are in `notes/`,
+the code in git history.
 
 ### Three lanes
 
@@ -106,12 +93,12 @@ decides what the edit does. `gates.py` asserts that the lanes partition the pool
 | lane | target | the edit | flag |
 |---|---|---|---|
 | **mono** | exactly one sense | add P5137 to that sense | *(default)* |
-| **poly** | several senses | add P5137 to the *assigned* sense (`assign.py`) | `--include-poly` |
+| **poly** | several senses | add P5137 to the sense the verifier names | `--include-poly` |
 | **senseless** | no senses at all | create a first sense (CC0 gloss) + P5137 | `--include-senseless` |
 | mono or poly, no recorded sense fits | the verifier saw the inventory and answered `none` (`MISSING` class) | reviewer clicks **+ create sense** → status `create` → a new sense (CC0 gloss) + P5137 | `--include-senseless` |
 
 The lanes are deliberately kept separate: a lane's measured precision must not be restated over
-a population nobody has reviewed. `review_queue.py`, `export_review.py`, `calibrate.py`,
+a population nobody has reviewed. `review_queue.py`, `calibrate.py`,
 `game_export.py` and `write.py` all take the same lane selector.
 
 **QA tooling:** **`audit_decisions.py`** surfaces human/verifier disagreements and runs an optional
@@ -134,8 +121,7 @@ uv run load_lexemes.py --dump path/to/latest-lexemes.json.gz
 # 3. candidates
 uv run match.py
 
-# 4. evaluate + fetch CC0 anchor items (needs www.wikidata.org)
-uv run precision.py
+# 4. fetch CC0 anchor items (needs www.wikidata.org)
 uv run fetch_items.py
 uv run fetch_anchor_langs.py            # the all-language concept cache verify.py reads
 
@@ -143,17 +129,14 @@ uv run fetch_anchor_langs.py            # the all-language concept cache verify.
 uv run gates.py                         # assert the lanes are non-empty and partition the pool
 uv run verify.py --gate ABD --all --model sonnet          # mono lane
 uv run verify.py --gate AD --senseless-only --all         # senseless lane
-uv run verify.py --gate AD --poly-only --all              # poly lane, then:
-uv run assign.py --all                  # ...which sense of the target does the anchor mean?
+uv run verify.py --gate AD --poly-only --all              # poly lane
 
 # 6. review, then write  (decisions logged to notes/runs/decisions.csv — source of truth)
-uv run export_review.py                 # data/review.html
 uv run review_queue.py serve            # http://localhost:8731  approve/reject/defer
 uv run review_queue.py status           # pending (computed) / approved / deferred / rejected / written
-#   ...both take --senseless / --poly to switch lanes
+#   ...takes --senseless / --poly to switch lanes
 uv run calibrate.py                     # per-relation precision vs the pinned automation gates
 uv run write.py --dry-run               # print payloads for approved rows (submits nothing)
-# gender.py (P10339, two-part gendered-lexeme convention) is phase 2 — not part of the v1 write path
 
 # 7. go live (assisted edits on your account; no autoconfirmed needed for statement-adds)
 #    create a Special:BotPasswords credential, then:

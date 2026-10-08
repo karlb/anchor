@@ -285,8 +285,7 @@ def candidates(gate="", min_support=1, senseless_only=False, max_senses=None, po
 
     `gate` adds structural gates (the same SQL fragments gates.high_tier_where composes):
     A (>=2 anchors), B (monosemous target, n_senses==1), D (concrete in-scope anchor).
-    ABD is the measured ~95.9%-precision High tier. (The measurement harnesses' Python
-    gate D, precision.typed_qids, applies the same P31 + scope-exclusion definition.)
+    ABD is the measured ~95.9%-precision High tier.
 
     The ungated pool is a strict SUPERSET of what it was before admissibility moved out of
     gates.clean_clause: measured 60,006 -> 63,275, losing none and gaining 3,269 polysemous
@@ -387,57 +386,34 @@ def unfetched_anchors(qids):
     return qids - fetched
 
 
-def fmt_concept(row, langs=None, il_map=None):
+def fmt_concept(row, langs, il_map=None):
     """(qid, label, description) for the anchor concept, target-language first.
 
-    langs (a config.CONCEPT_LANGS_* spec) selects the unified multilingual format: the
-    concept is built from item_lang (il_map) across those languages, target-language
-    first. This is the +multi arm, and the ONLY concept the live verifier grades on — its
-    has_evidence gate now keys on item_lang, so a live-run row always has an entry here.
-    The de/en/sv fallback below (when item_lang lacks the qid) is therefore reached only by
-    the frozen measurement harnesses' +multi arm and by --allow-degraded smoke runs; it is
-    the base availability tier, not a grading source — and it widens to ALL of de/en/sv so
-    cross-language disagreement still surfaces. langs=None keeps the legacy de/en/sv base
-    format (target-lang + English label, single best description) byte-identical for the
-    measurement callers."""
+    langs (a config.CONCEPT_LANGS_* spec) selects the languages: the concept is built from
+    item_lang (il_map), the ONLY concept the live verifier grades on — its has_evidence gate
+    keys on item_lang, so a live-run row always has an entry here. The de/en/sv fallback below
+    (when item_lang lacks the qid) is reached only by --allow-degraded smoke runs and the
+    audit; it widens to ALL of de/en/sv so cross-language disagreement still surfaces."""
     _lid, lang, _lemma, qid, _sup, lde, len_, lsv, dde, den, dsv = row
-    widen = False
-    if langs is not None:
-        entry = (il_map or {}).get(qid)
-        res = config.resolve_concept_langs(entry, langs, target=lang) if entry else []
-        if res:
-            lab = " / ".join(dict.fromkeys(l for _d, l, _ds in res if l)) or "(no label)"
-            desc = " | ".join(f"{d}: {ds}" for d, _l, ds in res if ds) or "(no description)"
-            return qid, lab, desc
-        widen = True   # no item_lang coverage -> widen de/en/sv instead
-    # Only de/en/sv anchor labels live in the wide `item` table; a target lang outside
-    # that set (fr/no) simply has no own-language column here, so use .get and fall back
-    # to en/de/sv. (The +multi path above already supplies fr/no from item_lang.)
+    entry = (il_map or {}).get(qid)
+    res = config.resolve_concept_langs(entry, langs, target=lang) if entry else []
+    if res:
+        lab = " / ".join(dict.fromkeys(l for _d, l, _ds in res if l)) or "(no label)"
+        desc = " | ".join(f"{d}: {ds}" for d, _l, ds in res if ds) or "(no description)"
+        return qid, lab, desc
     labels = {"de": lde, "en": len_, "sv": lsv}
     descs = {"de": dde, "en": den, "sv": dsv}
     order = list(dict.fromkeys([lang, "en", "de", "sv"]))   # target-language first
-    if widen:
-        lab = " / ".join(dict.fromkeys(labels[c] for c in order if labels.get(c)))
-        desc = " | ".join(f"{c}: {descs[c]}" for c in order if descs.get(c))
-    else:
-        lab = " / ".join(dict.fromkeys(x for x in ([labels.get(lang), len_] if lang != "en" else [len_]) if x))
-        desc = descs.get(lang) or den or dde or dsv
+    lab = " / ".join(dict.fromkeys(labels[c] for c in order if labels.get(c)))
+    desc = " | ".join(f"{c}: {descs[c]}" for c in order if descs.get(c))
     return qid, lab or "(no label)", desc or "(no description)"
 
 
-def has_evidence(row, il_map=None):
-    """True if the anchor has a gradable CC0 concept (some label or description).
-
-    With il_map (the all-language item_lang cache), evidence is judged from item_lang — the
-    SAME source the live verifier grades on — so an anchor is kept iff it can actually be
-    formatted as +multi. Without il_map it falls back to the de/en/sv base columns: the
-    pre-fetch availability tier used by fetch_anchor_langs.needed_qids (item_lang doesn't
-    exist yet at that point) and by the frozen measurement harnesses."""
-    if il_map is not None:
-        e = il_map.get(row[3])
-        return bool(e) and any((lab or desc) for lab, desc in e.values())
-    qid, lab, desc = fmt_concept(row)
-    return lab != "(no label)" or desc != "(no description)"
+def has_evidence(row, il_map):
+    """True if the anchor has a gradable CC0 concept (some label or description) in
+    item_lang — the SAME source the live verifier grades on."""
+    e = il_map.get(row[3])
+    return bool(e) and any((lab or desc) for lab, desc in e.values())
 
 
 def load_glosses(lids):
