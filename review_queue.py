@@ -594,10 +594,9 @@ def scope_hint(reason, gloss=None, anchor_desc=None):
 # glossed just 'concentration'. NEUTRAL reviewer context (like alias_match) — the human weighs it;
 # we deliberately DON'T feed it to the verifier or auto-defer (would be noisy — the benign majority,
 # metonymy / species-vs-individual, is filtered out by the undifferentiated-gloss gate).
-# In the SENSELESS lane there is no gloss, so that gate is vacuous and the flag fires on every
-# collapse row. It does NOT mean "reject a minor sense": creating S1 for a minor meaning breaks no
-# rule (lexeme-data-model.md — sense ids auto-increment and are never renumbered, so rank is a
-# display artifact). The reviewer's actual job there is gloss specificity, which is what it asks.
+# In the SENSELESS lane there is no gloss, so that gate is vacuous: the flag fired on every
+# collapse row and predicted nothing, so render() turns it off there. (Creating S1 for a minor
+# meaning breaks no rule anyway — sense ids are never renumbered, so rank is a display artifact.)
 _LANG3TO2 = {"swe": "sv", "fra": "fr", "deu": "de", "eng": "en", "nob": "no",
              "nno": "no", "nor": "no", "nld": "nl", "dan": "da", "epo": "eo"}
 
@@ -1077,7 +1076,10 @@ def render(limit, lang_filter=None, lane=None, act_filter=None, blind=False, hin
     meta = {}
     for r in rows:
         gl, glang, _ad = ctx.get((r[0], r[1]), ("", None, ""))
-        meta[(r[0], r[1])] = (gl, glang, polysemy_hint(poly_idx, r[0], r[1], r[3], r[2], gl))
+        # senseless: no gloss to be undifferentiated, so the flag fired on every collapse row and
+        # predicted nothing (44/44 flagged rows approved, 2026-10-18) — off there
+        meta[(r[0], r[1])] = (gl, glang, None if senseless else
+                              polysemy_hint(poly_idx, r[0], r[1], r[3], r[2], gl))
     # Float scope mismatches AND polysemy-collapse flags to the top: either concern first, then
     # convention broader/narrower, then clean EQUAL — so neither is ever pushed past `limit`.
     def _rank(r):
@@ -1237,11 +1239,6 @@ def render(limit, lang_filter=None, lane=None, act_filter=None, blind=False, hin
                                "polysemous foreign word bridging two meanings</div>")
         if n_poly_row:
             gloss_html += (f"<div class=poly>⚠ source word is polysemous ({n_poly_row} WikDict "
-                           "senses collapse here) — S1 may be a minor sense, which is fine; "
-                           "check the gloss pins THIS meaning so a later editor can’t mistake "
-                           "it for the dominant one</div>"
-                           if senseless else
-                           f"<div class=poly>⚠ source word is polysemous ({n_poly_row} WikDict "
                            "senses collapse here) — this sense gloss is undifferentiated, so "
                            "verify the anchor isn’t over-specifying it</div>")
         form = (f"<form method=post action=/act style='display:inline'>"
