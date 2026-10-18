@@ -540,6 +540,8 @@ def main():
     ap.add_argument("--include-senseless", action="store_true",
                     help="also build sense-creation edits (gloss = the anchor's CC0 "
                          "description, any language, never a label; one edit per lexeme)")
+    ap.add_argument("--pairs", help="only these pairs: a file of 'lid qid' lines "
+                    "(e.g. notes/runs/named150.txt), so one batch is one reviewed set")
     args = ap.parse_args()
     if args.preview and args.include_senseless and args.include_poly:
         ap.error("--preview shows ONE lane's pool; --include-senseless and --include-poly "
@@ -548,6 +550,9 @@ def main():
 
     today = datetime.date.today().isoformat()
     rows = load_rows(args)
+    if args.pairs:
+        want = {tuple(l.split()[:2]) for l in open(args.pairs) if l.strip() and l[0] != "#"}
+        rows = [r for r in rows if (r[0], r[1]) in want]
     src = "verifier-'yes' (preview)" if args.preview else "approved"
     print(f"{len(rows)} {src} candidate(s), building ≤{args.limit} lexeme edit(s); "
           f"mode={'WRITE' if args.write else 'dry-run'}; "
