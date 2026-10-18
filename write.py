@@ -292,7 +292,7 @@ def load_rows(args):
 
 # ---- Action API submission (stdlib only) -----------------------------------
 
-MAXLAG_RETRIES = 6  # back-off attempts on maxlag / 429 / 503 before giving up
+MAXLAG_RETRIES = 8  # back-off attempts on maxlag / 429 / 503 before giving up
 
 
 def _api(opener, params, post=False):
@@ -303,7 +303,7 @@ def _api(opener, params, post=False):
     on a POST is NOT retried — an intermediary can return either after the edit
     already landed, and we must not risk a duplicate."""
     params = {**params, "format": "json", "formatversion": "2"}
-    backoff = 1.0
+    backoff = 5.0
     for attempt in range(MAXLAG_RETRIES):
         if post:
             req = urllib.request.Request(API, data=urllib.parse.urlencode(params).encode(),
@@ -331,7 +331,8 @@ def _api(opener, params, post=False):
             backoff *= 2
             continue
         if data.get("error", {}).get("code") == "maxlag" and not last:
-            time.sleep(min(float(data["error"].get("lag", backoff)) or backoff, 30))
+            # lag persists for minutes; sleeping just the reported lag gave up after ~30 s
+            time.sleep(min(max(float(data["error"].get("lag") or 0), backoff), 60))
             backoff *= 2
             continue
         return data
