@@ -10,12 +10,13 @@ On success it appends a 'written' event (with the revid) to the same log.
     uv run write.py --dry-run                 # print exact payloads, submit nothing
     uv run write.py --dry-run --preview       # preview verifier-'yes' rows (no approval needed)
     uv run write.py --write --limit 10        # submit 10 approved edits (needs credentials)
+    uv run write.py --write --bot --limit 50  # bot task: named first senses, no approval (BOT_USER)
 
 Safety: --dry-run is the default. Live submit needs --write AND WIKI_USER/WIKI_PASS
 env vars (a Special:BotPasswords credential on your operator account). Submission goes
 through the MediaWiki Action API (wbeditentity) using only the standard library — no
 extra dependency, and it posts the exact JSON shown in --dry-run. Edits are NOT
-bot-flagged (assisted editing on the operator account). Three write shapes, each behind its
+bot-flagged (assisted editing on the operator account), except --bot runs. Three write shapes, each behind its
 own flag: MONOSEMOUS by default (add to the lexeme's one sense), senseless with
 --include-senseless (create the first sense, needs a gloss policy), and POLYSEMOUS with
 --include-poly (add to the ONE existing sense the human approved). The poly shape is the same
@@ -57,10 +58,17 @@ import urllib.request
 
 import config
 from fetch_items import API, USER_AGENT  # one copy of the endpoint + contact User-Agent
-from review_queue import anchor_gloss, append_decision, load_decisions, now, pool
+from review_queue import (action_of, anchor_gloss, append_decision, create_evidence,
+                          is_auto_deferred, load_decisions, now, pending_view, pool)
 
 SUMMARY = ("Add [[Property:P5137]] (item for this sense) inferred from translation, "
            "ref [[Q140308675]] — LLM-verified, human-approved assisted edit")
+# --bot: the approved unreviewed task (named first senses). Its own account, so assisted runs
+# can never edit as the bot and the bot can never write outside its task.
+BOT_SUMMARY = ("Create first sense with [[Property:P5137]] (item for this sense): item label "
+               "equals lemma, inferred from translation, ref [[Q140308675]], LLM-verified; "
+               "bot task [[Wikidata:Requests for permissions/Bot/{bot}]]")
+BOT_LANGS = ("de", "en", "sv", "ru")
 TOOL = "CB"  # EditGroups "custom bot" id (self-service, no registration); batch id is per-run
 
 # P887 "based on heuristic" value: the purpose-made item "inferred from translation"
@@ -260,6 +268,18 @@ def build_edit(row, today, include_senseless, it, include_poly=False):
     return None, "skipped: senseless (needs gloss policy; use --include-senseless)"
 
 
+def load_bot_rows():
+    """The bot task's rows: undecided senseless pool rows the verifier kept (no auto-defer, no
+    triage action) whose item's own label or alias is the lemma — the population the trials
+    sampled (named150, ru100). Pairs a human decided stay with the assisted runs."""
+    _d, und, ctx, ad, _v = pending_view("senseless")
+    it, wd = sqlite3.connect(config.ITEMS), sqlite3.connect(config.WIKIDATA)
+    return sorted(r for r in und if r[3] in BOT_LANGS
+                  and not is_auto_deferred((r[0], r[1]), r[6], ctx, ad)
+                  and not action_of((r[0], r[1]), r[6], ctx)
+                  and create_evidence(it, wd, r[0], r[1], r[3], r[2])[0] == "named")
+
+
 def load_rows(args):
     """(lid, anchor_qid, lemma, lang, n_senses) rows to build edits from.
 
@@ -376,7 +396,7 @@ def resolve_sense(opener, lid):
     return senses[0]["id"], p5137_targets(senses[0])
 
 
-def submit(opener, csrf, lid, data, summary):
+def submit(opener, csrf, lid, data, summary, extra=None):
     # No "bot" key. API booleans are presence-checked, so *any* value — "0" included —
     # marks the edit as a bot edit; omitting the key is the only way to say false. Inert
     # today because the account lacks the `bot` right, but the BRFA that grants it would
@@ -384,32 +404,47 @@ def submit(opener, csrf, lid, data, summary):
     # wants to disappear from. Re-add as "bot": "1" only as a deliberate call.
     #                   "bot": "0",
     res = _api(opener, {"action": "wbeditentity", "id": lid, "data": json.dumps(data),
-                        "summary": summary, "token": csrf, "maxlag": "5"},
+                        "summary": summary, "token": csrf, "maxlag": "5", **(extra or {})},
                post=True)
     if "error" in res:
         raise RuntimeError(res["error"].get("info", str(res["error"])))
     return res.get("entity", {}).get("lastrevid")
 
 
-def write_edits(edits, max_per_min):
+def write_edits(edits, max_per_min, bot=False, rows=()):
     """Resolve each sense live, safety-check, submit, record the revid in the queue.
 
     Submissions are paced to at most `max_per_min` edits/minute (0 = no cap), the
     per-minute rate limit the bot policy requires editing tools to support."""
-    user, pw = os.environ.get("WIKI_USER"), os.environ.get("WIKI_PASS")
+    pre = "BOT" if bot else "WIKI"
+    user, pw = os.environ.get(f"{pre}_USER"), os.environ.get(f"{pre}_PASS")
     if not (user and pw):
-        raise SystemExit("--write needs WIKI_USER / WIKI_PASS (Special:BotPasswords) env vars")
+        raise SystemExit(f"--write needs {pre}_USER / {pre}_PASS (Special:BotPasswords) env vars")
+    account = user.split("@")[0]
+    if bot != ("bot" in account.lower()):
+        raise SystemExit(f"{pre}_USER is {account!r}: --bot runs need the bot account, "
+                         "assisted runs the operator account")
     if HEURISTIC_ITEM.startswith("Q-TODO"):
         raise SystemExit("refusing to write: pin HEURISTIC_ITEM to a real P887 value first")
     opener = urllib.request.build_opener(
         urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))
     csrf = login(opener, user, pw)
+    extra = {"assert": "user"}
+    summary_base = SUMMARY
+    if bot:
+        # bot=1 on every edit (policy); assert=bot only once the flag is granted, since the
+        # trial run before it would fail the assert
+        rights = _api(opener, {"action": "query", "meta": "userinfo", "uiprop": "rights"})
+        extra = {"bot": "1", "assert": "bot" if "bot" in rights["query"]["userinfo"]
+                 .get("rights", []) else "user"}
+        summary_base = BOT_SUMMARY.format(bot=account)
+    info = {(r[0], r[1]): r for r in rows}
     decisions = load_decisions()  # to carry the audited fields onto the 'written' event
     # One EditGroups batch per run: every edit shares this id, so the whole run is one
     # auditable, one-click-revertible group on editgroups.toolforge.org. Padded to 12 hex
     # digits to stay inside EditGroups' 4–32 lowercase-hex range for any random value.
     batch_id = "%012x" % random.randrange(2**48)
-    summary = f"{SUMMARY} ([[:toolforge:editgroups/b/{TOOL}/{batch_id}|details]])"
+    summary = f"{summary_base} ([[:toolforge:editgroups/b/{TOOL}/{batch_id}|details]])"
     group_url = f"https://editgroups.toolforge.org/b/{TOOL}/{batch_id}/"
     interval = 60.0 / max_per_min if max_per_min > 0 else 0.0
     print(f"editgroups batch {TOOL}/{batch_id} → {group_url}")
@@ -497,19 +532,24 @@ def write_edits(edits, max_per_min):
                     time.sleep(wait)
             revid = submit(opener, csrf, lid, data, summary
                            + (f", approved by {', '.join(crowd)} via the distributed game"
-                              if crowd else ""))
+                              if crowd else ""), extra)
             last_edit = time.monotonic()
         except Exception as e:  # noqa: BLE001 — one bad edit shouldn't abort the batch
             print(f"  FAIL {lid} → {anchors}: {e}"); continue
         # One submit = one revid, but the decision log is keyed (lid, qid): log each anchor.
         for anchor in anchors:
             d = decisions.get((lid, anchor), {})
+            r = info.get((lid, anchor))
+            if bot and r:  # no human decision behind a bot row: log the pool row itself
+                d = {"target_lemma": r[2], "target_lang": r[3], "target_n_senses": str(r[4]),
+                     "verdict": "yes", "reason": r[6], "model": r[7]}
             append_decision({
                 "ts": now(), "target_lid": lid, "anchor_qid": anchor,
                 "target_lemma": d.get("target_lemma", ""), "target_lang": d.get("target_lang", ""),
                 "target_n_senses": d.get("target_n_senses", ""), "verdict": d.get("verdict", ""),
                 "reason": d.get("reason", ""), "model": d.get("model", ""),
-                "status": "written", "reviewer": f"write.py b/{TOOL}/{batch_id}",
+                "status": "written",
+                "reviewer": f"{'bot' if bot else 'write.py'} b/{TOOL}/{batch_id}",
                 "revid": str(revid),
             })
             print(f"  wrote {lid} → {anchor}  (rev {revid})")
@@ -541,20 +581,29 @@ def main():
     ap.add_argument("--include-senseless", action="store_true",
                     help="also build sense-creation edits (gloss = the anchor's CC0 "
                          "description, any language, never a label; one edit per lexeme)")
+    ap.add_argument("--bot", action="store_true",
+                    help="the bot task: create first senses for the verifier-kept named "
+                         f"senseless pool ({'/'.join(BOT_LANGS)}), no human approval; "
+                         "edits as BOT_USER/BOT_PASS, bot-flagged")
     ap.add_argument("--pairs", help="only these pairs: a file of 'lid qid' lines "
                     "(e.g. notes/runs/named150.txt), so one batch is one reviewed set")
     args = ap.parse_args()
+    if args.bot:
+        args.include_senseless = True  # the bot task is sense creation only
     if args.preview and args.include_senseless and args.include_poly:
         ap.error("--preview shows ONE lane's pool; --include-senseless and --include-poly "
                  "select different ones. (Without --preview the flags are additive, because "
                  "the approved log holds every lane at once.)")
 
     today = datetime.date.today().isoformat()
-    rows = load_rows(args)
+    bot_rows = load_bot_rows() if args.bot else []
+    rows = ([(*r[:5], "", False) for r in bot_rows] if args.bot else load_rows(args))
+    rows.sort(key=lambda r: (r[3], r[2], r[0], r[1]))
     if args.pairs:
         want = {tuple(l.split()[:2]) for l in open(args.pairs) if l.strip() and l[0] != "#"}
         rows = [r for r in rows if (r[0], r[1]) in want]
-    src = "verifier-'yes' (preview)" if args.preview else "approved"
+    src = ("bot-task (named, verifier-kept)" if args.bot
+           else "verifier-'yes' (preview)" if args.preview else "approved")
     print(f"{len(rows)} {src} candidate(s), building ≤{args.limit} lexeme edit(s); "
           f"mode={'WRITE' if args.write else 'dry-run'}; "
           f"reference=P887({HEURISTIC_ITEM})+P813({today})\n")
@@ -644,7 +693,7 @@ def main():
 
     if args.preview:
         raise SystemExit("refusing to --write in --preview mode: write only human-approved rows")
-    write_edits(edits, args.max_edits_per_min)
+    write_edits(edits, args.max_edits_per_min, args.bot, bot_rows)
 
 
 if __name__ == "__main__":
