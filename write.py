@@ -287,7 +287,7 @@ def load_bot_rows():
             and r[2] in item_names(it, r[1], r[3])]  # create_evidence's 'named'
     it.close()
     n = collections.Counter(r[0] for r in rows)
-    return sorted(r for r in rows if n[r[0]] == 1)
+    return [r for r in rows if n[r[0]] == 1]
 
 
 def load_rows(args):
@@ -312,11 +312,9 @@ def load_rows(args):
                  int(d["target_n_senses"]), (d.get("target_sid") or "").strip(),
                  d["status"] == "create")
                 for d in load_decisions().values() if d["status"] in ("approved", "create")]
-    # Sorted so one lexeme's rows are contiguous (same lid ⇒ same lang+lemma), which is what
-    # lets main() group and cap by lexeme in a single pass. --limit is NOT applied here: the
-    # approved pool holds both lanes, and a plain run drops every senseless row at build time,
-    # so capping candidates would silently under-deliver edits (a --limit 20 that built none).
-    rows.sort(key=lambda r: (r[3], r[2], r[0], r[1]))
+    # --limit is NOT applied here: the approved pool holds both lanes, and a plain run drops
+    # every senseless row at build time, so capping candidates would silently under-deliver
+    # edits (a --limit 20 that built none).
     return rows
 
 
@@ -635,6 +633,8 @@ def main():
     today = datetime.date.today().isoformat()
     bot_rows = load_bot_rows() if args.bot else []
     rows = ([(*r[:5], "", False) for r in bot_rows] if args.bot else load_rows(args))
+    # Sorted so one lexeme's rows are contiguous (same lid ⇒ same lang+lemma), which is what
+    # lets the build below group and cap by lexeme in a single pass.
     rows.sort(key=lambda r: (r[3], r[2], r[0], r[1]))
     if args.pairs:
         want = {tuple(l.split()[:2]) for l in open(args.pairs) if l.strip() and l[0] != "#"}
