@@ -416,13 +416,8 @@ def alias_match(it, qid, lang, lemma):
     return next((a for a in row[0].split("; ") if a.strip().lower() == want), "")
 
 
-def create_evidence(it, wd, lid, qid, lang, lemma):
-    """('named' | 'owned' | '', [(lid, lemma)]) — the two create-row signals, measured on
-    Karl's 87 create-class rulings (2026-10-08): 'named' = the item's own `lang` label or
-    alias IS the lemma, case-exact (22/26 created); 'owned' = not named, and another `lang`
-    lexeme already links the item or is named after it (7/30 created — mostly a polysemous
-    foreign pivot word, krets <- Kreis = circle). Case-exact is what separates fr Croate
-    (person) from croate (language). Advisory only: neither gates anything."""
+def item_names(it, qid, lang):
+    """The item's own `lang` label and aliases (cached by fetch_anchor_langs.py)."""
     names = set()
     r = it.execute("SELECT label FROM item_lang WHERE qid=? AND lang=?", [qid, lang]).fetchone()
     if r and r[0]:
@@ -430,6 +425,17 @@ def create_evidence(it, wd, lid, qid, lang, lemma):
     r = it.execute("SELECT aliases FROM item_alias WHERE qid=? AND lang=?", [qid, lang]).fetchone()
     if r and r[0]:
         names |= {a.strip() for a in r[0].split("; ")}
+    return names
+
+
+def create_evidence(it, wd, lid, qid, lang, lemma):
+    """('named' | 'owned' | '', [(lid, lemma)]) — the two create-row signals, measured on
+    Karl's 87 create-class rulings (2026-10-08): 'named' = the item's own `lang` label or
+    alias IS the lemma, case-exact (22/26 created); 'owned' = not named, and another `lang`
+    lexeme already links the item or is named after it (7/30 created — mostly a polysemous
+    foreign pivot word, krets <- Kreis = circle). Case-exact is what separates fr Croate
+    (person) from croate (language). Advisory only: neither gates anything."""
+    names = item_names(it, qid, lang)
     if lemma in names:
         return "named", []
     if lemma.casefold() in {n.casefold() for n in names}:

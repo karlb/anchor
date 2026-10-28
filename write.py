@@ -59,8 +59,9 @@ import urllib.request
 
 import config
 from fetch_items import API, USER_AGENT  # one copy of the endpoint + contact User-Agent
-from review_queue import (action_of, anchor_gloss, append_decision, create_evidence,
-                          is_auto_deferred, load_decisions, now, pending_view, pool)
+from review_queue import (action_of, anchor_gloss, append_decision, has_item_alias, has_item_lang,
+                          is_auto_deferred, item_names, load_decisions, now, pending_view, pool)
+
 
 SUMMARY = ("Add [[Property:P5137]] (item for this sense) inferred from translation, "
            "ref [[Q140308675]] — LLM-verified, human-approved assisted edit")
@@ -277,11 +278,14 @@ def load_bot_rows():
     several such anchors are left to review: the task is ONE first sense, and two anchors are
     often near-duplicates (Fälschung → forgery + counterfeit)."""
     _d, und, ctx, ad, _v = pending_view("senseless")
-    it, wd = sqlite3.connect(config.ITEMS), sqlite3.connect(config.WIKIDATA)
+    it = sqlite3.connect(config.ITEMS)
+    if not (has_item_lang(it) and has_item_alias(it)):
+        raise SystemExit("--bot needs the item label/alias cache: run fetch_anchor_langs.py")
     rows = [r for r in und if r[3] in BOT_LANGS
             and not is_auto_deferred((r[0], r[1]), r[6], ctx, ad)
             and not action_of((r[0], r[1]), r[6], ctx)
-            and create_evidence(it, wd, r[0], r[1], r[3], r[2])[0] == "named"]
+            and r[2] in item_names(it, r[1], r[3])]  # create_evidence's 'named'
+    it.close()
     n = collections.Counter(r[0] for r in rows)
     return sorted(r for r in rows if n[r[0]] == 1)
 
