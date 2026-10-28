@@ -322,6 +322,7 @@ def load_rows(args):
 # ---- Action API submission (stdlib only) -----------------------------------
 
 MAXLAG_RETRIES = 8  # back-off attempts on maxlag / 429 / 503 before giving up
+MAX_CONSECUTIVE_FAILS = 5  # then the cause is systemic (lag, lost session): stop the run
 
 
 def _api(opener, params, post=False):
@@ -479,7 +480,7 @@ def write_edits(edits, max_per_min, bot=False, rows=()):
     interval = 60.0 / max_per_min if max_per_min > 0 else 0.0
     print(f"editgroups batch {TOOL}/{batch_id} → {group_url}")
     print(f"throttle: {'≤%d edits/min' % max_per_min if interval else 'none'}")
-    written = 0
+    written = fails = 0
     last_edit = 0.0  # monotonic time of the last submitted edit, for pacing
     for lid, data in edits:
         senses = data["senses"]
@@ -571,8 +572,14 @@ def write_edits(edits, max_per_min, bot=False, rows=()):
                            + (f", approved by {', '.join(crowd)} via the distributed game"
                               if crowd else ""), extra)
             last_edit = time.monotonic()
+            fails = 0
         except Exception as e:  # noqa: BLE001 — one bad edit shouldn't abort the batch
-            print(f"  FAIL {lid} → {anchors}: {e}"); continue
+            print(f"  FAIL {lid} → {anchors}: {e}")
+            fails += 1
+            if fails >= MAX_CONSECUTIVE_FAILS:
+                raise SystemExit(f"{fails} consecutive failures, aborting "
+                                 f"({written}/{len(edits)} submitted)")
+            continue
         # One submit = one revid, but the decision log is keyed (lid, qid): log each anchor.
         for anchor in anchors:
             d = decisions.get((lid, anchor), {})
