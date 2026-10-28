@@ -623,8 +623,11 @@ def write_edits(edits, max_per_min, bot=False, rows=()):
                                + (f", approved by {', '.join(crowd)} via the distributed game"
                                   if crowd else ""), extra)
             except Exception as e:  # noqa: BLE001
-                # a 503/timeout can come after the edit landed (_api won't re-POST): log it if so
-                revid = landed_revid(opener, lid, senses)
+                # a 5xx/timeout can come after the edit landed (_api won't re-POST): log it if so.
+                # An API error or maxlag give-up never applied; re-checking costs minutes in lag.
+                maybe = (e.code >= 500 if isinstance(e, urllib.error.HTTPError)
+                         else isinstance(e, OSError))
+                revid = maybe and landed_revid(opener, lid, senses)
                 if not revid:
                     raise
                 print(f"  {lid}: submit failed ({e}) but the edit landed")
