@@ -1535,3 +1535,157 @@ ts,target_lid,anchor_qid,target_lemma,target_lang,target_n_senses,target_sid,ver
 2026-10-18 13:16:02,L242422,Q250840,dysa,sv,0,,yes,EQUAL·plain: dysa means nozzle,claude-sonnet-5-5×3,approved,local,
 2026-10-18 13:16:03,L244532,Q313303,grenadjär,sv,0,,yes,EQUAL·plain: grenadjär is grenadier soldier,claude-sonnet-5-5×3,approved,local,
 2026-10-18 13:16:04,L663648,Q1414816,incitament,sv,0,,yes,EQUAL·plain: incitament means incentive,claude-sonnet-5-5×3,approved,local,
+2026-10-18 13:26:02,L342936,Q1567862,Iraker,de,1,,yes,"EQUAL·gendered·demonym: citizens of Iraq, gender recorded separately",sonnet,written,write.py b/CB/fc9896c77e3e,2558397335
+2026-10-18 13:26:05,L345345,Q1567862,Irakerin,de,1,,yes,"EQUAL·gendered·demonym: Female Iraqi citizen, gender recorded separately",sonnet,written,write.py b/CB/fc9896c77e3e,2558397349
+2026-10-18 13:26:07,L642648,Q4205820,Jemenitin,de,1,,yes,"EQUAL·gendered·demonym: citizens/residents of Yemen, blessed demonym target",sonnet,written,write.py b/CB/fc9896c77e3e,2558397372
+2026-10-18 13:26:10,L849789,Q65560351,Koinzidenz,de,1,,yes,EQUAL·plain: coincidence sense matches concept,sonnet,written,write.py b/CB/fc9896c77e3e,2558397400
+2026-10-18 13:27:24,L626474,Q4855428,Bangladescher,de,1,,yes,"EQUAL·gendered·demonym: national demonym, citizens/residents target",sonnet,written,write.py b/CB/d083d692a074,2558397966
+2026-10-18 13:27:26,L626475,Q4855428,Bangladescherin,de,1,,yes,"EQUAL·gendered·demonym: national demonym, citizens/residents target",sonnet,written,write.py b/CB/d083d692a074,2558397995
+2026-10-18 13:43:05,L807250,Q99905,Airbag,de,0,,yes,EQUAL·plain: Airbag is a vehicle safety device,claude-sonnet-5-5×3,written,write.py b/CB/f7cce917b17f,2558403091
+2026-10-18 13:48:57,L883680,Q210978,Abstinenz,de,0,,yes,EQUAL·plain: Abstinenz is voluntary restraint from indulgence,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558405483
+2026-10-18 13:48:59,L821294,Q28008314,Adressat,de,0,,yes,EQUAL·plain: Adressat = addressee/recipient,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558405494
+2026-10-18 13:49:02,L773355,Q62736,Arthrose,de,0,,yes,EQUAL·plain: Arthrose = osteoarthritis,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558405501
+2026-10-18 13:49:04,L811679,Q544178,Attaché,de,0,,yes,EQUAL·plain: Attaché is diplomatic role/rank; matches,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558405515
+2026-10-18 13:49:07,L781006,Q3271736,Außenspiegel,de,0,,yes,EQUAL·plain: Außenspiegel is a vehicle side mirror,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558405526
+2026-10-18 13:49:09,L1425133,Q628977,Birkenröhrling,de,0,,yes,EQUAL·plain: Birkenröhrling is Leccinum scabrum synonym,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558405547
+2026-10-18 13:49:12,L867785,Q506002,Bischofsstab,de,0,,yes,EQUAL·plain: Bischofsstab synonym of Krummstab/crosier,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558405561
+2026-10-18 13:49:14,L906912,Q914223,Brieffreundin,de,0,,yes,EQUAL·gendered: Female pen pal equals gender-neutral pen pal,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558405574
+2026-10-18 13:49:17,L612027,Q1413170,Buchbinderin,de,0,,yes,"EQUAL·gendered: feminine of Buchbinder, gender-neutral concept",claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558405585
+2026-10-18 13:49:19,L817744,Q161056,Buschwindröschen,de,0,,yes,EQUAL·plain: Buschwindröschen is Anemone nemorosa,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558405599
+2026-10-18 13:49:22,L936385,Q13199,Bündnerromanisch,de,0,,yes,EQUAL·plain: Bündnerromanisch is Romansh language,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558405611
+2026-10-18 13:49:25,L912164,Q161219,Chitin,de,0,,yes,EQUAL·plain: Chitin equals chitin polymer,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558405621
+2026-10-18 13:49:27,L616570,Q3330547,Chronistin,de,0,,yes,EQUAL·gendered: Female chronicler; gender recorded separately,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558405637
+2026-10-18 13:49:30,L774882,Q179744,Daguerreotypie,de,0,,yes,EQUAL·plain: Daguerreotypie is the daguerreotype photographic process,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558405652
+2026-10-18 13:49:32,L925746,Q1137446,Dammschnitt,de,0,,yes,EQUAL·plain: Dammschnitt is episiotomy,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558405664
+2026-10-18 13:49:35,L886672,Q953515,Daune,de,0,,yes,EQUAL·plain: Daune = down feather,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558405673
+2026-10-18 13:49:37,L812187,Q620629,Deismus,de,0,,yes,"EQUAL·plain: Deism, same concept",claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558405685
+2026-10-18 13:49:39,L882907,Q1229261,Disqualifikation,de,0,,yes,EQUAL·plain: Disqualification in sport; same concept,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558405697
+2026-10-18 13:49:42,L778448,Q170304,Dopamin,de,0,,yes,EQUAL·plain: Dopamin = dopamine,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558405709
+2026-10-18 13:49:45,L760222,Q1136290,Dragoman,de,0,,yes,EQUAL·plain: Dragoman is Middle Eastern interpreter,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558405720
+2026-10-18 13:49:47,L833713,Q189829,Einsiedler,de,0,,yes,EQUAL·plain: Einsiedler equals hermit,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558405739
+2026-10-18 13:49:50,L786664,Q187082,Eisprung,de,0,,yes,EQUAL·plain: Eisprung is ovulation.,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558405757
+2026-10-18 13:49:52,L763788,Q11072974,Ekloge,de,0,,yes,"EQUAL·plain: Ekloge is eclogue, pastoral poem",claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558405777
+2026-10-18 13:49:55,L1427408,Q1137446,Episiotomie,de,0,,yes,EQUAL·plain: Episiotomie equals Dammschnitt,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558405800
+2026-10-18 13:49:57,L1427431,Q46212,Erdferkel,de,0,,yes,EQUAL·plain: Erdferkel is the aardvark,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558405816
+2026-10-18 13:50:00,L900318,Q264793,Erdmaus,de,0,,yes,"EQUAL·plain: Erdmaus = Microtus agrestis, field vole",claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558405836
+2026-10-18 13:50:03,L499316,Q289891,Feind,de,0,,yes,EQUAL·plain: Feind = enemy,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558405854
+2026-10-18 13:50:05,L857487,Q689909,Feldscher,de,0,,yes,"EQUAL·plain: feldsher, German label match",claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558405877
+2026-10-18 13:50:08,L857127,Q376517,Fernlicht,de,0,,yes,EQUAL·plain: Fernlicht is the high beam,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558405894
+2026-10-18 13:50:10,L918968,Q6058862,Fettleber,de,0,,yes,EQUAL·plain: Fettleber is fatty liver,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558405902
+2026-10-18 13:50:13,L493391,Q61476,Fettsäure,de,0,,yes,EQUAL·plain: Fettsäure is fatty acid,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558405920
+2026-10-18 13:50:16,L930895,Q493615,Filzschreiber,de,0,,yes,EQUAL·plain: Filzschreiber is synonym of Filzstift,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558405940
+2026-10-18 13:50:18,L812934,Q45183,Flammenwerfer,de,0,,yes,EQUAL·plain: Flammenwerfer equals flamethrower,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558405959
+2026-10-18 13:50:21,L909323,Q102151,Fluorit,de,0,,yes,EQUAL·plain: Fluorite mineral,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558405972
+2026-10-18 13:50:23,L759393,Q752693,Fontanelle,de,0,,yes,EQUAL·plain: Fontanelle equals fontanelle skull gap,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558405993
+2026-10-18 13:50:25,L1428629,Q756102,Freilandmuseum,de,0,,yes,EQUAL·plain: Freilandmuseum synonym of Freilichtmuseum,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558406010
+2026-10-18 13:50:28,L813565,Q221488,Fußgeher,de,0,,yes,"EQUAL·plain: Austrian synonym of Fußgänger, pedestrian",claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558406027
+2026-10-18 13:50:30,L778686,Q946596,Geländewagen,de,0,,yes,EQUAL·plain: Geländewagen equals off-road vehicle,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558406049
+2026-10-18 13:50:33,L904779,Q1161370,Giebel,de,0,,yes,EQUAL·plain: Giebel is the gable,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558406070
+2026-10-18 13:50:36,L934464,Q7723658,Glögg,de,0,,yes,EQUAL·plain: Glögg is Scandinavian mulled wine,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558406087
+2026-10-18 13:50:38,L836346,Q16659538,Goldmine,de,0,,yes,EQUAL·plain: Goldmine = gold mine,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558406110
+2026-10-18 13:50:41,L72949,Q1925963,Grafikerin,de,0,,yes,"EQUAL·gendered: feminine of Grafiker, same concept",claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558406128
+2026-10-18 13:50:43,L845469,Q1483709,Grundbesitzer,de,0,,yes,EQUAL·plain: Grundbesitzer = land owner,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558406148
+2026-10-18 13:50:46,L824289,Q11416,Hasardspiel,de,0,,yes,EQUAL·plain: Hasardspiel is a game of chance gambling,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558406168
+2026-10-18 13:50:48,L823568,Q207831,Haubenmeise,de,0,,yes,EQUAL·plain: Haubenmeise is the crested tit species,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558406189
+2026-10-18 13:50:51,L616189,Q2596569,Haushälterin,de,0,,yes,EQUAL·gendered: Female form of Haushälter; gender-neutral equal,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558406210
+2026-10-18 13:50:53,L858204,Q223836,Hindernislauf,de,0,,yes,EQUAL·plain: Hindernislauf = steeplechase/obstacle race,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558406230
+2026-10-18 13:50:56,L1430838,Q26140,Hohltaube,de,0,,yes,EQUAL·plain: Hohltaube is the stock dove species,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558406254
+2026-10-18 13:50:58,L893413,Q12020057,Homöopath,de,0,,yes,EQUAL·gendered: Homöopath masculine form; same concept as homeopath,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558406275
+2026-10-18 13:51:01,L893644,Q216197,Höhenmesser,de,0,,yes,"EQUAL·plain: Altimeter, same instrument",claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558406295
+2026-10-18 13:51:03,L851119,Q11467,Hüttenwesen,de,0,,yes,EQUAL·plain: Hüttenwesen is metallurgy,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558406314
+2026-10-18 13:51:06,L907639,Q193073,Ikonostase,de,0,,yes,"EQUAL·plain: Iconostasis, same concept",claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558406335
+2026-10-18 13:51:08,L852979,Q852027,Impromptu,de,0,,yes,EQUAL·plain: Impromptu is the musical form,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558406353
+2026-10-18 13:51:11,L901074,Q202398,Industrialisierung,de,0,,yes,EQUAL·plain: Industrialisierung equals industrialisation.,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558406370
+2026-10-18 13:51:13,L901069,Q319845,Investmentbank,de,0,,yes,EQUAL·plain: Investmentbank = investment bank,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558406380
+2026-10-18 13:51:16,L764384,Q188151,Ischämie,de,0,,yes,EQUAL·plain: Ischämie is restricted blood supply,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558406387
+2026-10-18 13:51:18,L867245,Q846750,Jockey,de,0,,yes,EQUAL·plain: Jockey = professional horse racing rider,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558406396
+2026-10-18 13:51:21,L751855,Q1728568,Kapitalist,de,0,,yes,EQUAL·plain: Capitalist as owner of means of production.,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558406409
+2026-10-18 13:51:23,L809359,Q210970,Kastrat,de,0,,yes,EQUAL·plain: Kastrat is castrato singer,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558406427
+2026-10-18 13:51:26,L759065,Q1414937,Kombattant,de,0,,yes,"EQUAL·plain: Combatant, same concept",claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558406443
+2026-10-18 13:51:28,L499309,Q10547393,Kommunalpolitikerin,de,0,,yes,EQUAL·gendered: feminine form of local politician; gender separate,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558406462
+2026-10-18 13:51:31,L917115,Q1299496,Kontaktanzeige,de,0,,yes,EQUAL·plain: Kontaktanzeige is personal advertisement,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558406485
+2026-10-18 13:51:33,L849739,Q170835,Kosmogonie,de,0,,yes,"EQUAL·plain: Kosmogonie = cosmogony, origin of universe",claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558406504
+2026-10-18 13:51:36,L1433406,Q48186,Königskobra,de,0,,yes,EQUAL·plain: King cobra species,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558406524
+2026-10-18 13:51:38,L907447,Q2140665,Ladesäule,de,0,,yes,EQUAL·plain: Ladesäule is an EV charging station,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558406550
+2026-10-18 13:51:41,L831097,Q175850,Lebensstandard,de,0,,yes,EQUAL·plain: Lebensstandard equals standard of living,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558406572
+2026-10-18 13:51:43,L831334,Q15637420,Lethargie,de,0,,yes,EQUAL·plain: Lethargie equals lethargy.,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558406594
+2026-10-18 13:51:46,L868446,Q281289,Lichtscheu,de,0,,yes,EQUAL·plain: Lichtscheu equals photophobia,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558406613
+2026-10-18 13:51:48,L884877,Q11679511,Lude,de,0,,yes,EQUAL·plain: Lude is colloquial for Zuhälter,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558406627
+2026-10-18 13:51:51,L808485,Q183130,Magenschleimhautentzündung,de,0,,yes,EQUAL·plain: Magenschleimhautentzündung is gastritis,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558406653
+2026-10-18 13:51:54,L729058,Q300997,Maifisch,de,0,,yes,"EQUAL·plain: Maifisch is Alosa alosa, allis shad",claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558406673
+2026-10-18 13:51:56,L808484,Q101333,Maschinenbau,de,0,,yes,EQUAL·plain: Maschinenbau equals mechanical engineering,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558406708
+2026-10-18 13:51:58,L807785,Q18670161,Maskottchen,de,0,,yes,EQUAL·plain: Maskottchen equals mascot,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558406733
+2026-10-18 13:52:01,L803499,Q471822,Megalopolis,de,0,,yes,EQUAL·plain: Megalopolis same concept,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558406761
+2026-10-18 13:52:04,L919338,Q430034,Mondstein,de,0,,yes,EQUAL·plain: Mondstein is moonstone mineral,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558406792
+2026-10-18 13:52:06,L790535,Q47740,Muslima,de,0,,yes,EQUAL·gendered: Female Muslim; gender recorded separately,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558406825
+2026-10-18 13:52:09,L902565,Q175156,Namenforschung,de,0,,yes,EQUAL·plain: Namenforschung equals onomastics,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558406851
+2026-10-18 13:52:11,L902742,Q26773,Nashornvogel,de,0,,yes,EQUAL·plain: Nashornvogel = hornbill family,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558406871
+2026-10-18 13:52:14,L923388,Q786278,Neurochemie,de,0,,yes,"EQUAL·plain: Neurochemistry discipline, same label",claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558406894
+2026-10-18 13:52:16,L902413,Q42927,Nirwana,de,0,,yes,EQUAL·plain: Nirwana is the nirvana concept,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558406911
+2026-10-18 13:52:19,L860048,Q1731155,Orientalist,de,0,,yes,EQUAL·plain: Orientalist is scholar of Orientalistik,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558406921
+2026-10-18 13:52:21,L774926,Q165328,Osteoporose,de,0,,yes,EQUAL·plain: Osteoporosis disease,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558406933
+2026-10-18 13:52:24,L829236,Q43518,Ozeanografie,de,0,,yes,EQUAL·plain: Spelling variant of Ozeanographie,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558406946
+2026-10-18 13:52:26,L1436369,Q212121,Paella,de,0,,yes,EQUAL·plain: Paella is the Valencian rice dish.,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558406961
+2026-10-18 13:52:29,L34762,Q33602,Panda,de,0,,yes,EQUAL·plain: Panda commonly denotes the giant panda.,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558406977
+2026-10-18 13:52:31,L585928,Q7565,Papi,de,0,,yes,"EQUAL·gendered: Papi is informal 'dad', same as father",claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558406997
+2026-10-18 13:52:34,L892714,Q3623858,Parvenü,de,0,,yes,"EQUAL·plain: Parvenü = parvenu, social upstart",claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558407012
+2026-10-18 13:52:36,L790400,Q229081,Patella,de,0,,yes,EQUAL·plain: Patella is the kneecap bone,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558407029
+2026-10-18 13:52:39,L911134,Q183413,Perforator,de,0,,yes,EQUAL·plain: Perforator is a hole puncher in German,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558407043
+2026-10-18 13:52:41,L887408,Q2102038,Polizeiuniform,de,0,,yes,"EQUAL·plain: police uniform, same meaning",claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558407055
+2026-10-18 13:52:44,L804215,Q330104,Prokrastination,de,0,,yes,EQUAL·plain: Prokrastination equals procrastination,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558407063
+2026-10-18 13:52:46,L869051,Q181011,Promille,de,0,,yes,EQUAL·plain: Promille is per mille unit,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558407077
+2026-10-18 13:52:49,L869389,Q7281,Propaganda,de,0,,yes,EQUAL·plain: Propaganda equals propaganda,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558407094
+2026-10-18 13:52:51,L680570,Q101761,Reißverschluss,de,0,,yes,EQUAL·plain: Reißverschluss is zipper,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558407108
+2026-10-18 13:52:54,L348776,Q378622,Rennfahrerin,de,0,,yes,"EQUAL·gendered: feminine racing driver, gender-neutral concept",claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558407124
+2026-10-18 13:52:56,L924055,Q200594,Rotfeder,de,0,,yes,EQUAL·plain: Rotfeder is common rudd,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558407144
+2026-10-18 13:52:59,L867007,Q2451851,Salmiak,de,0,,yes,EQUAL·plain: Salmiak is the mineral ammonium chloride (sal ammoniac).,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558407165
+2026-10-18 13:53:01,L866933,Q163709,Satyr,de,0,,yes,EQUAL·plain: Satyr is the Greek mythological being,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558407183
+2026-10-18 13:53:04,L841342,Q311396,Schließer,de,0,,yes,EQUAL·plain: Schließer is colloquial for prison officer,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558407201
+2026-10-18 13:53:07,L783728,Q15720641,Schlumpf,de,0,,yes,EQUAL·plain: Schlumpf is German for Smurf,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558407222
+2026-10-18 13:53:09,L843153,Q502525,Schnodder,de,0,,yes,EQUAL·plain: Schnodder is colloquial nasal mucus,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558407246
+2026-10-18 13:53:12,L757831,Q1517909,Schuhputzer,de,0,,yes,"EQUAL·plain: Shoeshiner, same occupation",claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558407269
+2026-10-18 13:53:14,L489394,Q209690,Sir,de,0,,yes,EQUAL·plain: Sir as honorific title,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558407298
+2026-10-18 13:53:16,L890178,Q134938,Speicheldrüse,de,0,,yes,EQUAL·plain: Speicheldrüse is salivary gland,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558407323
+2026-10-18 13:53:19,L588483,Q9352089,Spionin,de,0,,yes,EQUAL·gendered: female spy equals spy; gender separate,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558407346
+2026-10-18 13:53:21,L348783,Q4009406,Sprinterin,de,0,,yes,EQUAL·gendered: female sprinter; gender neutral counterpart,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558407374
+2026-10-18 13:53:24,L763753,Q569057,Steifigkeit,de,0,,yes,EQUAL·plain: Steifigkeit equals stiffness in mechanics,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558407395
+2026-10-18 13:53:26,L871822,Q27682,Stockrose,de,0,,yes,"EQUAL·plain: Stockrose is Alcea rosea, the common hollyhock",claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558407413
+2026-10-18 13:53:29,L870639,Q2175765,Straßenbahnhaltestelle,de,0,,yes,EQUAL·plain: Straßenbahnhaltestelle is a tram stop.,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558407419
+2026-10-18 13:53:31,L894624,Q322170,Suffragette,de,0,,yes,EQUAL·plain: Suffragette is member of WSPU,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558407428
+2026-10-18 13:53:34,L612013,Q188784,Superheld,de,0,,yes,EQUAL·plain: superhero,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558407435
+2026-10-18 13:53:37,L779645,Q2442329,Tontechniker,de,0,,yes,EQUAL·plain: Same word and meaning,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558407445
+2026-10-18 13:53:39,L891890,Q1573906,Tournee,de,0,,yes,EQUAL·plain: Tournee equals concert tour,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558407457
+2026-10-18 13:53:42,L779714,Q188056,Triangulation,de,0,,yes,"EQUAL·plain: Triangulation, the surveying/location method",claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558407467
+2026-10-18 13:53:44,L930977,Q846570,US-Amerikanerin,de,0,,yes,EQUAL·gendered·demonym: Female US national; gender-neutral nationals concept,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558407479
+2026-10-18 13:53:47,L616536,Q36986,Volapük,de,0,,yes,EQUAL·plain: Volapük is the constructed language,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558407491
+2026-10-18 13:53:49,L819332,Q115940,Wasserflugzeug,de,0,,yes,EQUAL·plain: Wasserflugzeug equals seaplane,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558407508
+2026-10-18 13:53:52,L819341,Q355304,Wasserlauf,de,0,,yes,EQUAL·plain: Wasserlauf is watercourse,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558407521
+2026-10-18 13:53:54,L819585,Q492878,Wasserlinie,de,0,,yes,EQUAL·plain: Waterline of a ship,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558407533
+2026-10-18 13:53:57,L803314,Q2095399,Weihnachtskonzert,de,0,,yes,"EQUAL·plain: Christmas concert, same meaning",claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558407545
+2026-10-18 13:53:59,L919572,Q131413,Weizenbier,de,0,,yes,EQUAL·plain: Wheat beer,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558407563
+2026-10-18 13:54:02,L853616,Q146612,Zelluloid,de,0,,yes,EQUAL·plain: Zelluloid equals celluloid,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558407574
+2026-10-18 13:54:04,L1444513,Q196984,Zeugma,de,0,,yes,EQUAL·plain: Zeugma = figure of speech,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558407588
+2026-10-18 13:54:07,L901957,Q98748616,Zimmermädchen,de,0,,yes,EQUAL·gendered: Chambermaid profession; gender recorded separately,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558407607
+2026-10-18 13:54:09,L833422,Q11679511,Zuhälter,de,0,,yes,EQUAL·plain: Zuhälter is procurer,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558407624
+2026-10-18 13:54:12,L1444849,Q246128,Zytogenetik,de,0,,yes,"EQUAL·plain: Zytogenetik is cytogenetics, same branch of genetics",claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558407644
+2026-10-18 13:54:14,L316163,Q169219,albumin,en,0,,yes,EQUAL·plain: albumin is the albumin protein family,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558407659
+2026-10-18 13:54:17,L230013,Q55176871,betrayer,en,0,,yes,EQUAL·plain: betrayer = someone who betrays,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558407681
+2026-10-18 13:54:20,L320039,Q37136,eleven,en,0,,yes,EQUAL·plain: eleven = number 11,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558407699
+2026-10-18 13:54:22,L585345,Q673203,foreskin,en,0,,yes,EQUAL·plain: foreskin = prepuce of penis,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558407721
+2026-10-18 13:54:25,L323194,Q221117,leitmotiv,en,0,,yes,EQUAL·plain: variant spelling of leitmotif,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558407740
+2026-10-18 13:54:27,L324108,Q155904,monkshood,en,0,,yes,EQUAL·plain: Monkshood is the common name of genus Aconitum,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558407757
+2026-10-18 13:54:30,L326817,Q25635316,ridicule,en,0,,yes,EQUAL·plain: ridicule = mockery,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558407776
+2026-10-18 13:54:32,L327464,Q339603,semibreve,en,0,,yes,EQUAL·plain: British term for whole note,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558407794
+2026-10-18 13:54:35,L246092,Q19776,blida,sv,0,,yes,EQUAL·plain: blida is Swedish for trebuchet,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558407812
+2026-10-18 13:54:37,L242422,Q250840,dysa,sv,0,,yes,EQUAL·plain: dysa means nozzle,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558407831
+2026-10-18 13:54:40,L239789,Q45183,eldkastare,sv,0,,yes,EQUAL·plain: Eldkastare is flamethrower,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558407859
+2026-10-18 13:54:42,L244532,Q313303,grenadjär,sv,0,,yes,EQUAL·plain: grenadjär is grenadier soldier,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558407882
+2026-10-18 13:54:45,L663648,Q1414816,incitament,sv,0,,yes,EQUAL·plain: incitament means incentive,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558407898
+2026-10-18 13:54:47,L484041,Q1787424,kaos,sv,0,,yes,EQUAL·plain: chaos as absence of order,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558407911
+2026-10-18 13:54:50,L1122474,Q193427,luftgevär,sv,0,,yes,"EQUAL·plain: air rifle ≈ air gun, close",claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558407926
+2026-10-18 13:54:52,L239146,Q188840,läkeväxt,sv,0,,yes,EQUAL·plain: läkeväxt = medicinal plant,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558407941
+2026-10-18 13:54:55,L295048,Q185688,månkalender,sv,0,,yes,EQUAL·plain: månkalender is a lunar calendar,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558407956
+2026-10-18 13:54:57,L241011,Q41630,psykoanalys,sv,0,,yes,EQUAL·plain: psychoanalysis equals psykoanalys,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558407973
+2026-10-18 13:55:00,L54899,Q9165,själ,sv,0,,yes,EQUAL·plain: själ = soul,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558407981
+2026-10-18 13:55:02,L586095,Q193837,sovrum,sv,0,,yes,EQUAL·plain: sovrum is bedroom,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558407988
+2026-10-18 13:55:05,L60091,Q15145593,spårvagnslinje,sv,0,,yes,EQUAL·plain: spårvagnslinje is tram route,claude-sonnet-5-5×3,written,write.py b/CB/8fc757e4b27a,2558408003
