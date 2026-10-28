@@ -399,6 +399,8 @@ def live_named(opener, lexeme, qid, lemma, lang):
         return False
     item = _api(opener, {"action": "wbgetentities", "ids": qid, "props": "labels|aliases",
                          "languages": lang})["entities"][qid]
+    if "redirects" in item:  # keyed by the requested id but holding the target's labels
+        return False
     names = {v["value"] for v in item.get("labels", {}).values()}
     names |= {a["value"] for v in item.get("aliases", {}).values() for a in v}
     return lemma in names
@@ -553,7 +555,7 @@ def write_edits(edits, max_per_min, bot=False, rows=()):
                 unnamed = [a for a in anchors if bot and not live_named(
                     opener, lexeme, a, info[(lid, a)][2], info[(lid, a)][3])]
                 if unnamed:
-                    print(f"  skip {lid}: lemma no longer the label/alias of {unnamed}")
+                    print(f"  skip {lid}: lemma no longer the label/alias of {unnamed} (or redirected)")
                     continue
             # Crowd-approved rows credit their approvers in the public edit summary:
             # import_crowd.py sets reviewer = "crowd:<names>", used verbatim here —
