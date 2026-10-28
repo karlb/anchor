@@ -411,21 +411,23 @@ def live_lexeme(opener, lid):
     return _api(opener, {"action": "wbgetentities", "ids": lid})["entities"][lid]
 
 
-def live_unnamed(opener, lexeme, sense, lemma, lang):
-    """Why the bot task's condition no longer holds live ('' = it does): `lemma` is still the
-    lexeme's lemma and still the item's own `lang` label or alias, case-exact (as
-    create_evidence's 'named'), and each gloss is still the item's description (it was cached)."""
-    if lemma not in {v["value"] for v in lexeme.get("lemmas", {}).values()}:
+def live_stale(opener, lexeme, sense, named=None):
+    """Why a sense to create is stale live ('' = it isn't): its item was redirected, or a gloss
+    is no longer the item's description (it was cached). `named` = (lemma, lang) adds the bot
+    task's condition: `lemma` is still the lexeme's lemma and the item's label or alias,
+    case-exact (as create_evidence's 'named')."""
+    lemma, lang = named or (None, None)
+    if named and lemma not in {v["value"] for v in lexeme.get("lemmas", {}).values()}:
         return "lemma changed"
     qid, glosses = sense_anchor(sense), sense["glosses"]
     item = _api(opener, {"action": "wbgetentities", "ids": qid,
                          "props": "labels|aliases|descriptions",
-                         "languages": "|".join({lang, *glosses})})["entities"][qid]
+                         "languages": "|".join({lang, *glosses} - {None})})["entities"][qid]
     if "redirects" in item:  # keyed by the requested id but holding the target's labels
         return "redirected"
     names = {v["value"] for v in item.get("labels", {}).values()}
     names |= {a["value"] for v in item.get("aliases", {}).values() for a in v}
-    if lemma not in names:
+    if named and lemma not in names:
         return "lemma no longer its label/alias"
     descs = item.get("descriptions", {})
     if any(descs.get(g, {}).get("value") != v["value"] for g, v in glosses.items()):
@@ -599,15 +601,15 @@ def write_edits(edits, max_per_min, bot=False, rows=()):
                     print(f"  skip {lid}: no longer senseless ({len(live)} live sense(s)) — "
                           f"manual review (semantic-duplicate hazard) → {anchors}")
                     continue
-                # the bot's task scope is label/alias == lemma; the dump may be stale
-                why = []
-                for s in senses if bot else ():
-                    a = sense_anchor(s)
-                    if w := live_unnamed(opener, lexeme, s, info[(lid, a)][2], info[(lid, a)][3]):
-                        why.append(f"{a} {w}")
-                if why:
-                    print(f"  skip {lid}: {'; '.join(why)}")
-                    continue
+            # a created sense carries a cached gloss and item; --bot also its label == lemma
+            why = []
+            for s in senses if is_create else ():
+                a = sense_anchor(s)
+                if w := live_stale(opener, lexeme, s, bot and info[(lid, a)][2:4]):
+                    why.append(f"{a} {w}")
+            if why:
+                print(f"  skip {lid}: {'; '.join(why)}")
+                continue
             # Crowd-approved rows credit their approvers in the public edit summary:
             # import_crowd.py sets reviewer = "crowd:<names>", used verbatim here —
             # never parsed back, so any characters hub usernames allow are fine.
