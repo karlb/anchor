@@ -65,9 +65,9 @@ SUMMARY = ("Add [[Property:P5137]] (item for this sense) inferred from translati
            "ref [[Q140308675]] — LLM-verified, human-approved assisted edit")
 # --bot: the approved unreviewed task (named first senses). Its own account, so assisted runs
 # can never edit as the bot and the bot can never write outside its task.
-BOT_SUMMARY = ("Create first sense with [[Property:P5137]] (item for this sense): item label "
-               "equals lemma, inferred from translation, ref [[Q140308675]], LLM-verified; "
-               "bot task [[Wikidata:Requests for permissions/Bot/{bot}]]")
+BOT_SUMMARY = ("Bot: create first sense with [[Property:P5137]] (item for this sense), item "
+               "label or alias equals lemma, inferred from translation, ref [[Q140308675]], "
+               "LLM-verified ([[Wikidata:Requests for permissions/Bot/{bot}|task]])")
 BOT_LANGS = ("de", "en", "sv", "ru")
 TOOL = "CB"  # EditGroups "custom bot" id (self-service, no registration); batch id is per-run
 
