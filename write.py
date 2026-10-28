@@ -401,18 +401,26 @@ def live_senses(opener, lid):
     return live_lexeme(opener, lid).get("senses", [])
 
 
-def live_named(opener, lexeme, qid, lemma, lang):
-    """The bot task's condition, re-checked live: `lemma` is still the lexeme's lemma and
-    still the item's own `lang` label or alias, case-exact (as create_evidence's 'named')."""
+def live_unnamed(opener, lexeme, sense, lemma, lang):
+    """Why the bot task's condition no longer holds live ('' = it does): `lemma` is still the
+    lexeme's lemma and still the item's own `lang` label or alias, case-exact (as
+    create_evidence's 'named'), and each gloss is still the item's description (it was cached)."""
     if lemma not in {v["value"] for v in lexeme.get("lemmas", {}).values()}:
-        return False
-    item = _api(opener, {"action": "wbgetentities", "ids": qid, "props": "labels|aliases",
-                         "languages": lang})["entities"][qid]
+        return "lemma changed"
+    qid, glosses = sense_anchor(sense), sense["glosses"]
+    item = _api(opener, {"action": "wbgetentities", "ids": qid,
+                         "props": "labels|aliases|descriptions",
+                         "languages": "|".join({lang, *glosses})})["entities"][qid]
     if "redirects" in item:  # keyed by the requested id but holding the target's labels
-        return False
+        return "redirected"
     names = {v["value"] for v in item.get("labels", {}).values()}
     names |= {a["value"] for v in item.get("aliases", {}).values() for a in v}
-    return lemma in names
+    if lemma not in names:
+        return "lemma no longer its label/alias"
+    descs = item.get("descriptions", {})
+    if any(descs.get(g, {}).get("value") != v["value"] for g, v in glosses.items()):
+        return "description changed"
+    return ""
 
 
 def p5137_targets(sense):
@@ -561,10 +569,13 @@ def write_edits(edits, max_per_min, bot=False, rows=()):
                           f"manual review (semantic-duplicate hazard) → {anchors}")
                     continue
                 # the bot's task scope is label/alias == lemma; the dump may be stale
-                unnamed = [a for a in anchors if bot and not live_named(
-                    opener, lexeme, a, info[(lid, a)][2], info[(lid, a)][3])]
-                if unnamed:
-                    print(f"  skip {lid}: lemma no longer the label/alias of {unnamed} (or redirected)")
+                why = []
+                for s in senses if bot else ():
+                    a = sense_anchor(s)
+                    if w := live_unnamed(opener, lexeme, s, info[(lid, a)][2], info[(lid, a)][3]):
+                        why.append(f"{a} {w}")
+                if why:
+                    print(f"  skip {lid}: {'; '.join(why)}")
                     continue
             # Crowd-approved rows credit their approvers in the public edit summary:
             # import_crowd.py sets reviewer = "crowd:<names>", used verbatim here —
