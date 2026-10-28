@@ -322,7 +322,7 @@ def _api(opener, params, post=False):
     edit is applied, so retrying a POST is safe. A 503 or a bare network failure
     on a POST is NOT retried — an intermediary can return either after the edit
     already landed, and we must not risk a duplicate."""
-    params = {**params, "format": "json", "formatversion": "2"}
+    params = {"maxlag": "5", **params, "format": "json", "formatversion": "2"}  # reads too
     backoff = 5.0
     for attempt in range(MAXLAG_RETRIES):
         if post:
@@ -404,7 +404,7 @@ def submit(opener, csrf, lid, data, summary, extra=None):
     # wants to disappear from. Re-add as "bot": "1" only as a deliberate call.
     #                   "bot": "0",
     res = _api(opener, {"action": "wbeditentity", "id": lid, "data": json.dumps(data),
-                        "summary": summary, "token": csrf, "maxlag": "5", **(extra or {})},
+                        "summary": summary, "token": csrf, **(extra or {})},
                post=True)
     if "error" in res:
         raise RuntimeError(res["error"].get("info", str(res["error"])))
