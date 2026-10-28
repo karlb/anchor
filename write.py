@@ -371,9 +371,26 @@ def login(opener, user, pw):
     return ct["query"]["tokens"]["csrftoken"]
 
 
+def live_lexeme(opener, lid):
+    """Re-fetch the live lexeme entity."""
+    return _api(opener, {"action": "wbgetentities", "ids": lid})["entities"][lid]
+
+
 def live_senses(opener, lid):
     """Re-fetch the live lexeme; return its senses."""
-    return _api(opener, {"action": "wbgetentities", "ids": lid})["entities"][lid].get("senses", [])
+    return live_lexeme(opener, lid).get("senses", [])
+
+
+def live_named(opener, lexeme, qid, lemma, lang):
+    """The bot task's condition, re-checked live: `lemma` is still the lexeme's lemma and
+    still the item's own `lang` label or alias, case-exact (as create_evidence's 'named')."""
+    if lemma not in {v["value"] for v in lexeme.get("lemmas", {}).values()}:
+        return False
+    item = _api(opener, {"action": "wbgetentities", "ids": qid, "props": "labels|aliases",
+                         "languages": lang})["entities"][qid]
+    names = {v["value"] for v in item.get("labels", {}).values()}
+    names |= {a["value"] for v in item.get("aliases", {}).values() for a in v}
+    return lemma in names
 
 
 def p5137_targets(sense):
@@ -515,10 +532,17 @@ def write_edits(edits, max_per_min, bot=False, rows=()):
                 # If the live lexeme has ANY sense now (a prior run created it and died before
                 # logging, OR real senses appeared since the dump), skip — adding one risks a
                 # semantic duplicate the P5137-only check can't see. Manual reconcile instead.
-                live = live_senses(opener, lid)
+                lexeme = live_lexeme(opener, lid)
+                live = lexeme.get("senses", [])
                 if live:
                     print(f"  skip {lid}: no longer senseless ({len(live)} live sense(s)) — "
                           f"manual review (semantic-duplicate hazard) → {anchors}")
+                    continue
+                # the bot's task scope is label/alias == lemma; the dump may be stale
+                unnamed = [a for a in anchors if bot and not live_named(
+                    opener, lexeme, a, info[(lid, a)][2], info[(lid, a)][3])]
+                if unnamed:
+                    print(f"  skip {lid}: lemma no longer the label/alias of {unnamed}")
                     continue
             # Crowd-approved rows credit their approvers in the public edit summary:
             # import_crowd.py sets reviewer = "crowd:<names>", used verbatim here —
