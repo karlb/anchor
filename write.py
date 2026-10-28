@@ -411,11 +411,6 @@ def live_lexeme(opener, lid):
     return _api(opener, {"action": "wbgetentities", "ids": lid})["entities"][lid]
 
 
-def live_senses(opener, lid):
-    """Re-fetch the live lexeme; return its senses."""
-    return live_lexeme(opener, lid).get("senses", [])
-
-
 def live_unnamed(opener, lexeme, sense, lemma, lang):
     """Why the bot task's condition no longer holds live ('' = it does): `lemma` is still the
     lexeme's lemma and still the item's own `lang` label or alias, case-exact (as
@@ -467,10 +462,10 @@ def landed_revid(opener, lid, senses, tries=3):
     return None
 
 
-def resolve_sense(opener, lid):
-    """Re-fetch the live lexeme. Return (sense_id, existing P5137 target qids).
+def resolve_sense(lexeme, lid):
+    """(sense_id, existing P5137 target qids) of the live lexeme's one sense.
     Raises if the lexeme no longer has exactly one sense."""
-    senses = live_senses(opener, lid)
+    senses = lexeme.get("senses", [])
     if len(senses) != 1:
         raise ValueError(f"{lid} now has {len(senses)} senses (expected 1)")
     return senses[0]["id"], p5137_targets(senses[0])
@@ -540,13 +535,17 @@ def write_edits(edits, max_per_min, bot=False, rows=()):
         is_create = kind == "create"
         anchors = [sense_anchor(s) for s in senses]
         try:
+            lexeme = live_lexeme(opener, lid)
+            if "redirects" in lexeme:  # merged since the dump: an edit to lid would fail
+                print(f"  skip {lid}: redirected to {lexeme['redirects'].get('to')}")
+                continue
             if kind == "poly":
                 # MATCH a SPECIFIC existing sense. The dump can be stale in three ways that
                 # each make the approved statement wrong to write, so check all three against
                 # the live lexeme: the sense may be gone, it may already carry this very
                 # anchor (a prior run that died before logging), or it may have acquired some
                 # OTHER P5137 since — which we never override.
-                live = {s["id"]: s for s in live_senses(opener, lid)}
+                live = {s["id"]: s for s in lexeme.get("senses", [])}
                 stale = False
                 for sense in senses:
                     sid, anchor = sense["id"], sense_anchor(sense)
@@ -567,7 +566,7 @@ def write_edits(edits, max_per_min, bot=False, rows=()):
                     continue
             elif not is_create:  # monosemous: resolve the live sense id + guard
                 anchor = anchors[0]
-                sid, p5137 = resolve_sense(opener, lid)
+                sid, p5137 = resolve_sense(lexeme, lid)
                 if anchor in p5137:
                     print(f"  skip {lid}: already has P5137 → {anchor}"); continue
                 if p5137:
@@ -579,7 +578,7 @@ def write_edits(edits, max_per_min, bot=False, rows=()):
                 # Skip if the anchor already sits on a live sense (a prior run that died
                 # before logging, or another editor), or if the inventory changed since — a
                 # new sense may already mean this, without a P5137 to show it.
-                live = live_senses(opener, lid)
+                live = lexeme.get("senses", [])
                 carried = {a for a in anchors for s in live if a in p5137_targets(s)}
                 if carried:
                     print(f"  skip {lid}: a live sense already has P5137 → {sorted(carried)}")
@@ -595,7 +594,6 @@ def write_edits(edits, max_per_min, bot=False, rows=()):
                 # If the live lexeme has ANY sense now (a prior run created it and died before
                 # logging, OR real senses appeared since the dump), skip — adding one risks a
                 # semantic duplicate the P5137-only check can't see. Manual reconcile instead.
-                lexeme = live_lexeme(opener, lid)
                 live = lexeme.get("senses", [])
                 if live:
                     print(f"  skip {lid}: no longer senseless ({len(live)} live sense(s)) — "
