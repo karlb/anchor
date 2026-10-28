@@ -167,7 +167,7 @@ def main():
 
     st = collections.Counter(d["status"] for d in dec.values())
     tally = " · ".join(f"{k} {st[k]}" for k in
-                       ("approved", "written", "rejected", "deferred") if st.get(k))
+                       ("approved", "written", "bot_written", "rejected", "deferred") if st.get(k))
     print(f"decision log : {config.DECISIONS}  ({len(dec)} decisions: {tally})")
     print(f"verify cache : {config.VERIFY}  ({len(verdicts)} verdicts)")
 

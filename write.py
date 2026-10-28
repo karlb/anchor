@@ -5,7 +5,7 @@ Reads ONLY the rows the human approved in the decision log (config.DECISIONS,
 status='approved') and, for each, builds a `wbeditentity` payload adding
 P5137 → anchor Q to a sense, with a MANDATORY reference (never bare): based on
 heuristic (P887) + retrieved (P813). The CC-BY-SA DBnary gloss is never written.
-On success it appends a 'written' event (with the revid) to the same log.
+On success it appends a 'written' event (with the revid) to the same log ('bot_written' for --bot).
 
     uv run write.py --dry-run                 # print exact payloads, submit nothing
     uv run write.py --dry-run --preview       # preview verifier-'yes' rows (no approval needed)
@@ -548,7 +548,8 @@ def write_edits(edits, max_per_min, bot=False, rows=()):
                 "target_lemma": d.get("target_lemma", ""), "target_lang": d.get("target_lang", ""),
                 "target_n_senses": d.get("target_n_senses", ""), "verdict": d.get("verdict", ""),
                 "reason": d.get("reason", ""), "model": d.get("model", ""),
-                "status": "written",
+                # bot_written, not written: no human confirmed it, so it must never count as gold
+                "status": "bot_written" if bot else "written",
                 "reviewer": f"{'bot' if bot else 'write.py'} b/{TOOL}/{batch_id}",
                 "revid": str(revid),
             })

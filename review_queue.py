@@ -100,6 +100,8 @@ LOG_COLS = ["ts", "target_lid", "anchor_qid", "target_lemma", "target_lang",
 # The statuses meaning "the human said the verifier-'yes' was correct" (write.py folds
 # 'written' into approval) — shared by the audit/validation consumers of the log.
 CONFIRMED = ("approved", "written")
+# 'bot_written' (write.py --bot): written with no human decision — deliberately NOT in
+# CONFIRMED, else the bot's own output would become gold for calibrate/validation/game traps.
 # `create` (poly lane only): the assigner abstained and the human says the lemma has this
 # meaning but no recorded sense — write.py's create_add action. Deliberately NOT in CONFIRMED
 # and not counted by calibrate/auto-defer: it says nothing about the MATCH action's precision.
@@ -240,8 +242,9 @@ def status(args):
     view = pending_view(LANE)
     decided, undecided, ctx, ad, vcache = view
     c = counts(view)
-    for s in ("pending", "auto_deferred", "approved", "create", "deferred", "rejected", "written"):
-        if s != "create" or c.get(s):
+    for s in ("pending", "auto_deferred", "approved", "create", "deferred", "rejected", "written",
+              "bot_written"):
+        if s not in ("create", "bot_written") or c.get(s):
             print(f"  {s:<13} {c.get(s, 0):,}")
     if c.get("auto_deferred"):
         print(f"  ↳ auto-deferred classes (≥85% not-written, hidden from review): "
