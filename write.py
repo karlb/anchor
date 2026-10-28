@@ -271,13 +271,17 @@ def build_edit(row, today, include_senseless, it, include_poly=False):
 def load_bot_rows():
     """The bot task's rows: undecided senseless pool rows the verifier kept (no auto-defer, no
     triage action) whose item's own label or alias is the lemma — the population the trials
-    sampled (named150, ru100). Pairs a human decided stay with the assisted runs."""
+    sampled (named150, ru100). Pairs a human decided stay with the assisted runs. Lexemes with
+    several such anchors are left to review: the task is ONE first sense, and two anchors are
+    often near-duplicates (Fälschung → forgery + counterfeit)."""
     _d, und, ctx, ad, _v = pending_view("senseless")
     it, wd = sqlite3.connect(config.ITEMS), sqlite3.connect(config.WIKIDATA)
-    return sorted(r for r in und if r[3] in BOT_LANGS
-                  and not is_auto_deferred((r[0], r[1]), r[6], ctx, ad)
-                  and not action_of((r[0], r[1]), r[6], ctx)
-                  and create_evidence(it, wd, r[0], r[1], r[3], r[2])[0] == "named")
+    rows = [r for r in und if r[3] in BOT_LANGS
+            and not is_auto_deferred((r[0], r[1]), r[6], ctx, ad)
+            and not action_of((r[0], r[1]), r[6], ctx)
+            and create_evidence(it, wd, r[0], r[1], r[3], r[2])[0] == "named"]
+    n = collections.Counter(r[0] for r in rows)
+    return sorted(r for r in rows if n[r[0]] == 1)
 
 
 def load_rows(args):
