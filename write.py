@@ -296,6 +296,13 @@ def load_bot_rows():
             and is_structured_equal(r[6])
             and r[2] in item_names(it, r[1], r[3])]  # create_evidence's 'named'
     it.close()
+    # a same-language homograph already linking the item (en 'ten' L338): a duplicate, or wrong
+    wd = sqlite3.connect(config.WIKIDATA)
+    rows = [r for r in rows if not wd.execute(
+        "SELECT 1 FROM sense_item s JOIN lexeme x ON x.lid = s.lid JOIN lemma m ON m.lid = s.lid "
+        "WHERE s.qid = ? AND x.lang = ? AND m.lemma = ? AND s.lid <> ?",
+        [r[1], r[3], r[2], r[0]]).fetchone()]
+    wd.close()
     # every High-tier anchor, verified or not: an unverified second anchor is still a second sense
     cn = sqlite3.connect(config.CANDIDATES)
     cn.execute("ATTACH DATABASE ? AS it", [config.ITEMS])
