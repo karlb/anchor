@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Write P5137 sense statements to Wikidata — gated on human approval.
+"""Write P5137 sense statements to Wikidata — gated on human approval, except --bot.
 
 Reads ONLY the rows the human approved in the decision log (config.DECISIONS,
-status='approved') and, for each, builds a `wbeditentity` payload adding
+status='approved'; --bot: load_bot_rows) and, for each, builds a `wbeditentity` payload adding
 P5137 → anchor Q to a sense, with a MANDATORY reference (never bare): based on
 heuristic (P887) + retrieved (P813). The CC-BY-SA DBnary gloss is never written.
 On success it appends a 'written' event (with the revid) to the same log ('bot_written' for --bot).
