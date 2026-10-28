@@ -61,7 +61,8 @@ import config
 import gates
 from fetch_items import API, USER_AGENT  # one copy of the endpoint + contact User-Agent
 from review_queue import (action_of, anchor_gloss, append_decision, has_item_alias, has_item_lang,
-                          is_auto_deferred, item_names, load_decisions, now, pending_view, pool)
+                          is_auto_deferred, item_names, load_decisions, now, parse_reason,
+                          pending_view, pool)
 
 
 SUMMARY = ("Add [[Property:P5137]] (item for this sense) inferred from translation, "
@@ -271,6 +272,12 @@ def build_edit(row, today, include_senseless, it, include_poly=False):
     return None, "skipped: senseless (needs gloss policy; use --include-senseless)"
 
 
+def is_structured_equal(reason):
+    """The verifier's own EQUAL relation — not a legacy prose reply, which has no relation."""
+    rel, tags = parse_reason(reason)
+    return rel == "EQUAL" and tags is not None
+
+
 def load_bot_rows():
     """The bot task's rows: undecided senseless pool rows the verifier kept (no auto-defer, no
     triage action) whose item's own label or alias is the lemma — the population the trials
@@ -286,6 +293,7 @@ def load_bot_rows():
     rows = [r for r in und if r[3] in BOT_LANGS
             and not is_auto_deferred((r[0], r[1]), r[6], ctx, ad)
             and not action_of((r[0], r[1]), r[6], ctx)
+            and is_structured_equal(r[6])
             and r[2] in item_names(it, r[1], r[3])]  # create_evidence's 'named'
     it.close()
     # every High-tier anchor, verified or not: an unverified second anchor is still a second sense
