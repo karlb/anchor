@@ -201,11 +201,12 @@ def decided_lane(d):
     return "poly" if n.isdigit() else None
 
 
-def pending_view(lane=None):
+def pending_view(lane=None, hide_bot=True):
     """The shared review pipeline, computed ONCE per invocation: (decisions, undecided,
     ctx, auto-defer classes, verify cache). counts/status/render all consume this — it
     is a 3-DB join plus a full log replay and a verify-cache scan, so each caller runs
-    it once and the call sites can't drift apart."""
+    it once and the call sites can't drift apart. `undecided` leaves out the bot's rows:
+    the bot writes them, and a review during its run would be overwritten by bot_written."""
     lane = _lane(lane)
     decisions = load_decisions()
     vcache = load_verify_cache()
@@ -216,7 +217,56 @@ def pending_view(lane=None):
     ctx = demonym_context([(k[0], k[1], d.get("target_lang")) for k, d in decisions.items()]
                           + [(r[0], r[1], r[3]) for r in undecided])
     ad = auto_defer_classes(decisions, ctx, vcache, lane)
+    if lane == "senseless" and hide_bot:
+        bot = {(r[0], r[1]) for r in bot_rows((decisions, undecided, ctx, ad, vcache))}
+        undecided = [r for r in undecided if (r[0], r[1]) not in bot]
     return decisions, undecided, ctx, ad, vcache
+
+
+BOT_LANGS = ("de", "en", "sv", "ru")
+
+
+def is_structured_equal(reason):
+    """The verifier's own EQUAL relation — not a legacy prose reply, which has no relation."""
+    rel, tags = parse_reason(reason)
+    return rel == "EQUAL" and tags is not None
+
+
+def bot_rows(view=None):
+    """The bot task's rows: undecided senseless pool rows the verifier kept (no auto-defer, no
+    triage action) whose item's own label or alias is the lemma — the population the trials
+    sampled (named150, ru100). Kept means clean EQUAL: unlike review's "keep", it excludes the
+    demonym/gender convention-keeps, none of which either trial sampled. Lexemes with any
+    other High-tier anchor (verified or not) or any human decision are left to review: the
+    task is ONE first sense, and two anchors are often near-duplicates (Fälschung → forgery +
+    counterfeit). Empty without the item label/alias cache."""
+    d, und, ctx, ad, _v = view or pending_view("senseless", hide_bot=False)
+    it = sqlite3.connect(config.ITEMS)
+    if not (has_item_lang(it) and has_item_alias(it)):
+        it.close()
+        return []
+    rows = [r for r in und if r[3] in BOT_LANGS
+            and not is_auto_deferred((r[0], r[1]), r[6], ctx, ad)
+            and not action_of((r[0], r[1]), r[6], ctx)
+            and is_structured_equal(r[6])
+            and r[2] in item_names(it, r[1], r[3])]  # create_evidence's 'named'
+    it.close()
+    # a same-language homograph already linking the item (en 'ten' L338): a duplicate, or wrong
+    wd = sqlite3.connect(config.WIKIDATA)
+    rows = [r for r in rows if not wd.execute(
+        "SELECT 1 FROM sense_item s JOIN lexeme x ON x.lid = s.lid JOIN lemma m ON m.lid = s.lid "
+        "WHERE s.qid = ? AND x.lang = ? AND m.lemma = ? AND s.lid <> ?",
+        [r[1], r[3], r[2], r[0]]).fetchone()]
+    wd.close()
+    # every High-tier anchor, verified or not: an unverified second anchor is still a second sense
+    cn = sqlite3.connect(config.CANDIDATES)
+    cn.execute("ATTACH DATABASE ? AS it", [config.ITEMS])
+    n = collections.Counter(lid for (lid,) in cn.execute(
+        "SELECT c.target_lid FROM candidate c JOIN it.item i ON i.qid = c.anchor_qid "
+        "AND NOT i.missing WHERE " + gates.high_tier_where("c", "it", n_senses=0)))
+    cn.close()
+    decided = {lid for lid, _ in d}
+    return [r for r in rows if n[r[0]] == 1 and r[0] not in decided]
 
 
 def counts(view=None, lane=None):

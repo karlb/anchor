@@ -2,7 +2,7 @@
 """Write P5137 sense statements to Wikidata — gated on human approval, except --bot.
 
 Reads ONLY the rows the human approved in the decision log (config.DECISIONS,
-status='approved'; --bot: load_bot_rows) and, for each, builds a `wbeditentity` payload adding
+status='approved'; --bot: review_queue.bot_rows) and, for each, builds a `wbeditentity` payload adding
 P5137 → anchor Q to a sense, with a MANDATORY reference (never bare): based on
 heuristic (P887) + retrieved (P813). The CC-BY-SA DBnary gloss is never written.
 On success it appends a 'written' event (with the revid) to the same log ('bot_written' for --bot).
@@ -58,11 +58,9 @@ import urllib.parse
 import urllib.request
 
 import config
-import gates
 from fetch_items import API, USER_AGENT  # one copy of the endpoint + contact User-Agent
-from review_queue import (action_of, anchor_gloss, append_decision, has_item_alias, has_item_lang,
-                          is_auto_deferred, item_names, load_decisions, now, parse_reason,
-                          pending_view, pool)
+from review_queue import (BOT_LANGS, anchor_gloss, append_decision, bot_rows, has_item_alias,
+                          has_item_lang, load_decisions, now, pool)
 
 
 SUMMARY = ("Add [[Property:P5137]] (item for this sense) inferred from translation, "
@@ -72,7 +70,6 @@ SUMMARY = ("Add [[Property:P5137]] (item for this sense) inferred from translati
 BOT_SUMMARY = ("Bot: create first sense with [[Property:P5137]] (item for this sense), item "
                "label or alias equals lemma, inferred from translation, ref [[Q140308675]], "
                "LLM-verified ([[Wikidata:Requests for permissions/Bot/{bot}|task]])")
-BOT_LANGS = ("de", "en", "sv", "ru")
 TOOL = "CB"  # EditGroups "custom bot" id (self-service, no registration); batch id is per-run
 
 # P887 "based on heuristic" value: the purpose-made item "inferred from translation"
@@ -270,48 +267,6 @@ def build_edit(row, today, include_senseless, it, include_poly=False):
         extra = " +en" if "en" in glosses and primary_lang != "en" else ""
         return {"senses": [sense]}, f"CREATE sense (gloss[{primary_lang}]{extra}: {primary!r})"
     return None, "skipped: senseless (needs gloss policy; use --include-senseless)"
-
-
-def is_structured_equal(reason):
-    """The verifier's own EQUAL relation — not a legacy prose reply, which has no relation."""
-    rel, tags = parse_reason(reason)
-    return rel == "EQUAL" and tags is not None
-
-
-def load_bot_rows():
-    """The bot task's rows: undecided senseless pool rows the verifier kept (no auto-defer, no
-    triage action) whose item's own label or alias is the lemma — the population the trials
-    sampled (named150, ru100). Kept means clean EQUAL: unlike review's "keep", it excludes the
-    demonym/gender convention-keeps, none of which either trial sampled. Lexemes with any
-    other High-tier anchor (verified or not) or any human decision are left to review: the
-    task is ONE first sense, and two anchors are often near-duplicates (Fälschung → forgery +
-    counterfeit)."""
-    d, und, ctx, ad, _v = pending_view("senseless")
-    it = sqlite3.connect(config.ITEMS)
-    if not (has_item_lang(it) and has_item_alias(it)):
-        raise SystemExit("--bot needs the item label/alias cache: run fetch_anchor_langs.py")
-    rows = [r for r in und if r[3] in BOT_LANGS
-            and not is_auto_deferred((r[0], r[1]), r[6], ctx, ad)
-            and not action_of((r[0], r[1]), r[6], ctx)
-            and is_structured_equal(r[6])
-            and r[2] in item_names(it, r[1], r[3])]  # create_evidence's 'named'
-    it.close()
-    # a same-language homograph already linking the item (en 'ten' L338): a duplicate, or wrong
-    wd = sqlite3.connect(config.WIKIDATA)
-    rows = [r for r in rows if not wd.execute(
-        "SELECT 1 FROM sense_item s JOIN lexeme x ON x.lid = s.lid JOIN lemma m ON m.lid = s.lid "
-        "WHERE s.qid = ? AND x.lang = ? AND m.lemma = ? AND s.lid <> ?",
-        [r[1], r[3], r[2], r[0]]).fetchone()]
-    wd.close()
-    # every High-tier anchor, verified or not: an unverified second anchor is still a second sense
-    cn = sqlite3.connect(config.CANDIDATES)
-    cn.execute("ATTACH DATABASE ? AS it", [config.ITEMS])
-    n = collections.Counter(lid for (lid,) in cn.execute(
-        "SELECT c.target_lid FROM candidate c JOIN it.item i ON i.qid = c.anchor_qid "
-        "AND NOT i.missing WHERE " + gates.high_tier_where("c", "it", n_senses=0)))
-    cn.close()
-    decided = {lid for lid, _ in d}
-    return [r for r in rows if n[r[0]] == 1 and r[0] not in decided]
 
 
 def load_rows(args):
@@ -703,8 +658,13 @@ def main():
                  "the approved log holds every lane at once.)")
 
     today = datetime.date.today().isoformat()
-    bot_rows = load_bot_rows() if args.bot else []
-    rows = ([(*r[:5], "", False) for r in bot_rows] if args.bot else load_rows(args))
+    if args.bot:
+        it = sqlite3.connect(config.ITEMS)
+        if not (has_item_lang(it) and has_item_alias(it)):
+            raise SystemExit("--bot needs the item label/alias cache: run fetch_anchor_langs.py")
+        it.close()
+    pool_rows = bot_rows() if args.bot else []
+    rows = ([(*r[:5], "", False) for r in pool_rows] if args.bot else load_rows(args))
     # Sorted so one lexeme's rows are contiguous (same lid ⇒ same lang+lemma), which is what
     # lets the build below group and cap by lexeme in a single pass.
     rows.sort(key=lambda r: (r[3], r[2], r[0], r[1]))
@@ -802,7 +762,7 @@ def main():
 
     if args.preview:
         raise SystemExit("refusing to --write in --preview mode: write only human-approved rows")
-    write_edits(edits, args.max_edits_per_min, args.bot, bot_rows)
+    write_edits(edits, args.max_edits_per_min, args.bot, pool_rows)
 
 
 if __name__ == "__main__":
