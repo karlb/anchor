@@ -272,7 +272,8 @@ def build_edit(row, today, include_senseless, it, include_poly=False):
 def load_bot_rows():
     """The bot task's rows: undecided senseless pool rows the verifier kept (no auto-defer, no
     triage action) whose item's own label or alias is the lemma — the population the trials
-    sampled (named150, ru100). Pairs a human decided stay with the assisted runs. Lexemes with
+    sampled (named150, ru100). Kept means clean EQUAL: unlike review's "keep", it excludes the
+    demonym/gender convention-keeps, none of which either trial sampled. Pairs a human decided stay with the assisted runs. Lexemes with
     several such anchors are left to review: the task is ONE first sense, and two anchors are
     often near-duplicates (Fälschung → forgery + counterfeit)."""
     _d, und, ctx, ad, _v = pending_view("senseless")
