@@ -252,10 +252,8 @@ def bot_rows(view=None):
     it.close()
     # a same-language homograph already linking the item (en 'ten' L338): a duplicate, or wrong
     wd = sqlite3.connect(config.WIKIDATA)
-    rows = [r for r in rows if not wd.execute(
-        "SELECT 1 FROM sense_item s JOIN lexeme x ON x.lid = s.lid JOIN lemma m ON m.lid = s.lid "
-        "WHERE s.qid = ? AND x.lang = ? AND m.lemma = ? AND s.lid <> ?",
-        [r[1], r[3], r[2], r[0]]).fetchone()]
+    rows = [r for r in rows
+            if all(m != r[2] for _l, m in linking_lexemes(wd, r[1], r[3], r[0]))]
     wd.close()
     # every High-tier anchor, verified or not: an unverified second anchor is still a second sense
     cn = sqlite3.connect(config.CANDIDATES)
@@ -477,6 +475,14 @@ def item_names(it, qid, lang):
     return names
 
 
+def linking_lexemes(wd, qid, lang, lid):
+    """{(lid, lemma)} of the other `lang` lexemes with a sense linking `qid`."""
+    return set(wd.execute(
+        "SELECT DISTINCT s.lid, m.lemma FROM sense_item s JOIN lexeme x ON x.lid = s.lid "
+        "JOIN lemma m ON m.lid = s.lid WHERE s.qid = ? AND x.lang = ? AND s.lid <> ?",
+        [qid, lang, lid]))
+
+
 def create_evidence(it, wd, lid, qid, lang, lemma):
     """('named' | 'owned' | '', [(lid, lemma)]) — the two create-row signals, measured on
     Karl's 87 create-class rulings (2026-10-08): 'named' = the item's own `lang` label or
@@ -489,9 +495,7 @@ def create_evidence(it, wd, lid, qid, lang, lemma):
         return "named", []
     if lemma.casefold() in {n.casefold() for n in names}:
         return "", []
-    owners = {l for (l,) in wd.execute(
-        "SELECT DISTINCT s.lid FROM sense_item s JOIN lexeme x ON x.lid = s.lid "
-        "WHERE s.qid = ? AND x.lang = ? AND s.lid <> ?", [qid, lang, lid])}
+    owners = {l for l, _m in linking_lexemes(wd, qid, lang, lid)}
     for n in names:
         owners |= {l for (l,) in wd.execute(
             "SELECT DISTINCT m.lid FROM lemma m JOIN lexeme x ON x.lid = m.lid "
