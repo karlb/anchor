@@ -442,6 +442,24 @@ def p5137_targets(sense):
     return out
 
 
+def landed_revid(opener, lid, senses, tries=3):
+    """The live lexeme's revid once every anchor sits where the edit put it (its sense id, or
+    any sense for a created one), else None. Re-checked: the save may still be committing."""
+    for i in range(tries):
+        if i:
+            time.sleep(10)
+        try:
+            lexeme = live_lexeme(opener, lid)
+        except Exception:  # noqa: BLE001 — unknown stays a failure
+            continue
+        live = {s["id"]: p5137_targets(s) for s in lexeme.get("senses", [])}
+        anywhere = set().union(*live.values())
+        if all(sense_anchor(s) in (live.get(s["id"], set()) if "id" in s else anywhere)
+               for s in senses):
+            return lexeme.get("lastrevid")
+    return None
+
+
 def resolve_sense(opener, lid):
     """Re-fetch the live lexeme. Return (sense_id, existing P5137 target qids).
     Raises if the lexeme no longer has exactly one sense."""
@@ -595,9 +613,16 @@ def write_edits(edits, max_per_min, bot=False, rows=()):
                 wait = interval - (time.monotonic() - last_edit)
                 if wait > 0:
                     time.sleep(wait)
-            revid = submit(opener, csrf, lid, data, summary
-                           + (f", approved by {', '.join(crowd)} via the distributed game"
-                              if crowd else ""), extra)
+            try:
+                revid = submit(opener, csrf, lid, data, summary
+                               + (f", approved by {', '.join(crowd)} via the distributed game"
+                                  if crowd else ""), extra)
+            except Exception as e:  # noqa: BLE001
+                # a 503/timeout can come after the edit landed (_api won't re-POST): log it if so
+                revid = landed_revid(opener, lid, senses)
+                if not revid:
+                    raise
+                print(f"  {lid}: submit failed ({e}) but the edit landed")
             last_edit = time.monotonic()
             fails = 0
         except Exception as e:  # noqa: BLE001 — one bad edit shouldn't abort the batch
