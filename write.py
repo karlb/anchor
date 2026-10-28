@@ -454,6 +454,9 @@ def write_edits(edits, max_per_min, bot=False, rows=()):
         rights = _api(opener, {"action": "query", "meta": "userinfo", "uiprop": "rights"})
         extra = {"bot": "1", "assert": "bot" if "bot" in rights["query"]["userinfo"]
                  .get("rights", []) else "user"}
+        # a bot password lacking the high-volume grant hides the right: say so, not silently
+        print(f"assert={extra['assert']}" + ("" if extra["assert"] == "bot" else
+              " — no 'bot' right (unflagged account, or bot password lacks High-volume editing)"))
         summary_base = BOT_SUMMARY.format(bot=account)
     info = {(r[0], r[1]): r for r in rows}
     decisions = load_decisions()  # to carry the audited fields onto the 'written' event
