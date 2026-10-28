@@ -274,10 +274,10 @@ def load_bot_rows():
     """The bot task's rows: undecided senseless pool rows the verifier kept (no auto-defer, no
     triage action) whose item's own label or alias is the lemma — the population the trials
     sampled (named150, ru100). Kept means clean EQUAL: unlike review's "keep", it excludes the
-    demonym/gender convention-keeps, none of which either trial sampled. Pairs a human decided stay with the assisted runs. Lexemes with
-    several such anchors are left to review: the task is ONE first sense, and two anchors are
-    often near-duplicates (Fälschung → forgery + counterfeit)."""
-    _d, und, ctx, ad, _v = pending_view("senseless")
+    demonym/gender convention-keeps, none of which either trial sampled. Lexemes with any
+    other pool anchor or any human decision are left to review: the task is ONE first sense,
+    and two anchors are often near-duplicates (Fälschung → forgery + counterfeit)."""
+    d, und, ctx, ad, _v = pending_view("senseless")
     it = sqlite3.connect(config.ITEMS)
     if not (has_item_lang(it) and has_item_alias(it)):
         raise SystemExit("--bot needs the item label/alias cache: run fetch_anchor_langs.py")
@@ -286,8 +286,9 @@ def load_bot_rows():
             and not action_of((r[0], r[1]), r[6], ctx)
             and r[2] in item_names(it, r[1], r[3])]  # create_evidence's 'named'
     it.close()
-    n = collections.Counter(r[0] for r in rows)
-    return [r for r in rows if n[r[0]] == 1]
+    n = collections.Counter(r[0] for r in und)  # every pool anchor, not just bot-eligible ones
+    decided = {lid for lid, _ in d}
+    return [r for r in rows if n[r[0]] == 1 and r[0] not in decided]
 
 
 def load_rows(args):
