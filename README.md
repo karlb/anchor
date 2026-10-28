@@ -17,6 +17,9 @@ Only CC0 data is written: the item, the item's description as gloss of a new sen
 reference P887 → [inferred from translation (Q140308675)](https://www.wikidata.org/wiki/Q140308675)
 plus P813. Wiktionary text (CC BY-SA) is never copied.
 
+Most of the code also serves the operator's assisted, individually approved edits (P5137 on
+existing senses); only `--bot` runs without approval.
+
 ## Bot task: first senses
 
 `write.py --bot` creates a first sense with P5137 on lexemes that have no senses, when:
