@@ -16,14 +16,10 @@ Good-API-citizen behaviour (Wikimedia API etiquette):
   * descriptive User-Agent with a contact address;
   * serial requests only (no parallelism), 50 ids per batch;
   * honour ``Retry-After`` and exponential backoff on 429/503;
-  * gzip transfer; a small inter-batch sleep.
-
-No ``maxlag`` on these READ requests. maxlag throttles clients against server lag so that
-WRITES queue behind replication — write.py sends maxlag=5 on every edit and that is where it
-belongs. On a read it only blocks us, and the lag the API compares against includes the QUERY
-SERVICE: with WDQS 48 minutes behind (queryserviceLag 2899, 2026-08-02) every retry was refused
-for hours while the same request without maxlag served the entity instantly. Rate limiting is
-what actually protects the servers here, and 429/503 + Retry-After still honour it.
+  * gzip transfer; a small inter-batch sleep;
+  * maxlag=5 on every request (Manual:Maxlag: "noninteractive tasks should always use it").
+    Wikidata's lag includes the Query Service's, so a WDQS backlog stalls a fetch until it
+    clears (2026-08-02: refused for hours at queryserviceLag 2899) — accepted for compliance.
 
 Run after match.py (allow www.wikidata.org):
     uv run fetch_items.py            # fetch all uncached anchor items
@@ -60,11 +56,12 @@ CREATE INDEX IF NOT EXISTS item_type_qid ON item_type(qid);
 def http_get(params):
     """GET with gzip + rate-limit-aware retry/backoff. Returns parsed JSON.
 
-    Callers do not send maxlag (see the module docstring), so a maxlag rejection cannot arrive
-    here and is not handled — write.py's api() owns that back-off for the edit path."""
-    url = API + "?" + urllib.parse.urlencode(params)
+    A maxlag rejection waits and retries without limit: lag is the server asking us to
+    pause, not a failure, so it does not use up MAX_RETRIES."""
+    url = API + "?" + urllib.parse.urlencode({"maxlag": "5", **params})
     backoff = 1.0
-    for attempt in range(MAX_RETRIES):
+    attempt = 0
+    while attempt < MAX_RETRIES:
         req = urllib.request.Request(
             url, headers={"User-Agent": USER_AGENT, "Accept-Encoding": "gzip"}
         )
@@ -74,6 +71,11 @@ def http_get(params):
                 if resp.headers.get("Content-Encoding") == "gzip":
                     raw = gzip.GzipFile(fileobj=io.BytesIO(raw)).read()
                 data = json.loads(raw)
+            if isinstance(data, dict) and data.get("error", {}).get("code") == "maxlag":
+                lag = float(data["error"].get("lag") or 5)
+                print(f"  maxlag: server {lag:.0f}s behind, waiting", flush=True)
+                time.sleep(min(max(lag, 5), 60))
+                continue
             if isinstance(data, dict) and "error" in data:
                 # any other API error: fail loudly — the response has no 'entities', so
                 # returning it would make callers permanently cache the whole batch as
@@ -85,11 +87,13 @@ def http_get(params):
                 wait = float(e.headers.get("Retry-After", backoff))
                 time.sleep(min(wait, 30))
                 backoff *= 2
+                attempt += 1
                 continue
             raise
         except urllib.error.URLError:
             time.sleep(backoff)
             backoff *= 2
+            attempt += 1
     raise RuntimeError(f"giving up after {MAX_RETRIES} retries: {url}")
 
 

@@ -21,8 +21,7 @@ Stored in data/wd_items.sqlite3 (alongside the de/en/sv `item` table):
   * item_lang_fetched(qid)             — resumability marker (an item may legitimately
   * item_alias_fetched(qid)              have zero rows, so presence != fetched)
 
-Reuses fetch_items.py's API etiquette (UA, 429/503 backoff, serial 50/batch — no maxlag on
-reads, see the fetch_items docstring for why that one is a write-path setting). Needs
+Reuses fetch_items.py's API etiquette (UA, 429/503 backoff, serial 50/batch, maxlag=5). Needs
 network access to www.wikidata.org (allow it).
 
     uv run fetch_anchor_langs.py            # fetch all uncached anchors
