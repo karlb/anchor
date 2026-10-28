@@ -233,20 +233,19 @@ def is_structured_equal(reason):
 
 
 def bot_rows(view=None):
-    """The bot task's rows: undecided senseless pool rows the verifier kept (no auto-defer, no
-    triage action) whose item's own label or alias is the lemma — the population the trials
-    sampled (named150, ru100). Kept means clean EQUAL: unlike review's "keep", it excludes the
+    """The bot task's rows: undecided senseless pool rows the verifier kept (no triage action;
+    a clean EQUAL never auto-defers) whose item's own label or alias is the lemma — the
+    population the trials sampled (named150, ru100). Kept means clean EQUAL: unlike review's "keep", it excludes the
     demonym/gender convention-keeps, none of which either trial sampled. Lexemes with any
     other High-tier anchor (verified or not) or any human decision are left to review: the
     task is ONE first sense, and two anchors are often near-duplicates (Fälschung → forgery +
     counterfeit). Empty without the item label/alias cache."""
-    d, und, ctx, ad, _v = view or pending_view("senseless", hide_bot=False)
+    d, und, ctx, _ad, _v = view or pending_view("senseless", hide_bot=False)
     it = sqlite3.connect(config.ITEMS)
     if not (has_item_lang(it) and has_item_alias(it)):
         it.close()
         return []
     rows = [r for r in und if r[3] in BOT_LANGS
-            and not is_auto_deferred((r[0], r[1]), r[6], ctx, ad)
             and not action_of((r[0], r[1]), r[6], ctx)
             and is_structured_equal(r[6])
             and r[2] in item_names(it, r[1], r[3])]  # create_evidence's 'named'
