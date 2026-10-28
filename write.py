@@ -354,7 +354,9 @@ def _api(opener, params, post=False):
             time.sleep(min(backoff, 30))
             backoff *= 2
             continue
-        if data.get("error", {}).get("code") == "maxlag" and not last:
+        if data.get("error", {}).get("code") == "maxlag":
+            if last:
+                break
             # lag persists for minutes; sleeping just the reported lag gave up after ~30 s
             time.sleep(min(max(float(data["error"].get("lag") or 0), backoff), 60))
             backoff *= 2
