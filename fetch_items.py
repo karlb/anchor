@@ -42,7 +42,7 @@ import urllib.request
 import config
 
 API = "https://www.wikidata.org/w/api.php"
-USER_AGENT = "anchor-p5137-pilot/0.1 (https://www.wikidata.org/; karl42@gmail.com) python-urllib"
+USER_AGENT = "Karlb42Bot/0.1 (https://www.wikidata.org/wiki/User:Karlb42Bot; karl42@gmail.com) python-urllib"
 BATCH = 50
 SLEEP = 0.2          # polite gap between successful batches (s)
 MAX_RETRIES = 6
