@@ -3,6 +3,7 @@
 Summaries of the Wikidata pages most relevant to this project's editing of
 Wikidata (sense-linking via `write.py`). One file per page; each links back to
 its source URL and notes the retrieval date.
+Quoted passages are from Wikidata/MediaWiki pages, [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/).
 
 **How to edit** — conduct, permissions, and batch mechanics:
 
