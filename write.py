@@ -13,7 +13,8 @@ On success it appends a 'written' event (with the revid) to the same log ('bot_w
     uv run write.py --write --bot --limit 50  # bot task: named first senses, no approval (BOT_USER)
 
 Safety: --dry-run is the default. Live submit needs --write AND WIKI_USER/WIKI_PASS
-env vars (a Special:BotPasswords credential on your operator account). Submission goes
+env vars (a Special:BotPasswords credential on your operator account; BOT_USER/BOT_PASS,
+the bot account, for --bot). Submission goes
 through the MediaWiki Action API (wbeditentity) using only the standard library — no
 extra dependency, and it posts the exact JSON shown in --dry-run. Edits are NOT
 bot-flagged (assisted editing on the operator account), except --bot runs. Three write shapes, each behind its
@@ -420,12 +421,9 @@ def resolve_sense(opener, lid):
 
 
 def submit(opener, csrf, lid, data, summary, extra=None):
-    # No "bot" key. API booleans are presence-checked, so *any* value — "0" included —
-    # marks the edit as a bot edit; omitting the key is the only way to say false. Inert
-    # today because the account lacks the `bot` right, but the BRFA that grants it would
-    # silently hide every edit from Recent Changes, which is the last place this pilot
-    # wants to disappear from. Re-add as "bot": "1" only as a deliberate call.
-    #                   "bot": "0",
+    # No "bot" key by default. API booleans are presence-checked, so *any* value — "0"
+    # included — marks the edit as a bot edit; omitting the key is the only way to say
+    # false. Only --bot runs pass "bot": "1", via `extra`; assisted edits stay visible.
     res = _api(opener, {"action": "wbeditentity", "id": lid, "data": json.dumps(data),
                         "summary": summary, "token": csrf, **(extra or {})},
                post=True)
